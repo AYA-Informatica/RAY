@@ -1,0 +1,18 @@
+{
+  "name": "RAY - Buy & Sell Anything Near You",
+  "short_name": "RAY",
+  "description": "The fastest way to buy and sell locally in Kigali, Rwanda",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#E8390E",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/ray-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
