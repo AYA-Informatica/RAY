@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
-import { errorHandler }        from './utils/response'
-import { authLimiter, searchLimiter } from './middleware/rateLimit'
+import { errorHandler } from './utils/response'
+import { searchLimiter } from './middleware/rateLimit'
 
 // ─────────────────────────────────────────────
 // Express app
@@ -33,6 +33,11 @@ app.get('/', (_req, res) => {
     name: 'RAY API',
     version: '1.0.0',
     status: 'running',
+    env: {
+      nodeEnv: process.env.NODE_ENV,
+      hasMongoUri: !!process.env.MONGODB_URI,
+      hasStorageBucket: !!process.env.FIREBASE_STORAGE_BUCKET,
+    },
     endpoints: [
       '/api/listings',
       '/api/users',
@@ -44,40 +49,41 @@ app.get('/', (_req, res) => {
   })
 })
 
-// ─── API routes (lazy loaded to avoid env var issues) ──────────────────────────────
-app.use('/api/listings', async (req, res, next) => {
-  const { listingsRouter } = await import('./routes/listings')
-  listingsRouter(req, res, next)
+// ─── API routes (lazy loaded) ─────────────────
+app.use('/api/listings', (req, res, next) => {
+  import('./routes/listings').then(({ listingsRouter }) => {
+    listingsRouter(req, res, next)
+  }).catch(next)
 })
 
-app.use('/api/users/me', authLimiter, async (req, res, next) => {
-  const { usersRouter } = await import('./routes/users')
-  usersRouter(req, res, next)
+app.use('/api/users', (req, res, next) => {
+  import('./routes/users').then(({ usersRouter }) => {
+    usersRouter(req, res, next)
+  }).catch(next)
 })
 
-app.use('/api/users', async (req, res, next) => {
-  const { usersRouter } = await import('./routes/users')
-  usersRouter(req, res, next)
+app.use('/api/conversations', (req, res, next) => {
+  import('./routes/conversations').then(({ conversationsRouter }) => {
+    conversationsRouter(req, res, next)
+  }).catch(next)
 })
 
-app.use('/api/conversations', async (req, res, next) => {
-  const { conversationsRouter } = await import('./routes/conversations')
-  conversationsRouter(req, res, next)
+app.use('/api/reports', (req, res, next) => {
+  import('./routes/reports').then(({ reportsRouter }) => {
+    reportsRouter(req, res, next)
+  }).catch(next)
 })
 
-app.use('/api/reports', async (req, res, next) => {
-  const { reportsRouter } = await import('./routes/reports')
-  reportsRouter(req, res, next)
+app.use('/api/search', searchLimiter, (req, res, next) => {
+  import('./routes/search').then(({ searchRouter }) => {
+    searchRouter(req, res, next)
+  }).catch(next)
 })
 
-app.use('/api/search', searchLimiter, async (req, res, next) => {
-  const { searchRouter } = await import('./routes/search')
-  searchRouter(req, res, next)
-})
-
-app.use('/admin', async (req, res, next) => {
-  const { adminRouter } = await import('./routes/admin')
-  adminRouter(req, res, next)
+app.use('/admin', (req, res, next) => {
+  import('./routes/admin').then(({ adminRouter }) => {
+    adminRouter(req, res, next)
+  }).catch(next)
 })
 
 // ─── Global error handler ─────────────────────
