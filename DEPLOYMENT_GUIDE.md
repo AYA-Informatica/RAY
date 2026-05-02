@@ -170,11 +170,11 @@ Expected output:
 
 ## STEP 3: Environment Variables (15 minutes)
 
-### 3.1 Create `ray-web/.env`
+### 3.1 Edit `ray-web/.env`
 
 ```bash
 cd ray-web
-cp .env.example .env
+# .env file already exists, verify values:
 ```
 
 Edit `.env`:
@@ -191,20 +191,20 @@ VITE_APP_URL=https://ray.rw
 VITE_APP_ENV=production
 ```
 
-### 3.2 Create `ray-admin/.env`
+### 3.2 Edit `ray-admin/.env`
 
 ```bash
 cd ../ray-admin
-cp .env.example .env
+# .env file already exists, verify values:
 ```
 
 Use same Firebase config as `ray-web/.env`
 
-### 3.3 Create `ray-functions/.env`
+### 3.3 Edit `ray-functions/.env`
 
 ```bash
 cd ../ray-functions
-cp .env.example .env
+# .env file already exists, verify values:
 ```
 
 Edit `.env`:
@@ -214,11 +214,11 @@ FIREBASE_STORAGE_BUCKET=ray-production.appspot.com
 NODE_ENV=production
 ```
 
-### 3.4 Create `ray-mobile/.env`
+### 3.4 Edit `ray-mobile/.env`
 
 ```bash
 cd ../ray-mobile
-cp .env.example .env
+# .env file already exists, verify values:
 ```
 
 Edit `.env`:

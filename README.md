@@ -57,12 +57,12 @@ npm install
 
 ```bash
 # ray-web/
-cp .env.example .env
-# Fill in your Firebase project values
+cp .env .env.backup  # Backup if needed
+# Edit .env with your Firebase and Cloudinary values
 
 # ray-admin/
-cp .env.example .env
-# Same Firebase project, same values
+cp .env .env.backup
+# Edit .env with your Firebase values
 ```
 
 ### 3. Firebase setup
