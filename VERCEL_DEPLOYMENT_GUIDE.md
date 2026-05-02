@@ -156,7 +156,7 @@ git push -u origin main
    ```
 
 3. **Copy the URL** from your browser address bar
-   - Example: `https://ray-platform-abc123.vercel.app`
+   - Your URL: `https://ray-steel.vercel.app`
 
 4. **Save this URL** - you'll need it for the frontend
 
@@ -167,8 +167,8 @@ git push -u origin main
 Test the health endpoint:
 
 ```bash
-# Replace with your actual Vercel URL
-curl https://ray-platform-abc123.vercel.app/health
+# Your actual Vercel URL
+curl https://ray-steel.vercel.app/health
 ```
 
 Expected response:
@@ -182,7 +182,7 @@ Expected response:
 Test MongoDB connection:
 
 ```bash
-curl https://ray-platform-abc123.vercel.app/api/listings/fresh
+curl https://ray-steel.vercel.app/api/listings/fresh
 ```
 
 Expected: Empty array `[]` (no listings yet) or error if MongoDB not connected
@@ -196,22 +196,22 @@ Now update all your frontend apps to use the Vercel API URL.
 ### Update `ray-web/.env`
 
 ```env
-VITE_FUNCTIONS_BASE_URL=https://ray-platform-abc123.vercel.app
-VITE_API_BASE_URL=https://ray-platform-abc123.vercel.app
+VITE_FUNCTIONS_BASE_URL=https://ray-steel.vercel.app
+VITE_API_BASE_URL=https://ray-steel.vercel.app
 ```
 
 ### Update `ray-admin/.env`
 
 ```env
-VITE_FUNCTIONS_BASE_URL=https://ray-platform-abc123.vercel.app
-VITE_API_BASE_URL=https://ray-platform-abc123.vercel.app
+VITE_FUNCTIONS_BASE_URL=https://ray-steel.vercel.app
+VITE_API_BASE_URL=https://ray-steel.vercel.app
 ```
 
 ### Update `ray-mobile/.env`
 
 ```env
-EXPO_PUBLIC_FUNCTIONS_URL=https://ray-platform-abc123.vercel.app
-EXPO_PUBLIC_API_BASE_URL=https://ray-platform-abc123.vercel.app
+EXPO_PUBLIC_FUNCTIONS_URL=https://ray-steel.vercel.app
+EXPO_PUBLIC_API_BASE_URL=https://ray-steel.vercel.app
 ```
 
 ---
