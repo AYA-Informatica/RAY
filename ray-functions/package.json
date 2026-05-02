@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc && tsc-alias",
+    "build": "tsc --project tsconfig.vercel.json && tsc-alias",
     "build:vercel": "tsc --project tsconfig.vercel.json && tsc-alias",
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "npm run build && firebase deploy --only functions",
