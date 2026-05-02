@@ -1,8 +1,5 @@
 import mongoose from 'mongoose'
 
-const MONGODB_URI = process.env.MONGODB_URI
-if (!MONGODB_URI) throw new Error('MONGODB_URI environment variable is not set')
-
 let cached: typeof mongoose | null = null
 
 /**
@@ -10,11 +7,16 @@ let cached: typeof mongoose | null = null
  * Functions are stateless but connections are reused across warm invocations.
  */
 export async function connectDB(): Promise<typeof mongoose> {
+  const MONGODB_URI = process.env.MONGODB_URI
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is not set')
+  }
+
   if (cached && mongoose.connection.readyState === 1) {
     return cached
   }
 
-  cached = await mongoose.connect(MONGODB_URI!, {
+  cached = await mongoose.connect(MONGODB_URI, {
     serverSelectionTimeoutMS: 5000,
     maxPoolSize: 10,
     minPoolSize: 2,

@@ -1,11 +1,5 @@
 import express from 'express'
 import cors from 'cors'
-import { listingsRouter }      from './routes/listings'
-import { usersRouter }         from './routes/users'
-import { conversationsRouter } from './routes/conversations'
-import { reportsRouter }       from './routes/reports'
-import { adminRouter }         from './routes/admin'
-import { searchRouter }        from './routes/search'
 import { errorHandler }        from './utils/response'
 import { authLimiter, searchLimiter } from './middleware/rateLimit'
 
@@ -50,14 +44,41 @@ app.get('/', (_req, res) => {
   })
 })
 
-// ─── API routes ──────────────────────────────
-app.use('/api/listings',      listingsRouter)
-app.use('/api/users/me',      authLimiter, usersRouter)
-app.use('/api/users',         usersRouter)
-app.use('/api/conversations', conversationsRouter)
-app.use('/api/reports',       reportsRouter)
-app.use('/api/search',        searchLimiter, searchRouter)
-app.use('/admin',             adminRouter)
+// ─── API routes (lazy loaded to avoid env var issues) ──────────────────────────────
+app.use('/api/listings', async (req, res, next) => {
+  const { listingsRouter } = await import('./routes/listings')
+  listingsRouter(req, res, next)
+})
+
+app.use('/api/users/me', authLimiter, async (req, res, next) => {
+  const { usersRouter } = await import('./routes/users')
+  usersRouter(req, res, next)
+})
+
+app.use('/api/users', async (req, res, next) => {
+  const { usersRouter } = await import('./routes/users')
+  usersRouter(req, res, next)
+})
+
+app.use('/api/conversations', async (req, res, next) => {
+  const { conversationsRouter } = await import('./routes/conversations')
+  conversationsRouter(req, res, next)
+})
+
+app.use('/api/reports', async (req, res, next) => {
+  const { reportsRouter } = await import('./routes/reports')
+  reportsRouter(req, res, next)
+})
+
+app.use('/api/search', searchLimiter, async (req, res, next) => {
+  const { searchRouter } = await import('./routes/search')
+  searchRouter(req, res, next)
+})
+
+app.use('/admin', async (req, res, next) => {
+  const { adminRouter } = await import('./routes/admin')
+  adminRouter(req, res, next)
+})
 
 // ─── Global error handler ─────────────────────
 app.use(errorHandler)
