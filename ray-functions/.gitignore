@@ -3,7 +3,7 @@ node_modules/
 package-lock.json
 
 # Build output
-lib/
+# lib/ - needed for Vercel deployment
 dist/
 *.js.map
 
