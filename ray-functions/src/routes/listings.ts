@@ -6,11 +6,11 @@ import { Listing } from '../models/Listing'
 import { User } from '../models/User'
 import { requireAuth, optionalAuth, type AuthRequest } from '../middleware/auth'
 import { listingCreateLimiter } from '../middleware/rateLimit'
-import { validate } from '../middleware/validate'
-import { ok, created, notFound, badRequest, errorHandler } from '../utils/response'
+import { ok, created, notFound, badRequest } from '../utils/response'
 import { uploadListingImage } from '../services/imageService'
 import { notifyListingMilestone } from '../services/notificationService'
 import { connectDB } from '../services/db'
+import { debugLog, debugWarn } from '../utils/debug'
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
@@ -50,6 +50,14 @@ router.post('/search', optionalAuth, async (req, res, next) => {
   try {
     await connectDB()
     const parsed = searchSchema.parse(req.body)
+    debugLog('listings.search', 'Search request', {
+      userId: (req as AuthRequest).userId,
+      query: parsed.query,
+      category: parsed.category,
+      page: parsed.page,
+      limit: parsed.limit,
+      sortBy: parsed.sortBy,
+    })
 
     const filter: Record<string, unknown> = { status: 'active' }
 
@@ -76,7 +84,7 @@ router.post('/search', optionalAuth, async (req, res, next) => {
     }
 
     const skip  = (parsed.page - 1) * parsed.limit
-    const sort  = sortMap[parsed.sortBy]
+    const sort = sortMap[parsed.sortBy] as any
 
     const [listings, total] = await Promise.all([
       Listing.find(filter).sort(sort).skip(skip).limit(parsed.limit).lean(),
@@ -88,6 +96,11 @@ router.post('/search', optionalAuth, async (req, res, next) => {
       total,
       page: parsed.page,
       hasMore: skip + listings.length < total,
+    })
+    debugLog('listings.search', 'Search response', {
+      total,
+      returned: listings.length,
+      page: parsed.page,
     })
   } catch (err) {
     next(err)
@@ -138,6 +151,11 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     await connectDB()
     const listing = await Listing.findById(req.params['id']).lean()
     if (!listing) { notFound(res, 'Listing not found'); return }
+    debugLog('listings.getById', 'Listing fetched', {
+      listingId: req.params['id'],
+      viewerUserId: (req as AuthRequest).userId,
+      currentViews: listing.views ?? 0,
+    })
 
     // Increment view count (fire-and-forget)
     Listing.findByIdAndUpdate(req.params['id'], { $inc: { views: 1 } }).exec()
@@ -145,7 +163,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     // Notify seller at view milestones
     const newViews = (listing.views ?? 0) + 1
     if ([100, 500, 1000].includes(newViews)) {
-      notifyListingMilestone(listing.seller.id, listing.title, newViews, listing._id as string)
+      notifyListingMilestone(listing.seller.id, listing.title, newViews, String(listing._id as any))
     }
 
     ok(res, listing)
@@ -185,6 +203,13 @@ router.post(
 
       const body   = createSchema.parse(req.body)
       const files  = req.files as Express.Multer.File[]
+      debugLog('listings.create', 'Create listing request', {
+        userId: req.userId,
+        firebaseUid: req.firebaseUid,
+        imageCount: files?.length ?? 0,
+        title: body.title,
+        category: body.category,
+      })
       if (!files?.length) { badRequest(res, 'At least one image is required'); return }
 
       // Get seller info
@@ -193,6 +218,10 @@ router.post(
       
       // Check if user is banned
       if (seller.isBanned) {
+        debugWarn('listings.create', 'Blocked banned user', {
+          userId: req.userId,
+          firebaseUid: req.firebaseUid,
+        })
         res.status(403).json({ success: false, message: 'Your account has been suspended' })
         return
       }
@@ -200,7 +229,7 @@ router.post(
       // Upload all images in parallel
       const tempListingId = uuidv4()
       const uploadResults = await Promise.all(
-        files.map((f) => uploadListingImage(f.buffer, seller._id as string, tempListingId))
+        files.map((f) => uploadListingImage(f.buffer, String(seller._id as any), tempListingId))
       )
 
       const images    = uploadResults.map((r) => r.full)
@@ -244,6 +273,10 @@ router.post(
 
       // Update seller's active listing count
       await User.findByIdAndUpdate(seller._id, { $inc: { activeListings: 1 } })
+      debugLog('listings.create', 'Listing created', {
+        listingId: String(listing.id),
+        sellerId: String(seller._id),
+      })
 
       created(res, listing)
     } catch (err) { next(err) }
@@ -261,15 +294,23 @@ router.patch('/:id', requireAuth, async (req: AuthRequest, res, next) => {
 
     if (!listing)                           { notFound(res, 'Listing not found'); return }
     if (String(listing.seller.id) !== String(seller?._id)) {
+      debugWarn('listings.update', 'Blocked non-owner update attempt', {
+        listingId: req.params['id'],
+        requesterUserId: req.userId,
+      })
       res.status(403).json({ success: false, message: 'Not your listing' })
       return
     }
 
     const allowed = ['title', 'description', 'price', 'negotiable', 'condition'] as const
     for (const key of allowed) {
-      if (req.body[key] !== undefined) (listing as Record<string, unknown>)[key] = req.body[key]
+      if (req.body[key] !== undefined) (listing as any)[key] = req.body[key]
     }
     await listing.save()
+    debugLog('listings.update', 'Listing updated', {
+      listingId: req.params['id'],
+      requesterUserId: req.userId,
+    })
     ok(res, listing)
   } catch (err) { next(err) }
 })
@@ -288,6 +329,11 @@ router.delete('/:id', requireAuth, async (req: AuthRequest, res, next) => {
     const isAdmin = ['admin', 'moderator'].includes(req.userRole ?? '')
     const isOwner = String(listing.seller.id) === String(seller?._id)
     if (!isOwner && !isAdmin) {
+      debugWarn('listings.delete', 'Blocked delete attempt (not owner/admin)', {
+        listingId: req.params['id'],
+        requesterUserId: req.userId,
+        role: req.userRole,
+      })
       res.status(403).json({ success: false, message: 'Not authorised' }); return
     }
 
@@ -295,6 +341,12 @@ router.delete('/:id', requireAuth, async (req: AuthRequest, res, next) => {
     if (isOwner) {
       await User.findByIdAndUpdate(seller?._id, { $inc: { activeListings: -1 } })
     }
+    debugLog('listings.delete', 'Listing deleted', {
+      listingId: req.params['id'],
+      requesterUserId: req.userId,
+      isOwner,
+      isAdmin,
+    })
     ok(res, { deleted: true })
   } catch (err) { next(err) }
 })

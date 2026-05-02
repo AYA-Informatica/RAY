@@ -1,7 +1,7 @@
-import mongoose, { Schema, Document, Model } from 'mongoose'
+import mongoose, { Schema, Document, Model, Types } from 'mongoose'
 
 export interface IListing extends Document {
-  _id: string
+  _id: Types.ObjectId
   title: string
   description?: string
   price: number
@@ -104,10 +104,10 @@ const ListingSchema = new Schema<IListing>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: (_doc, ret) => {
+      transform: (_doc, ret: any) => {
         ret.id = ret._id
-        delete ret._id
-        delete ret.__v
+        ret._id = undefined
+        ret.__v = undefined
         return ret
       },
     },

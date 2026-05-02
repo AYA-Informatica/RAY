@@ -73,7 +73,7 @@ export const notifyExpiringListings = functions.pubsub
 
     await Promise.all(
       expiring.map((l) =>
-        notifyListingExpiring(l.seller.id, l.title, l._id as string)
+        notifyListingExpiring(l.seller.id, l.title, String(l._id))
       )
     )
 

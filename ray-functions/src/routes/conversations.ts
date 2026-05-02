@@ -7,6 +7,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { ok, created, notFound, badRequest } from '../utils/response'
 import { notifyNewMessage } from '../services/notificationService'
 import { connectDB } from '../services/db'
+import { debugLog, debugWarn } from '../utils/debug'
 
 const router = Router()
 
@@ -22,6 +23,10 @@ router.get('/', requireAuth, async (req: AuthRequest, res, next) => {
       .get()
 
     const convos = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    debugLog('conversations.list', 'Fetched conversations', {
+      userId: req.userId,
+      count: convos.length,
+    })
     ok(res, convos)
   } catch (err) { next(err) }
 })
@@ -36,8 +41,16 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res, next) => {
 
     const data = doc.data()!
     if (!data['participants'].includes(req.userId)) {
+      debugWarn('conversations.getById', 'Blocked non-participant access', {
+        conversationId: req.params['id'],
+        userId: req.userId,
+      })
       res.status(403).json({ success: false, message: 'Not a participant' }); return
     }
+    debugLog('conversations.getById', 'Fetched conversation', {
+      conversationId: req.params['id'],
+      userId: req.userId,
+    })
 
     ok(res, { id: doc.id, ...data })
   } catch (err) { next(err) }
@@ -52,6 +65,10 @@ router.post('/', requireAuth, async (req: AuthRequest, res, next) => {
 
     const schema = z.object({ listingId: z.string().min(1) })
     const { listingId } = schema.parse(req.body)
+    debugLog('conversations.start', 'Start conversation request', {
+      userId: req.userId,
+      listingId,
+    })
 
     const listing = await Listing.findById(listingId).lean()
     if (!listing) { notFound(res, 'Listing not found'); return }
@@ -71,6 +88,11 @@ router.post('/', requireAuth, async (req: AuthRequest, res, next) => {
 
     if (!existing.empty) {
       const doc = existing.docs[0]
+      debugLog('conversations.start', 'Returning existing conversation', {
+        conversationId: doc.id,
+        listingId,
+        userId: req.userId,
+      })
       ok(res, { id: doc.id, ...doc.data() }); return
     }
 
@@ -115,6 +137,12 @@ router.post('/', requireAuth, async (req: AuthRequest, res, next) => {
 
     // Update listing chat count
     await Listing.findByIdAndUpdate(listingId, { $inc: { chatCount: 1 } })
+    debugLog('conversations.start', 'Created conversation', {
+      conversationId: convoRef.id,
+      listingId,
+      buyerId,
+      sellerId,
+    })
 
     created(res, { id: convoRef.id, ...convoData })
   } catch (err) { next(err) }
@@ -128,6 +156,10 @@ router.get('/:id/messages', requireAuth, async (req: AuthRequest, res, next) => 
     const convoDoc = await db.collection('conversations').doc(req.params['id']).get()
     if (!convoDoc.exists) { notFound(res); return }
     if (!convoDoc.data()!['participants'].includes(req.userId)) {
+      debugWarn('conversations.messages.list', 'Blocked non-participant message list', {
+        conversationId: req.params['id'],
+        userId: req.userId,
+      })
       res.status(403).json({ success: false, message: 'Not a participant' }); return
     }
 
@@ -137,7 +169,13 @@ router.get('/:id/messages', requireAuth, async (req: AuthRequest, res, next) => 
       .limit(100)
       .get()
 
-    ok(res, snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    const messages = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    debugLog('conversations.messages.list', 'Fetched messages', {
+      conversationId: req.params['id'],
+      userId: req.userId,
+      count: messages.length,
+    })
+    ok(res, messages)
   } catch (err) { next(err) }
 })
 
@@ -148,12 +186,21 @@ router.post('/:id/messages', requireAuth, async (req: AuthRequest, res, next) =>
   try {
     const schema = z.object({ content: z.string().min(1).max(1000) })
     const { content } = schema.parse(req.body)
+    debugLog('conversations.messages.send', 'Send message request', {
+      conversationId: req.params['id'],
+      senderId: req.userId,
+      contentLength: content.length,
+    })
 
     const convoDoc = await db.collection('conversations').doc(req.params['id']).get()
     if (!convoDoc.exists) { notFound(res); return }
 
     const convo = convoDoc.data()!
     if (!convo['participants'].includes(req.userId)) {
+      debugWarn('conversations.messages.send', 'Blocked non-participant send', {
+        conversationId: req.params['id'],
+        userId: req.userId,
+      })
       res.status(403).json({ success: false, message: 'Not a participant' }); return
     }
 
@@ -189,6 +236,12 @@ router.post('/:id/messages', requireAuth, async (req: AuthRequest, res, next) =>
         req.params['id']
       )
     }
+    debugLog('conversations.messages.send', 'Message sent', {
+      conversationId: req.params['id'],
+      messageId: msgRef.id,
+      senderId: req.userId,
+      recipientId: recipientId ?? null,
+    })
 
     created(res, { id: msgRef.id, ...message })
   } catch (err) { next(err) }
@@ -200,6 +253,10 @@ router.post('/:id/messages', requireAuth, async (req: AuthRequest, res, next) =>
 router.post('/:id/read', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     await db.collection('conversations').doc(req.params['id']).update({ unreadCount: 0 })
+    debugLog('conversations.read', 'Marked conversation as read', {
+      conversationId: req.params['id'],
+      userId: req.userId,
+    })
     ok(res, { ok: true })
   } catch (err) { next(err) }
 })

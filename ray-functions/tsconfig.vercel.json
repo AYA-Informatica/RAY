@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "lib",
+    "rootDir": "src"
+  },
+  "include": ["src/index-vercel.ts", "src/**/*"],
+  "exclude": ["src/index.ts", "src/scheduled.ts", "src/triggers.ts"]
+}

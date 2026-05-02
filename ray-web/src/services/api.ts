@@ -8,18 +8,25 @@ import type {
   User,
   ApiResponse,
 } from '@/types'
+import { API_ROUTES, type CreateReportPayload } from '../../../shared/api-contract'
 
 // ─────────────────────────────────────────────
 // Base request helper
 // ─────────────────────────────────────────────
 
-const BASE_URL = import.meta.env.VITE_FUNCTIONS_BASE_URL || 
+const BASE_URL =
+  import.meta.env.VITE_FUNCTIONS_BASE_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
   'https://us-central1-your-project.cloudfunctions.net'
+
+const DEBUG_API = import.meta.env.DEV || import.meta.env.VITE_DEBUG_API === 'true'
 
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const method = options.method ?? 'GET'
+  const started = Date.now()
   const token = await auth.currentUser?.getIdToken()
 
   const headers: HeadersInit = {
@@ -33,8 +40,26 @@ async function request<T>(
     headers,
   })
 
+  if (DEBUG_API) {
+    console.log('[web.api] response', {
+      method,
+      endpoint,
+      status: res.status,
+      durationMs: Date.now() - started,
+      ok: res.ok,
+    })
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: 'Unknown error' }))
+    if (DEBUG_API) {
+      console.error('[web.api] request failed', {
+        method,
+        endpoint,
+        status: res.status,
+        error: err.message,
+      })
+    }
     throw new Error(err.message || `HTTP ${res.status}`)
   }
 
@@ -158,14 +183,22 @@ export const chatApi = {
 
 export const reportsApi = {
   reportListing: (listingId: string, reason: string): Promise<void> =>
-    request('/api/reports/listing', {
+    request(API_ROUTES.reports.base, {
       method: 'POST',
-      body: JSON.stringify({ listingId, reason }),
+      body: JSON.stringify({
+        type: 'listing',
+        targetId: listingId,
+        reason,
+      } as CreateReportPayload),
     }),
 
   reportUser: (userId: string, reason: string): Promise<void> =>
-    request('/api/reports/user', {
+    request(API_ROUTES.reports.base, {
       method: 'POST',
-      body: JSON.stringify({ userId, reason }),
+      body: JSON.stringify({
+        type: 'user',
+        targetId: userId,
+        reason,
+      } as CreateReportPayload),
     }),
 }

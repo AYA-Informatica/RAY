@@ -70,7 +70,7 @@ cp .env.example .env
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
 2. Enable **Phone Authentication** (Auth → Sign-in methods)
 3. Enable **Firestore Database** (start in production mode)
-4. Enable **Storage**
+4. Enable **Storage** (or use Cloudinary - see below)
 5. Enable **Cloud Messaging** (for push notifications)
 6. Deploy Cloud Functions (see `/functions/` — to be added)
 7. Set custom claims for admin users:
@@ -79,6 +79,16 @@ cp .env.example .env
 // In Firebase Admin SDK (Cloud Function or script)
 admin.auth().setCustomUserClaims(uid, { role: 'admin' })
 ```
+
+**Alternative: Use Cloudinary for Image Storage** (Recommended)
+
+Cloudinary offers better performance and automatic image optimization:
+- 25GB free storage (vs Firebase's 5GB)
+- Automatic WebP conversion (40% smaller images)
+- On-the-fly image resizing
+- No credit card required
+
+See [CLOUDINARY_SETUP_GUIDE.md](./CLOUDINARY_SETUP_GUIDE.md) for setup instructions.
 
 ### 4. Run dev servers
 

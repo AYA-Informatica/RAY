@@ -170,7 +170,7 @@ firebase deploy --only functions
 - `https://us-central1-{project-id}.cloudfunctions.net/api/search`
 - `https://us-central1-{project-id}.cloudfunctions.net/admin`
 
-**Note**: Update `EXPO_PUBLIC_API_BASE_URL` in `ray-mobile/.env` after deployment
+**Note**: Update `EXPO_PUBLIC_FUNCTIONS_URL` in `ray-mobile/.env` after deployment (`EXPO_PUBLIC_API_BASE_URL` is supported as a fallback alias).
 
 ---
 

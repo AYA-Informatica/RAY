@@ -1,10 +1,10 @@
-import mongoose, { Schema, Document, Model } from 'mongoose'
+import mongoose, { Schema, Document, Model, Types } from 'mongoose'
 
 // ─────────────────────────────────────────────
 // Report
 // ─────────────────────────────────────────────
 export interface IReport extends Document {
-  _id: string
+  _id: Types.ObjectId
   type: 'listing' | 'user'
   targetId: string
   reportedBy: string
@@ -39,7 +39,7 @@ const ReportSchema = new Schema<IReport>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: (_doc, ret) => { ret.id = ret._id; delete ret._id; delete ret.__v; return ret },
+      transform: (_doc, ret: any) => { ret.id = ret._id; ret._id = undefined; ret.__v = undefined; return ret },
     },
   }
 )
@@ -55,7 +55,7 @@ export const Report: Model<IReport> =
 // Boost / Monetisation Transaction
 // ─────────────────────────────────────────────
 export interface IBoost extends Document {
-  _id: string
+  _id: Types.ObjectId
   listingId: string
   sellerId: string
   type: 'featured' | 'top_ad' | 'elite_seller'
@@ -95,7 +95,7 @@ const BoostSchema = new Schema<IBoost>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: (_doc, ret) => { ret.id = ret._id; delete ret._id; delete ret.__v; return ret },
+      transform: (_doc, ret: any) => { ret.id = ret._id; ret._id = undefined; ret.__v = undefined; return ret },
     },
   }
 )

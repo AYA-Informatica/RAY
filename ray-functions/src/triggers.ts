@@ -1,8 +1,8 @@
 import * as functions from 'firebase-functions'
-import { connectDB } from '../services/db'
-import { User } from '../models/User'
-import { Listing } from '../models/Listing'
-import { db } from '../services/firebase'
+import { connectDB } from './services/db'
+import { User } from './models/User'
+import { Listing } from './models/Listing'
+import { db } from './services/firebase'
 
 /**
  * onMessageCreated — fires when a new message is written to Firestore.

@@ -1,7 +1,7 @@
-import { connectDB } from './services/db'
-import { Listing } from './models/Listing'
-import { User } from './models/User'
-import { notifyListingExpiring } from './services/notificationService'
+import { connectDB } from '../services/db'
+import { Listing } from '../models/Listing'
+import { User } from '../models/User'
+import { notifyListingExpiring } from '../services/notificationService'
 
 export const scheduledJobs = {
   /**
@@ -23,13 +23,13 @@ export const scheduledJobs = {
 
     if (expired.length) {
       await Listing.updateMany(
-        { _id: { $in: expired.map((l) => l._id) } },
+        { _id: { $in: expired.map((l: any) => l._id) } },
         { status: 'expired' }
       )
       // Decrement active listing counts
-      const sellerIds = [...new Set(expired.map((l) => l.seller.id))]
+      const sellerIds = [...new Set(expired.map((l: any) => l.seller.id))]
       for (const sellerId of sellerIds) {
-        const count = expired.filter((l) => l.seller.id === sellerId).length
+        const count = expired.filter((l: any) => l.seller.id === sellerId).length
         await User.findByIdAndUpdate(sellerId, { $inc: { activeListings: -count } })
       }
       console.log(`[Cleanup] Expired ${expired.length} listings`)
@@ -43,7 +43,7 @@ export const scheduledJobs = {
     }).select('_id seller title').lean()
 
     for (const listing of expiringSoon) {
-      await notifyListingExpiring(listing.seller.id, listing.title, listing._id as string)
+      await notifyListingExpiring(listing.seller.id, listing.title, String(listing._id))
     }
     console.log(`[Cleanup] Sent ${expiringSoon.length} expiry warnings`)
 
@@ -55,7 +55,7 @@ export const scheduledJobs = {
 
     // 4. Recalculate trust levels for active sellers
     const activeSellers = await User.find({ isBanned: false }).select('_id completedDeals responseRate verificationStatus').lean()
-    const bulkOps = activeSellers.map((u) => {
+    const bulkOps = activeSellers.map((u: any) => {
       let trustLevel: 1 | 2 | 3 = 1
       if (u.verificationStatus === 'id' || u.verificationStatus === 'dealer') {
         trustLevel = 3

@@ -3,7 +3,7 @@ import multer from 'multer'
 import { User } from '../models/User'
 import { Listing } from '../models/Listing'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
-import { ok, created, notFound } from '../utils/response'
+import { ok, notFound } from '../utils/response'
 import { uploadAvatar } from '../services/imageService'
 import { connectDB } from '../services/db'
 
@@ -16,7 +16,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     await connectDB()
-    let user = await User.findOne({ firebaseUid: req.firebaseUid }).lean()
+    let user = await User.findOne({ firebaseUid: req.firebaseUid }).lean() as any
 
     // Auto-create profile on first login
     if (!user) {
@@ -68,7 +68,7 @@ router.post('/me/avatar', requireAuth, upload.single('avatar'), async (req: Auth
     const user = await User.findOne({ firebaseUid: req.firebaseUid })
     if (!user) { notFound(res, 'User not found'); return }
 
-    const avatarUrl = await uploadAvatar(file.buffer, user._id as string)
+    const avatarUrl = await uploadAvatar(file.buffer, String(user._id))
     user.avatar = avatarUrl
     await user.save()
 

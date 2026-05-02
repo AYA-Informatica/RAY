@@ -1,10 +1,10 @@
-import mongoose, { Schema, Document, Model } from 'mongoose'
+import mongoose, { Schema, Document, Model, Types } from 'mongoose'
 
 // ─────────────────────────────────────────────
 // Interface
 // ─────────────────────────────────────────────
 export interface IUser extends Document {
-  _id: string
+  _id: Types.ObjectId
   firebaseUid: string
   phone: string
   displayName: string
@@ -99,12 +99,12 @@ const UserSchema = new Schema<IUser>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: (_doc, ret) => {
+      transform: (_doc, ret: any) => {
         ret.id = ret._id
-        delete ret._id
-        delete ret.__v
-        delete ret.fcmToken       // never expose FCM token
-        delete ret.firebaseUid    // internal only
+        ret._id = undefined
+        ret.__v = undefined
+        ret.fcmToken = undefined
+        ret.firebaseUid = undefined
         return ret
       },
     },

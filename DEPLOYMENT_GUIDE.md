@@ -229,6 +229,8 @@ EXPO_PUBLIC_FIREBASE_PROJECT_ID=ray-production
 EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=ray-production.appspot.com
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
 EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789:android:abc123
+EXPO_PUBLIC_FUNCTIONS_URL=https://us-central1-ray-production.cloudfunctions.net
+# Optional backward-compatible alias:
 EXPO_PUBLIC_API_BASE_URL=https://us-central1-ray-production.cloudfunctions.net
 ```
 
