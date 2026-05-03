@@ -11,7 +11,9 @@ const DEBUG_API = __DEV__ || process.env.EXPO_PUBLIC_DEBUG_API === 'true'
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const method = options.method ?? 'GET'
   const started = Date.now()
+  console.log('[mobile.api] Request started', { method, endpoint })
   const token = await auth().currentUser?.getIdToken()
+  console.log('[mobile.api] Auth token', { hasToken: !!token })
   const res   = await fetch(`${BASE_URL}${endpoint}`, {
     ...options,
     headers: {
@@ -31,6 +33,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+    console.error('[mobile.api] Request failed', {
+      method,
+      endpoint,
+      status: res.status,
+      error: err.message,
+    })
     if (DEBUG_API) {
       console.error('[mobile.api] request failed', {
         method,
@@ -42,6 +50,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(err.message)
   }
   const json = await res.json()
+  console.log('[mobile.api] Request completed', { method, endpoint, hasData: !!(json.data ?? json) })
   return json.data ?? json
 }
 

@@ -35,7 +35,7 @@ export const Navbar = () => {
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-nav">
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-nav" role="banner">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 h-16">
 
@@ -74,6 +74,7 @@ export const Navbar = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={STRINGS.home.searchPlaceholder}
+                data-testid="desktop-search-input"
                 className={clsx(
                   'w-full h-11 pl-4 pr-12 bg-surface-modal border border-border',
                   'sm:rounded-none rounded-l-2xl rounded-r-2xl sm:rounded-r-none',
@@ -210,6 +211,7 @@ export const Navbar = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search in RAY..."
+            data-testid="mobile-search-input"
             className={clsx(
               'flex-1 h-10 px-4 bg-surface-modal border border-border rounded-2xl',
               'font-sans text-sm text-text-primary placeholder:text-text-muted',

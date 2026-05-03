@@ -11,6 +11,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
+console.log('[admin.firebase] Initializing Firebase app', { projectId: firebaseConfig.projectId })
 export const app = initializeApp(firebaseConfig, 'admin')
 export const auth = getAuth(app)
 export const db = getFirestore(app)
+console.log('[admin.firebase] Firebase initialized successfully')

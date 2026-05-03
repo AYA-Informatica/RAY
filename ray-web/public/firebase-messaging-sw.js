@@ -5,16 +5,19 @@
 importScripts('https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js')
 
-// These values must match ray-web/.env
-// They are intentionally public — Firebase config is not a secret.
-firebase.initializeApp({
-  apiKey:            self.__WB_FIREBASE_API_KEY__        || 'YOUR_API_KEY',
-  authDomain:        self.__WB_FIREBASE_AUTH_DOMAIN__    || 'your-project.firebaseapp.com',
-  projectId:         self.__WB_FIREBASE_PROJECT_ID__     || 'your-project-id',
-  storageBucket:     self.__WB_FIREBASE_STORAGE_BUCKET__ || 'your-project.appspot.com',
-  messagingSenderId: self.__WB_FIREBASE_SENDER_ID__      || 'YOUR_SENDER_ID',
-  appId:             self.__WB_FIREBASE_APP_ID__         || 'YOUR_APP_ID',
-})
+// Firebase config is intentionally public — these values are safe to commit.
+// See: https://firebase.google.com/docs/projects/api-keys
+// The actual security is enforced by Firebase Security Rules, not by hiding the config.
+const firebaseConfig = {
+  apiKey:            "REPLACE_WITH_ACTUAL_VALUE",
+  authDomain:        "REPLACE_WITH_ACTUAL_VALUE",
+  projectId:         "REPLACE_WITH_ACTUAL_VALUE",
+  storageBucket:     "REPLACE_WITH_ACTUAL_VALUE",
+  messagingSenderId: "REPLACE_WITH_ACTUAL_VALUE",
+  appId:             "REPLACE_WITH_ACTUAL_VALUE",
+}
+
+firebase.initializeApp(firebaseConfig)
 
 const messaging = firebase.messaging()
 

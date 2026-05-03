@@ -14,14 +14,18 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
+console.log('[web.firebase] Initializing Firebase app', { projectId: firebaseConfig.projectId })
 export const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
+console.log('[web.firebase] Firebase initialized successfully')
 
 // FCM is only available in secure contexts (HTTPS)
 export const getMessagingInstance = async () => {
+  console.log('[web.firebase] Checking FCM support')
   const supported = await isSupported()
+  console.log('[web.firebase] FCM supported:', supported)
   if (supported) {
     return getMessaging(app)
   }

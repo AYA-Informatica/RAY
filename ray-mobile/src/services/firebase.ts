@@ -11,6 +11,8 @@ const firebaseConfig = {
   appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 }
 
+console.log('[mobile.firebase] Initializing Firebase app', { projectId: firebaseConfig.projectId })
 const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db   = getFirestore(app)
+console.log('[mobile.firebase] Firebase initialized successfully')

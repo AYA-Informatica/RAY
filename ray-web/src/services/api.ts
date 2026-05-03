@@ -27,7 +27,9 @@ async function request<T>(
 ): Promise<T> {
   const method = options.method ?? 'GET'
   const started = Date.now()
+  console.log('[web.api] Request started', { method, endpoint })
   const token = await auth.currentUser?.getIdToken()
+  console.log('[web.api] Auth token', { hasToken: !!token })
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -52,6 +54,12 @@ async function request<T>(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: 'Unknown error' }))
+    console.error('[web.api] Request failed', {
+      method,
+      endpoint,
+      status: res.status,
+      error: err.message,
+    })
     if (DEBUG_API) {
       console.error('[web.api] request failed', {
         method,
@@ -64,6 +72,7 @@ async function request<T>(
   }
 
   const json: ApiResponse<T> = await res.json()
+  console.log('[web.api] Request completed', { method, endpoint, hasData: !!json.data })
   return json.data
 }
 

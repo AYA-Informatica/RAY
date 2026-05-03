@@ -36,6 +36,7 @@ export async function uploadListingImage(
   userId: string,
   listingId: string
 ): Promise<{ full: string; thumb: string }> {
+  console.log('[functions.imageService] Processing listing image', { userId, listingId })
   const fileName = uuidv4()
   const basePath = `listings/${userId}/${listingId}`
 
@@ -55,6 +56,7 @@ export async function uploadListingImage(
     uploadBuffer(thumbBuffer, `${basePath}/thumb_${fileName}.webp`),
   ])
 
+  console.log('[functions.imageService] Listing image uploaded', { full: full.url, thumb: thumb.url })
   return { full: full.url, thumb: thumb.url }
 }
 
@@ -63,6 +65,7 @@ export async function uploadListingImage(
  * 400x400 square crop, WebP, 80% quality.
  */
 export async function uploadAvatar(inputBuffer: Buffer, userId: string): Promise<string> {
+  console.log('[functions.imageService] Processing avatar', { userId })
   const processed = await sharp(inputBuffer)
     .resize(400, 400, { fit: 'cover', position: 'centre' })
     .webp({ quality: 80, effort: 4 })
@@ -70,6 +73,7 @@ export async function uploadAvatar(inputBuffer: Buffer, userId: string): Promise
 
   const storagePath = `avatars/${userId}/${uuidv4()}.webp`
   const result      = await uploadBuffer(processed, storagePath)
+  console.log('[functions.imageService] Avatar uploaded', { url: result.url })
   return result.url
 }
 
@@ -79,10 +83,12 @@ export async function uploadAvatar(inputBuffer: Buffer, userId: string): Promise
  */
 export async function deleteStorageFile(url: string): Promise<void> {
   try {
+    console.log('[functions.imageService] Deleting storage file', { url })
     const path = url.split(`${BUCKET}/`)[1]
     if (!path) return
     await storage.bucket(BUCKET).file(path).delete()
+    console.log('[functions.imageService] Storage file deleted', { url })
   } catch {
-    console.warn('[Storage] Could not delete:', url)
+    console.warn('[functions.imageService] Could not delete:', url)
   }
 }

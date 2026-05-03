@@ -41,10 +41,13 @@ export const useAdminAuthStore = create<AdminAuthState>()((set) => ({
   error: null,
 
   initAuth: () => {
+    console.log('[admin.authStore] Initializing auth listener')
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      console.log('[admin.authStore] Auth state changed', { hasUser: !!fbUser, uid: fbUser?.uid })
       if (fbUser) {
         try {
           const role = await getRoleFromToken(fbUser)
+          console.log('[admin.authStore] Admin role verified', { role })
           set({
             adminUser: {
               uid: fbUser.uid,
@@ -55,6 +58,7 @@ export const useAdminAuthStore = create<AdminAuthState>()((set) => ({
             isInitialized: true,
           })
         } catch {
+          console.error('[admin.authStore] Access denied - insufficient role')
           await signOut(auth)
           set({ adminUser: null, isInitialized: true, error: 'Access denied' })
         }
@@ -66,10 +70,14 @@ export const useAdminAuthStore = create<AdminAuthState>()((set) => ({
   },
 
   login: async (email, password) => {
+    console.log('[admin.authStore] Attempting login', { email })
     set({ isLoading: true, error: null })
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password)
+      // Force token refresh to get latest custom claims
+      await credential.user.getIdToken(true)
       const role = await getRoleFromToken(credential.user)
+      console.log('[admin.authStore] Login successful', { uid: credential.user.uid, role })
       set({
         adminUser: {
           uid: credential.user.uid,
@@ -81,14 +89,17 @@ export const useAdminAuthStore = create<AdminAuthState>()((set) => ({
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
+      console.error('[admin.authStore] Login failed', { error: message })
       set({ error: message, isLoading: false })
       throw err
     }
   },
 
   logout: async () => {
+    console.log('[admin.authStore] Logging out')
     await signOut(auth)
     set({ adminUser: null })
+    console.log('[admin.authStore] Logged out successfully')
   },
 
   clearError: () => set({ error: null }),

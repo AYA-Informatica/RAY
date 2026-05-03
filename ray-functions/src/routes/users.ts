@@ -16,10 +16,12 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     await connectDB()
+    console.log('[functions.users] Fetching user profile', { firebaseUid: req.firebaseUid })
     let user = await User.findOne({ firebaseUid: req.firebaseUid }).lean() as any
 
     // Auto-create profile on first login
     if (!user) {
+      console.log('[functions.users] Creating new user profile', { firebaseUid: req.firebaseUid })
       user = await User.create({
         firebaseUid: req.firebaseUid,
         phone:       req.body.phone ?? '',
@@ -27,6 +29,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
         verificationStatus: 'phone',
         memberSince: new Date(),
       })
+      console.log('[functions.users] User profile created', { userId: String(user._id) })
     }
 
     ok(res, user)
@@ -39,6 +42,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
 router.patch('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     await connectDB()
+    console.log('[functions.users] Updating user profile', { firebaseUid: req.firebaseUid })
     const allowed = ['displayName', 'location', 'settings', 'fcmToken'] as const
     const updates: Record<string, unknown> = {}
     for (const key of allowed) {
@@ -52,6 +56,7 @@ router.patch('/me', requireAuth, async (req: AuthRequest, res, next) => {
     ).lean()
 
     if (!user) { notFound(res, 'User not found'); return }
+    console.log('[functions.users] User profile updated', { userId: String((user as any)._id) })
     ok(res, user)
   } catch (err) { next(err) }
 })
@@ -62,6 +67,7 @@ router.patch('/me', requireAuth, async (req: AuthRequest, res, next) => {
 router.post('/me/avatar', requireAuth, upload.single('avatar'), async (req: AuthRequest, res, next) => {
   try {
     await connectDB()
+    console.log('[functions.users] Uploading avatar', { firebaseUid: req.firebaseUid })
     const file = req.file
     if (!file) { res.status(400).json({ success: false, message: 'No file uploaded' }); return }
 
@@ -71,6 +77,7 @@ router.post('/me/avatar', requireAuth, upload.single('avatar'), async (req: Auth
     const avatarUrl = await uploadAvatar(file.buffer, String(user._id))
     user.avatar = avatarUrl
     await user.save()
+    console.log('[functions.users] Avatar uploaded', { userId: String(user._id) })
 
     ok(res, { url: avatarUrl })
   } catch (err) { next(err) }

@@ -1,5 +1,11 @@
 import mongoose from 'mongoose'
 
+// This must be at the TOP of the file, outside any function:
+const MONGODB_URI = process.env.MONGODB_URI
+if (!MONGODB_URI) {
+  throw new Error('[db] MONGODB_URI environment variable is not set. Check your .env file.')
+}
+
 let cached: typeof mongoose | null = null
 
 /**
@@ -7,15 +13,12 @@ let cached: typeof mongoose | null = null
  * Functions are stateless but connections are reused across warm invocations.
  */
 export async function connectDB(): Promise<typeof mongoose> {
-  const MONGODB_URI = process.env.MONGODB_URI
-  if (!MONGODB_URI) {
-    throw new Error('MONGODB_URI environment variable is not set')
-  }
-
   if (cached && mongoose.connection.readyState === 1) {
+    console.log('[functions.db] Using cached MongoDB connection')
     return cached
   }
 
+  console.log('[functions.db] Connecting to MongoDB...')
   cached = await mongoose.connect(MONGODB_URI, {
     serverSelectionTimeoutMS: 5000,
     maxPoolSize: 10,
@@ -24,15 +27,15 @@ export async function connectDB(): Promise<typeof mongoose> {
   })
 
   mongoose.connection.on('error', (err) => {
-    console.error('[MongoDB] Connection error:', err)
+    console.error('[functions.db] MongoDB connection error:', err)
     cached = null
   })
 
   mongoose.connection.on('disconnected', () => {
-    console.warn('[MongoDB] Disconnected — will reconnect on next request')
+    console.warn('[functions.db] MongoDB disconnected — will reconnect on next request')
     cached = null
   })
 
-  console.log('[MongoDB] Connected')
+  console.log('[functions.db] MongoDB connected successfully')
   return cached
 }

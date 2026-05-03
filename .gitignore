@@ -13,6 +13,11 @@ GoogleService-Info.plist
 *-adminsdk-*.json
 ray-production-firebase-adminsdk.json
 
+# Sensitive deployment files
+VERCEL_ENV_VALUE.txt
+ray-functions/service-account-for-vercel.txt
+ray-functions/get-service-account-json.js
+
 # Build outputs
 dist/
 build/
@@ -39,6 +44,8 @@ yarn-error.log*
 
 # Testing
 coverage/
+playwright-report/
+test-results/
 
 # Firebase
 .firebase/

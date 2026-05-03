@@ -10,6 +10,7 @@ export function useAuth() {
 
   useEffect(() => {
     if (store.isInitialized) return
+    console.log('[web.useAuth] Initializing auth hook')
     const unsubscribe = store.initAuth()
     return unsubscribe
   }, [store])

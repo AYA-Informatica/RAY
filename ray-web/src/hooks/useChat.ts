@@ -24,6 +24,7 @@ export function useConversations() {
 
   useEffect(() => {
     if (!user) return
+    console.log('[web.useChat] Setting up conversations listener', { userId: user.id })
 
     const q = query(
       collection(db, 'conversations'),
@@ -33,6 +34,10 @@ export function useConversations() {
 
     const unsub = onSnapshot(q, (snap) => {
       const convos = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Conversation))
+      console.log('[web.useChat] Conversations updated', {
+        count: convos.length,
+        unread: convos.reduce((acc, c) => acc + (c.unreadCount ?? 0), 0),
+      })
       setConversations(convos)
       setTotalUnread(convos.reduce((acc, c) => acc + (c.unreadCount ?? 0), 0))
       setIsLoading(false)
@@ -54,6 +59,7 @@ export function useChatMessages(conversationId: string | undefined) {
 
   useEffect(() => {
     if (!conversationId) return
+    console.log('[web.useChat] Setting up messages listener', { conversationId })
 
     const q = query(
       collection(db, 'messages'),
@@ -62,6 +68,10 @@ export function useChatMessages(conversationId: string | undefined) {
     )
 
     const unsub = onSnapshot(q, (snap) => {
+      console.log('[web.useChat] Messages updated', {
+        conversationId,
+        count: snap.docs.length,
+      })
       setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Message)))
       setIsLoading(false)
     })
@@ -75,6 +85,7 @@ export function useChatMessages(conversationId: string | undefined) {
   const sendMessage = useCallback(
     async (content: string) => {
       if (!conversationId || !user) return
+      console.log('[web.useChat] Sending message', { conversationId, contentLength: content.length })
       // Optimistic: write directly to Firestore so the sender sees it instantly
       await addDoc(collection(db, 'messages'), {
         conversationId,
@@ -84,6 +95,7 @@ export function useChatMessages(conversationId: string | undefined) {
         timestamp: serverTimestamp(),
         read: false,
       })
+      console.log('[web.useChat] Message sent')
     },
     [conversationId, user]
   )

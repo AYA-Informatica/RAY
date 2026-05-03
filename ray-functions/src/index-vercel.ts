@@ -1,5 +1,11 @@
 import express from 'express'
 import cors from 'cors'
+import { listingsRouter } from './routes/listings'
+import { usersRouter } from './routes/users'
+import { conversationsRouter } from './routes/conversations'
+import { reportsRouter } from './routes/reports'
+import { adminRouter } from './routes/admin'
+import { searchRouter } from './routes/search'
 import { errorHandler } from './utils/response'
 import { searchLimiter } from './middleware/rateLimit'
 
@@ -49,42 +55,13 @@ app.get('/', (_req, res) => {
   })
 })
 
-// ─── API routes (lazy loaded) ─────────────────
-app.use('/api/listings', (req, res, next) => {
-  import('./routes/listings').then(({ listingsRouter }) => {
-    listingsRouter(req, res, next)
-  }).catch(next)
-})
-
-app.use('/api/users', (req, res, next) => {
-  import('./routes/users').then(({ usersRouter }) => {
-    usersRouter(req, res, next)
-  }).catch(next)
-})
-
-app.use('/api/conversations', (req, res, next) => {
-  import('./routes/conversations').then(({ conversationsRouter }) => {
-    conversationsRouter(req, res, next)
-  }).catch(next)
-})
-
-app.use('/api/reports', (req, res, next) => {
-  import('./routes/reports').then(({ reportsRouter }) => {
-    reportsRouter(req, res, next)
-  }).catch(next)
-})
-
-app.use('/api/search', searchLimiter, (req, res, next) => {
-  import('./routes/search').then(({ searchRouter }) => {
-    searchRouter(req, res, next)
-  }).catch(next)
-})
-
-app.use('/admin', (req, res, next) => {
-  import('./routes/admin').then(({ adminRouter }) => {
-    adminRouter(req, res, next)
-  }).catch(next)
-})
+// ─── API routes (static imports) ─────────────
+app.use('/api/listings', listingsRouter)
+app.use('/api/users', usersRouter)
+app.use('/api/conversations', conversationsRouter)
+app.use('/api/reports', reportsRouter)
+app.use('/api/search', searchLimiter, searchRouter)
+app.use('/admin', adminRouter)
 
 // ─── Global error handler ─────────────────────
 app.use(errorHandler)

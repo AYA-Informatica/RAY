@@ -76,6 +76,7 @@ export const ListingCard = ({ listing, className, compact = false }: ListingCard
         'hover:shadow-card-hover transition-shadow duration-300',
         className
       )}
+      data-testid="listing-card"
     >
       {/* Image */}
       <Link to={`/listing/${listing.id}`} className="relative block aspect-[4/3] overflow-hidden">

@@ -12,7 +12,22 @@ const DEBUG_API = import.meta.env.DEV || import.meta.env.VITE_DEBUG_API === 'tru
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const method = options.method ?? 'GET'
   const started = Date.now()
-  const token = await auth.currentUser?.getIdToken()
+  console.log('[admin.api] Request started', { method, endpoint })
+  const token = await auth.currentUser?.getIdToken(true) // Force refresh
+  console.log('[admin.api] Auth token', { hasToken: !!token })
+  
+  // Debug: decode token to see claims
+  if (token && DEBUG_API) {
+    try {
+      const tokenResult = await auth.currentUser?.getIdTokenResult()
+      console.log('[admin.api] Token claims', { 
+        role: tokenResult?.claims.role,
+        allClaims: tokenResult?.claims 
+      })
+    } catch (e) {
+      console.error('[admin.api] Failed to decode token', e)
+    }
+  }
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -30,6 +45,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: 'Unknown error' }))
+    console.error('[admin.api] Request failed', {
+      method,
+      endpoint,
+      status: res.status,
+      error: err.message,
+    })
     if (DEBUG_API) {
       console.error('[admin.api] request failed', {
         method,
@@ -41,6 +62,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(err.message || `HTTP ${res.status}`)
   }
   const json = await res.json()
+  console.log('[admin.api] Request completed', { method, endpoint, hasData: !!json.data })
   return json.data ?? json
 }
 

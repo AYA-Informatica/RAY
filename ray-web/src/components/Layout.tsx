@@ -58,7 +58,7 @@ export const Layout = () => {
       </div>
 
       {/* Desktop Footer */}
-      <footer className="hidden md:block border-t border-border bg-surface-card mt-16">
+      <footer className="hidden md:block border-t border-border bg-surface-card mt-16" role="contentinfo">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
           <div className="grid grid-cols-4 gap-8">
             {/* Brand */}
@@ -111,7 +111,7 @@ export const Layout = () => {
       </footer>
 
       {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface-card border-t border-border safe-area-pb">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface-card border-t border-border safe-area-pb" role="navigation" aria-label="Mobile navigation">
         <div className="flex items-end justify-around px-2 py-2">
           {navItems.map(({ icon, label, to, isFab }) => {
             const isActive = location.pathname === to ||

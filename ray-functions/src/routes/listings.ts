@@ -76,7 +76,8 @@ router.post('/search', optionalAuth, async (req, res, next) => {
       filter.condition = { $in: parsed.condition }
     }
 
-    const sortMap: Record<string, Record<string, number>> = {
+    type SortMap = Record<string, Record<string, number>>
+    const sortMap: SortMap = {
       newest:     { isFeatured: -1, postedAt: -1 },
       price_asc:  { price: 1 },
       price_desc: { price: -1 },
@@ -84,7 +85,7 @@ router.post('/search', optionalAuth, async (req, res, next) => {
     }
 
     const skip  = (parsed.page - 1) * parsed.limit
-    const sort = sortMap[parsed.sortBy] as any
+    const sort: Record<string, number> = sortMap[parsed.sortBy]
 
     const [listings, total] = await Promise.all([
       Listing.find(filter).sort(sort).skip(skip).limit(parsed.limit).lean(),

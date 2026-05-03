@@ -41,7 +41,9 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       initAuth: () => {
+        console.log('[web.authStore] Initializing auth listener')
         const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+          console.log('[web.authStore] Auth state changed', { hasUser: !!fbUser, uid: fbUser?.uid })
           set({ firebaseUser: fbUser, isInitialized: true })
           if (fbUser) {
             await get().loadUserProfile()
@@ -53,6 +55,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       sendOtp: async (phone: string) => {
+        console.log('[web.authStore] Sending OTP', { phone })
         set({ isLoading: true, error: null })
         try {
           // RecaptchaVerifier must be attached to a DOM element with id="recaptcha-container"
@@ -60,15 +63,18 @@ export const useAuthStore = create<AuthState>()(
             size: 'invisible',
           })
           const result = await signInWithPhoneNumber(auth, phone, recaptchaVerifier)
+          console.log('[web.authStore] OTP sent successfully')
           set({ confirmationResult: result, isLoading: false })
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Failed to send OTP'
+          console.error('[web.authStore] OTP send failed', { error: message })
           set({ error: message, isLoading: false })
           throw err
         }
       },
 
       verifyOtp: async (code: string) => {
+        console.log('[web.authStore] Verifying OTP')
         const { confirmationResult } = get()
         if (!confirmationResult) throw new Error('No OTP in progress')
 
@@ -77,21 +83,26 @@ export const useAuthStore = create<AuthState>()(
           const credential = await confirmationResult.confirm(code)
           const isNewUser = credential.user.metadata.creationTime === 
                             credential.user.metadata.lastSignInTime
+          console.log('[web.authStore] OTP verified', { isNewUser, uid: credential.user.uid })
           set({ firebaseUser: credential.user, isLoading: false })
           return isNewUser ? 'new_user' : 'existing_user'
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Invalid OTP'
+          console.error('[web.authStore] OTP verification failed', { error: message })
           set({ error: message, isLoading: false })
           throw err
         }
       },
 
       loadUserProfile: async () => {
+        console.log('[web.authStore] Loading user profile')
         try {
           const user = await usersApi.getMyProfile()
+          console.log('[web.authStore] User profile loaded', { userId: user.id })
           set({ user })
         } catch {
           // Profile may not exist yet (new user)
+          console.log('[web.authStore] User profile not found (new user)')
           set({ user: null })
         }
       },
@@ -103,8 +114,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        console.log('[web.authStore] Logging out')
         await signOut(auth)
         set({ firebaseUser: null, user: null, confirmationResult: null })
+        console.log('[web.authStore] Logged out successfully')
       },
 
       clearError: () => set({ error: null }),
