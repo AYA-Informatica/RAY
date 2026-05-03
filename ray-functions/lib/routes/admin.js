@@ -23,6 +23,7 @@ router.get('/listings', async (req, res, next) => {
         const limit = Number(req.query['limit'] ?? 20);
         const status = req.query['status'];
         const q = req.query['q'];
+        console.log('[functions.admin] Fetching listings', { page, limit, status, q });
         const filter = {};
         if (status)
             filter['status'] = status;
@@ -32,6 +33,7 @@ router.get('/listings', async (req, res, next) => {
             Listing_1.Listing.find(filter).sort({ postedAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
             Listing_1.Listing.countDocuments(filter),
         ]);
+        console.log('[functions.admin] Listings fetched', { total, returned: listings.length });
         (0, response_1.ok)(res, { listings, total });
     }
     catch (err) {
@@ -55,11 +57,13 @@ router.get('/listings/:id', async (req, res, next) => {
 router.post('/listings/:id/approve', async (req, res, next) => {
     try {
         await (0, db_1.connectDB)();
+        console.log('[functions.admin] Approving listing', { listingId: req.params['id'] });
         const listing = await Listing_1.Listing.findByIdAndUpdate(req.params['id'], { status: 'active' }, { new: true });
         if (!listing) {
             (0, response_1.notFound)(res, 'Listing not found');
             return;
         }
+        console.log('[functions.admin] Listing approved', { listingId: req.params['id'] });
         (0, response_1.ok)(res, listing);
     }
     catch (err) {
@@ -164,12 +168,14 @@ router.get('/users/:id', async (req, res, next) => {
 router.post('/users/:id/ban', async (req, res, next) => {
     try {
         await (0, db_1.connectDB)();
+        console.log('[functions.admin] Banning user', { userId: req.params['id'], reason: req.body.reason });
         const user = await User_1.User.findByIdAndUpdate(req.params['id'], { isBanned: true, banReason: req.body.reason, bannedAt: new Date() }, { new: true });
         if (!user) {
             (0, response_1.notFound)(res, 'User not found');
             return;
         }
         await Listing_1.Listing.updateMany({ 'seller.id': req.params['id'] }, { status: 'expired' });
+        console.log('[functions.admin] User banned', { userId: req.params['id'] });
         (0, response_1.ok)(res, { banned: true });
     }
     catch (err) {
@@ -224,6 +230,7 @@ router.post('/users/:id/role', async (req, res, next) => {
 router.get('/analytics/dashboard', async (_req, res, next) => {
     try {
         await (0, db_1.connectDB)();
+        console.log('[functions.admin] Fetching dashboard analytics');
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);

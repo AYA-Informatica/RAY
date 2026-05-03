@@ -37,8 +37,30 @@ exports.admin = exports.messaging = exports.storage = exports.auth = exports.db 
 const admin = __importStar(require("firebase-admin"));
 exports.admin = admin;
 const storage_1 = require("firebase-admin/storage");
+const debug_1 = require("../utils/debug");
 if (!admin.apps.length) {
-    admin.initializeApp();
+    // Check if we have service account credentials
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        try {
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+            });
+            (0, debug_1.debugLog)('firebase.init', 'Initialized with service account', {
+                projectId: serviceAccount.project_id,
+            });
+        }
+        catch (err) {
+            console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT:', err);
+            admin.initializeApp();
+        }
+    }
+    else {
+        // Fallback to default credentials (works in Cloud Functions)
+        admin.initializeApp();
+        (0, debug_1.debugLog)('firebase.init', 'Initialized with default credentials', {});
+    }
 }
 exports.db = admin.firestore();
 exports.auth = admin.auth();

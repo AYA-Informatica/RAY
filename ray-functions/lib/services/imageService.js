@@ -31,6 +31,7 @@ async function uploadBuffer(buffer, storagePath, contentType = 'image/webp') {
  * Returns { full, thumb } — both are public CDN URLs.
  */
 async function uploadListingImage(inputBuffer, userId, listingId) {
+    console.log('[functions.imageService] Processing listing image', { userId, listingId });
     const fileName = (0, uuid_1.v4)();
     const basePath = `listings/${userId}/${listingId}`;
     const [fullBuffer, thumbBuffer] = await Promise.all([
@@ -47,6 +48,7 @@ async function uploadListingImage(inputBuffer, userId, listingId) {
         uploadBuffer(fullBuffer, `${basePath}/${fileName}.webp`),
         uploadBuffer(thumbBuffer, `${basePath}/thumb_${fileName}.webp`),
     ]);
+    console.log('[functions.imageService] Listing image uploaded', { full: full.url, thumb: thumb.url });
     return { full: full.url, thumb: thumb.url };
 }
 /**
@@ -54,12 +56,14 @@ async function uploadListingImage(inputBuffer, userId, listingId) {
  * 400x400 square crop, WebP, 80% quality.
  */
 async function uploadAvatar(inputBuffer, userId) {
+    console.log('[functions.imageService] Processing avatar', { userId });
     const processed = await (0, sharp_1.default)(inputBuffer)
         .resize(400, 400, { fit: 'cover', position: 'centre' })
         .webp({ quality: 80, effort: 4 })
         .toBuffer();
     const storagePath = `avatars/${userId}/${(0, uuid_1.v4)()}.webp`;
     const result = await uploadBuffer(processed, storagePath);
+    console.log('[functions.imageService] Avatar uploaded', { url: result.url });
     return result.url;
 }
 /**
@@ -68,13 +72,15 @@ async function uploadAvatar(inputBuffer, userId) {
  */
 async function deleteStorageFile(url) {
     try {
+        console.log('[functions.imageService] Deleting storage file', { url });
         const path = url.split(`${BUCKET}/`)[1];
         if (!path)
             return;
         await firebase_1.storage.bucket(BUCKET).file(path).delete();
+        console.log('[functions.imageService] Storage file deleted', { url });
     }
     catch {
-        console.warn('[Storage] Could not delete:', url);
+        console.warn('[functions.imageService] Could not delete:', url);
     }
 }
 //# sourceMappingURL=imageService.js.map

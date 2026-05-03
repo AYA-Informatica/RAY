@@ -85,7 +85,7 @@ router.post('/search', optionalAuth, async (req, res, next) => {
     }
 
     const skip  = (parsed.page - 1) * parsed.limit
-    const sort: Record<string, number> = sortMap[parsed.sortBy]
+    const sort = sortMap[parsed.sortBy] as Record<string, 1 | -1>
 
     const [listings, total] = await Promise.all([
       Listing.find(filter).sort(sort).skip(skip).limit(parsed.limit).lean(),

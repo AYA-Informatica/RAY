@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Boost = exports.Report = void 0;
+exports.Report = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const ReportSchema = new mongoose_1.Schema({
     type: { type: String, enum: ['listing', 'user'], required: true, index: true },
@@ -61,33 +61,4 @@ ReportSchema.index({ status: 1, createdAt: -1 });
 // Prevent duplicate reports from same user on same target
 ReportSchema.index({ targetId: 1, reportedBy: 1, type: 1 }, { unique: true });
 exports.Report = mongoose_1.default.models.Report || mongoose_1.default.model('Report', ReportSchema);
-const BoostSchema = new mongoose_1.Schema({
-    listingId: { type: String, required: true, index: true },
-    sellerId: { type: String, required: true, index: true },
-    type: {
-        type: String,
-        enum: ['featured', 'top_ad', 'elite_seller'],
-        required: true,
-    },
-    priceRwf: { type: Number, required: true },
-    durationDays: { type: Number, required: true },
-    startsAt: { type: Date, required: true },
-    expiresAt: { type: Date, required: true, index: true },
-    paymentMethod: { type: String, enum: ['momo', 'card', 'manual'], required: true },
-    paymentRef: { type: String },
-    status: {
-        type: String,
-        enum: ['active', 'expired', 'cancelled'],
-        default: 'active',
-        index: true,
-    },
-}, {
-    timestamps: true,
-    toJSON: {
-        virtuals: true,
-        transform: (_doc, ret) => { ret.id = ret._id; ret._id = undefined; ret.__v = undefined; return ret; },
-    },
-});
-BoostSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-exports.Boost = mongoose_1.default.models.Boost || mongoose_1.default.model('Boost', BoostSchema);
 //# sourceMappingURL=Report.js.map

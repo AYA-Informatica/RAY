@@ -21,9 +21,11 @@ const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage()
 router.get('/me', auth_1.requireAuth, async (req, res, next) => {
     try {
         await (0, db_1.connectDB)();
+        console.log('[functions.users] Fetching user profile', { firebaseUid: req.firebaseUid });
         let user = await User_1.User.findOne({ firebaseUid: req.firebaseUid }).lean();
         // Auto-create profile on first login
         if (!user) {
+            console.log('[functions.users] Creating new user profile', { firebaseUid: req.firebaseUid });
             user = await User_1.User.create({
                 firebaseUid: req.firebaseUid,
                 phone: req.body.phone ?? '',
@@ -31,6 +33,7 @@ router.get('/me', auth_1.requireAuth, async (req, res, next) => {
                 verificationStatus: 'phone',
                 memberSince: new Date(),
             });
+            console.log('[functions.users] User profile created', { userId: String(user._id) });
         }
         (0, response_1.ok)(res, user);
     }
@@ -44,6 +47,7 @@ router.get('/me', auth_1.requireAuth, async (req, res, next) => {
 router.patch('/me', auth_1.requireAuth, async (req, res, next) => {
     try {
         await (0, db_1.connectDB)();
+        console.log('[functions.users] Updating user profile', { firebaseUid: req.firebaseUid });
         const allowed = ['displayName', 'location', 'settings', 'fcmToken'];
         const updates = {};
         for (const key of allowed) {
@@ -55,6 +59,7 @@ router.patch('/me', auth_1.requireAuth, async (req, res, next) => {
             (0, response_1.notFound)(res, 'User not found');
             return;
         }
+        console.log('[functions.users] User profile updated', { userId: String(user._id) });
         (0, response_1.ok)(res, user);
     }
     catch (err) {
@@ -67,6 +72,7 @@ router.patch('/me', auth_1.requireAuth, async (req, res, next) => {
 router.post('/me/avatar', auth_1.requireAuth, upload.single('avatar'), async (req, res, next) => {
     try {
         await (0, db_1.connectDB)();
+        console.log('[functions.users] Uploading avatar', { firebaseUid: req.firebaseUid });
         const file = req.file;
         if (!file) {
             res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -80,6 +86,7 @@ router.post('/me/avatar', auth_1.requireAuth, upload.single('avatar'), async (re
         const avatarUrl = await (0, imageService_1.uploadAvatar)(file.buffer, String(user._id));
         user.avatar = avatarUrl;
         await user.save();
+        console.log('[functions.users] Avatar uploaded', { userId: String(user._id) });
         (0, response_1.ok)(res, { url: avatarUrl });
     }
     catch (err) {
