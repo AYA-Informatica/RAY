@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { Zap } from 'lucide-react'
-import { HelmetProvider, Helmet } from 'react-helmet-async'
+import { Helmet } from 'react-helmet-async'
 import { ListingGrid } from '@/components/organisms/ListingGrid'
 import { CategoryNav } from '@/components/organisms/CategoryNav'
 import { Button } from '@/components/atoms/Button'

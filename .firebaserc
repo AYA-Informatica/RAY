@@ -2,6 +2,13 @@
   "projects": {
     "production": "ray-production"
   },
-  "targets": {},
+  "targets": {
+    "ray-production": {
+      "hosting": {
+        "web": ["ray-production"],
+        "admin": ["ray-admin-production"]
+      }
+    }
+  },
   "etags": {}
 }

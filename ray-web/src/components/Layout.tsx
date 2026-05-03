@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { Navbar } from '@/components/organisms/Navbar'
 import { useConversations } from '@/hooks/useChat'
-import { useAuth } from '@/hooks/useAuth'
 
 const FOOTER_LINKS = {
   RAY: [
@@ -27,7 +26,6 @@ const FOOTER_LINKS = {
 export const Layout = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
   const { totalUnread } = useConversations()
 
   const navItems = [

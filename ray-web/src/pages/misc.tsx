@@ -26,9 +26,9 @@ export const NotFoundPage = () => (
       </div>
       <div className="flex gap-3">
         <Button onClick={() => window.history.back()} variant="outline">Go back</Button>
-        <Button as={Link} onClick={() => {}}>
-          <Link to="/" className="text-white font-sans font-semibold">Home</Link>
-        </Button>
+        <Link to="/">
+          <Button>Home</Button>
+        </Link>
       </div>
     </main>
   </>

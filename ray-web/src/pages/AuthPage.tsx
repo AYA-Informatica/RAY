@@ -4,7 +4,6 @@ import { Helmet } from 'react-helmet-async'
 import { Phone, ArrowRight, ShieldCheck } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Button } from '@/components/atoms/Button'
-import { Input } from '@/components/atoms/Input'
 import { useAuthStore } from '@/store/authStore'
 import { STRINGS } from '@/constants/strings'
 
