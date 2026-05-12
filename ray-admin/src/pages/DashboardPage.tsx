@@ -118,6 +118,8 @@ export const DashboardPage = () => {
               { label: 'New listings today', value: stats.newListingsToday, icon: <List className="w-4 h-4" /> },
               { label: 'Active sessions', value: '342', icon: <Eye className="w-4 h-4" /> },
               { label: 'Chats initiated', value: '891', icon: <MessageCircle className="w-4 h-4" /> },
+              { label: 'Listings with GPS', value: stats.listingsWithGps ?? '—', trend: '' },
+              { label: 'Users with location', value: stats.usersWithLocation ?? '—', trend: '' },
             ].map(({ label, value, icon }) => (
               <div key={label} className="flex items-center gap-3 px-4 py-3 bg-surface-card rounded-2xl border border-border">
                 <span className="p-2 rounded-xl bg-primary/10 text-primary">{icon}</span>

@@ -28,6 +28,7 @@ export const ChatListPage = () => {
 
   useEffect(() => {
     if (!user) return
+    console.log('[ChatList] 💬 Loading conversations for user', { userId: user.id })
     setIsLoading(true)
 
     // Real-time listener via Firestore
@@ -39,6 +40,7 @@ export const ChatListPage = () => {
 
     const unsub = onSnapshot(q, (snap) => {
       const convos = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Conversation))
+      console.log('[ChatList] ✅ Conversations loaded', { count: convos.length })
       setConversations(convos)
       setIsLoading(false)
     })
@@ -181,8 +183,14 @@ export const ChatDetailPage = () => {
 
   useEffect(() => {
     if (!id) return
+    console.log('[ChatDetail] 💬 Loading conversation', { conversationId: id })
 
     chatApi.getConversation(id).then((c) => {
+      console.log('[ChatDetail] ✅ Conversation loaded', {
+        conversationId: id,
+        otherUser: c.otherUser.displayName,
+        listingTitle: c.listingSnapshot.title,
+      })
       setConversation(c)
       setIsLoading(false)
       chatApi.markRead(id)
@@ -195,7 +203,9 @@ export const ChatDetailPage = () => {
       orderBy('timestamp', 'asc')
     )
     const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Message)))
+      const msgs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Message))
+      console.log('[ChatDetail] 📨 Messages updated', { count: msgs.length })
+      setMessages(msgs)
     })
 
     return unsub
@@ -207,10 +217,17 @@ export const ChatDetailPage = () => {
 
   const handleSend = async () => {
     if (!messageText.trim() || !id) return
+    console.log('[ChatDetail] 📤 Sending message', {
+      conversationId: id,
+      messageLength: messageText.trim().length,
+    })
     setIsSending(true)
     try {
       await chatApi.sendMessage(id, messageText.trim())
+      console.log('[ChatDetail] ✅ Message sent successfully')
       setMessageText('')
+    } catch (err) {
+      console.error('[ChatDetail] ❌ Failed to send message', err)
     } finally {
       setIsSending(false)
     }

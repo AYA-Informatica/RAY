@@ -4,8 +4,18 @@ export type TrustLevel = 1 | 2 | 3
 export type ListingCondition = 'new' | 'like_new' | 'good' | 'fair'
 export type ListingStatus = 'active' | 'sold' | 'expired' | 'pending_review' | 'rejected'
 export type ListingCategory =
-  | 'mobiles' | 'cars' | 'properties' | 'electronics'
-  | 'fashion' | 'furniture' | 'jobs' | 'services' | 'other'
+  | 'mobiles'
+  | 'electronics'
+  | 'vehicles'
+  | 'property'
+  | 'fashion'
+  | 'furniture'
+  | 'food'
+  | 'services'
+  | 'jobs'
+  | 'health'
+  | 'sports'
+  | 'kids'
 
 export interface User {
   id: string
@@ -31,6 +41,15 @@ export interface UserSummary {
   avatar?: string
   trustLevel: TrustLevel
   verificationStatus: VerificationStatus
+}
+
+export interface KigaliLocation {
+  district: string
+  neighborhood: string
+  displayLabel: string
+  lat: number
+  lng: number
+  source: 'gps' | 'manual'
 }
 
 export interface Listing {

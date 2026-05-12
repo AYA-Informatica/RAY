@@ -95,11 +95,25 @@ export const AdminUsersPage = () => {
     }),
     columnHelper.accessor('location', {
       header: 'Location',
-      cell: (info) => (
-        <span className="text-xs text-text-secondary font-sans">
-          {info.getValue()?.displayLabel ?? '—'}
-        </span>
-      ),
+      cell: (info) => {
+        const loc = info.getValue()
+        if (!loc) return <span className="text-xs text-text-muted font-sans">—</span>
+        const hasCoords = loc.lat && loc.lng
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-text-secondary font-sans truncate max-w-[120px]">
+              {loc.displayLabel}
+            </span>
+            <span
+              title={hasCoords ? `GPS: ${loc.lat?.toFixed(4)}, ${loc.lng?.toFixed(4)}` : 'No GPS'}
+              className={clsx(
+                'w-1.5 h-1.5 rounded-full flex-shrink-0',
+                hasCoords ? 'bg-success' : 'bg-border'
+              )}
+            />
+          </div>
+        )
+      },
       enableSorting: false,
     }),
     columnHelper.accessor('verificationStatus', {

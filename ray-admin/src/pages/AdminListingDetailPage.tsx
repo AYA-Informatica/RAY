@@ -168,6 +168,28 @@ export const AdminListingDetailPage = () => {
               </div>
             )}
 
+            {/* Listing Details */}
+            {listing.meta && Object.keys(listing.meta).length > 0 && (
+              <div className="flex flex-col gap-3">
+                <h3 className="text-xs font-bold text-text-secondary font-sans uppercase tracking-wider">
+                  Listing Details
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(listing.meta).map(([key, value]) => {
+                    if (!value && value !== false) return null
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                    const display = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)
+                    return (
+                      <div key={key} className="flex flex-col gap-0.5 px-3 py-2 bg-surface-modal rounded-xl">
+                        <span className="text-[10px] text-text-muted font-sans uppercase tracking-wide">{label}</span>
+                        <span className="text-sm font-semibold text-text-primary font-sans">{display}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-4 pt-4 border-t border-border">
               <div>
                 <p className="text-xs text-text-muted font-sans">Posted</p>

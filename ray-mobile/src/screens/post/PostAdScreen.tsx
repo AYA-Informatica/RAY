@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics'
 import { Camera, X, ChevronRight, ChevronLeft, MapPin } from 'lucide-react-native'
 import { Colors } from '@/theme/colors'
 import { STRINGS, CATEGORIES, KIGALI_NEIGHBORHOODS } from '@/constants'
+import { CATEGORY_FIELDS } from '@/constants/categoryFields'
 import { listingsApi } from '@/services/api'
 import { useAuthStore } from '@/store/authStore'
 
@@ -28,6 +29,7 @@ interface FormData {
   phone:       string
   hidePhone:   boolean
   makeFeatured:boolean
+  meta?:       Record<string, string | number | boolean>
 }
 
 const CONDITIONS = [
@@ -43,6 +45,7 @@ export const PostAdScreen = () => {
 
   const [step, setStep]       = useState(1)
   const [posting, setPosting] = useState(false)
+  const [meta, setMeta]       = useState<Record<string, string | number | boolean>>({})
   const [form, setForm]       = useState<FormData>({
     category: '', subcategory: '', images: [],
     title: '', condition: 'good', price: '', negotiable: false,
@@ -91,6 +94,7 @@ export const PostAdScreen = () => {
       Object.entries(form).forEach(([k, v]) => {
         if (k !== 'images') fd.append(k, String(v))
       })
+      fd.append('meta', JSON.stringify(meta))
       const listing = await listingsApi.create(fd)
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       navigation.replace('ListingDetail', { listingId: listing.id })
@@ -258,6 +262,68 @@ export const PostAdScreen = () => {
                 <Text style={styles.checkLabel}>Price is negotiable</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Dynamic category fields */}
+            {CATEGORY_FIELDS[form.category]?.map((field) => (
+              <View key={field.key} style={styles.field}>
+                <Text style={styles.fieldLabel}>
+                  {field.label}
+                  {!field.required && <Text style={styles.optional}> (Optional)</Text>}
+                </Text>
+
+                {field.type === 'select' && (
+                  // Render a horizontal ScrollView of selectable chips
+                  // Active chip: bg primary, white text
+                  // Inactive chip: bg surface-modal, muted text
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {field.options?.map((opt) => (
+                        <TouchableOpacity
+                          key={opt}
+                          style={[
+                            styles.optionChip,
+                            meta[field.key] === opt && styles.optionChipActive,
+                          ]}
+                          onPress={() => setMeta((prev) => ({ ...prev, [field.key]: opt }))}
+                        >
+                          <Text style={[
+                            styles.optionChipText,
+                            meta[field.key] === opt && { color: '#fff' },
+                          ]}>
+                            {opt}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {(field.type === 'text' || field.type === 'number') && (
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder={field.placeholder}
+                    placeholderTextColor={Colors.textMuted}
+                    keyboardType={field.type === 'number' ? 'numeric' : 'default'}
+                    value={String(meta[field.key] ?? '')}
+                    onChangeText={(v) =>
+                      setMeta((prev) => ({
+                        ...prev,
+                        [field.key]: field.type === 'number' ? Number(v) : v,
+                      }))
+                    }
+                  />
+                )}
+
+                {field.type === 'toggle' && (
+                  <TouchableOpacity
+                    style={[styles.toggle, meta[field.key] && styles.toggleActive]}
+                    onPress={() => setMeta((prev) => ({ ...prev, [field.key]: !prev[field.key] }))}
+                  >
+                    <View style={[styles.toggleThumb, meta[field.key] && styles.toggleThumbActive]} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
           </View>
         )}
 
@@ -449,6 +515,13 @@ const styles = StyleSheet.create({
   checkbox:           { width: 18, height: 18, borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   checkboxChecked:    { backgroundColor: Colors.primary, borderColor: Colors.primary },
   checkLabel:         { color: Colors.textSecondary, fontSize: 13 },
+  optionChip:         { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.surfaceModal, borderWidth: 1, borderColor: Colors.border },
+  optionChipActive:   { backgroundColor: Colors.primary, borderColor: Colors.primaryDark },
+  optionChipText:     { color: Colors.textSecondary, fontSize: 13, fontWeight: '500' },
+  toggle:             { width: 48, height: 26, borderRadius: 13, backgroundColor: Colors.surfaceModal, borderWidth: 1, borderColor: Colors.border, padding: 2 },
+  toggleActive:       { backgroundColor: Colors.primary, borderColor: Colors.primaryDark },
+  toggleThumb:        { width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.textMuted },
+  toggleThumbActive:  { backgroundColor: '#fff', transform: [{ translateX: 22 }] },
   pickerWrap:         { flexDirection: 'row', alignItems: 'center' },
   locationChip:       { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.surfaceModal, borderWidth: 1, borderColor: Colors.border },
   locationChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primaryDark },

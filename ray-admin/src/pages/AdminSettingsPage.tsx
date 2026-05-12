@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Save, Trash2 } from 'lucide-react'
+import { Save, Trash2, Database } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Button, Input, Badge } from '@/components/atoms'
 import { PageHeader } from '@/components/organisms/AdminLayout'
+import { getAuth } from 'firebase/auth'
 
 interface Toggle {
   checked: boolean
@@ -168,6 +169,42 @@ export const AdminSettingsPage = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </section>
+
+        {/* Migration Actions */}
+        <section className="flex flex-col gap-4">
+          <h2 className="text-lg font-display font-bold text-text-primary">System Migrations</h2>
+          <div className="flex flex-col gap-3 p-5 bg-surface-modal rounded-2xl border border-border">
+            <div>
+              <p className="text-sm font-semibold text-text-primary font-sans">Backfill Location Coordinates</p>
+              <p className="text-xs text-text-muted font-sans mt-1">
+                Adds GPS coordinates to all existing listings and users that have a neighborhood name but no coordinates.
+                Safe to run multiple times.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                if (!confirm('Run coordinate backfill migration?')) return
+                try {
+                  const auth = getAuth()
+                  const token = await auth.currentUser?.getIdToken()
+                  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/migrations/backfill-coordinates`, {
+                    method:  'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                  })
+                  const data = await res.json()
+                  toast.success(`Done: ${data.data.listingsBackfilled} listings, ${data.data.usersBackfilled} users updated`)
+                } catch {
+                  toast.error('Migration failed')
+                }
+              }}
+              leftIcon={<Database className="w-4 h-4" />}
+            >
+              Run Coordinate Backfill
+            </Button>
           </div>
         </section>
       </div>

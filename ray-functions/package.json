@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc --project tsconfig.vercel.json && tsc-alias",
+    "build": "tsc --project tsconfig.json && tsc-alias",
     "build:vercel": "tsc --project tsconfig.vercel.json && tsc-alias",
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "npm run build && firebase deploy --only functions",
@@ -11,7 +11,7 @@
     "dev": "tsc --watch"
   },
   "engines": {
-    "node": "20"
+    "node": "24"
   },
   "main": "lib/index.js",
   "dependencies": {

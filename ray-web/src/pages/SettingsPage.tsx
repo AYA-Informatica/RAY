@@ -3,7 +3,9 @@ import { Helmet } from 'react-helmet-async'
 import { clsx } from 'clsx'
 import { Button, Input } from '@/components/atoms'
 import { useAuthStore } from '@/store/authStore'
+import { useLocationStore } from '@/store/locationStore'
 import { usersApi } from '@/services/api'
+import { Navigation, MapPin, Trash2 } from 'lucide-react'
 
 interface ToggleProps {
   checked: boolean
@@ -34,6 +36,7 @@ const Toggle = ({ checked, onChange, label }: ToggleProps) => (
 
 export const SettingsPage = () => {
   const { user, updateUser, logout } = useAuthStore()
+  const { userLocation, permission, requestGpsLocation, clearLocation, resetPromptDismissal } = useLocationStore()
   const [displayName, setDisplayName] = useState(user?.displayName ?? '')
   const [notifNewMessage, setNotifNewMessage] = useState(true)
   const [notifPriceDrop, setNotifPriceDrop] = useState(true)
@@ -114,6 +117,77 @@ export const SettingsPage = () => {
               onChange={setNotifListingExpiring}
               label="Listing expiring soon"
             />
+          </div>
+        </section>
+
+        {/* Location */}
+        <section className="flex flex-col gap-4">
+          <div>
+            <h2 className="font-display font-bold text-text-primary">Location</h2>
+            <p className="text-sm text-text-secondary font-sans mt-0.5">
+              Controls how distance filters and nearby listings work
+            </p>
+          </div>
+
+          <div className="bg-surface-card rounded-3xl border border-border overflow-hidden">
+
+            {/* Current permission status */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div>
+                <p className="text-sm font-semibold text-text-primary font-sans">GPS Permission</p>
+                <p className="text-xs text-text-muted font-sans mt-0.5">
+                  {permission === 'granted'  && 'Location access is enabled'}
+                  {permission === 'denied'   && 'Location access was denied — update in browser settings'}
+                  {permission === 'prompt'   && 'Permission not yet requested'}
+                  {permission === 'unknown'  && 'Permission status unknown'}
+                </p>
+              </div>
+              <span className={clsx(
+                'px-2.5 py-1 rounded-full text-xs font-bold font-sans',
+                permission === 'granted'
+                  ? 'bg-success/15 text-success'
+                  : 'bg-danger/15 text-danger'
+              )}>
+                {permission === 'granted' ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+
+            {/* Active location */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div>
+                <p className="text-sm font-semibold text-text-primary font-sans">Active Search Location</p>
+                <p className="text-xs text-text-muted font-sans mt-0.5">
+                  {userLocation
+                    ? `${userLocation.displayLabel} · ${userLocation.source === 'gps' ? 'GPS' : 'Manual'}`
+                    : 'Not set — using default (all of Rwanda)'}
+                </p>
+              </div>
+              {userLocation && (
+                <button
+                  onClick={clearLocation}
+                  className="flex items-center gap-1.5 text-xs text-danger hover:text-red-400 font-sans font-semibold transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Re-enable prompt */}
+            <div className="flex items-center justify-between px-5 py-4">
+              <div>
+                <p className="text-sm font-semibold text-text-primary font-sans">Location Prompt</p>
+                <p className="text-xs text-text-muted font-sans mt-0.5">
+                  Show the location prompt banner on the home page
+                </p>
+              </div>
+              <button
+                onClick={resetPromptDismissal}
+                className="text-xs font-semibold text-primary hover:text-primary-dark font-sans transition-colors"
+              >
+                Re-enable
+              </button>
+            </div>
           </div>
         </section>
 

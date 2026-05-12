@@ -55,9 +55,20 @@ export const useListingsStore = create<ListingsState>()((set, get) => ({
   savedIds: new Set(),
 
   setFilters: (filters) =>
-    set((state) => ({
-      filters: { ...state.filters, ...filters },
-    })),
+    set((state) => {
+      const next = { ...state.filters, ...filters }
+      // If distance is cleared, also clear user coordinates and reset sort
+      if (filters.distanceKm === undefined) {
+        next.userLat = undefined
+        next.userLng = undefined
+        if (next.sortBy === 'nearest') next.sortBy = 'newest'
+      }
+      // If distance is set but no coordinates, don't activate filter
+      if (next.distanceKm !== undefined && (!next.userLat || !next.userLng)) {
+        next.distanceKm = undefined
+      }
+      return { filters: next }
+    }),
 
   setResults: (listings, total, append = false) =>
     set((state) => ({

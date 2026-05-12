@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { getAuth, connectAuthEmulator } from 'firebase/auth'
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,8 +11,22 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-console.log('[admin.firebase] Initializing Firebase app', { projectId: firebaseConfig.projectId })
+const USE_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true'
+
+console.log('[admin.firebase] Initializing Firebase app', { 
+  projectId: firebaseConfig.projectId,
+  useEmulator: USE_EMULATOR 
+})
 export const app = initializeApp(firebaseConfig, 'admin')
 export const auth = getAuth(app)
 export const db = getFirestore(app)
+
+// Connect to emulators in development
+if (USE_EMULATOR) {
+  console.log('[admin.firebase] Connecting to auth emulator')
+  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true })
+  console.log('[admin.firebase] Connecting to firestore emulator')
+  connectFirestoreEmulator(db, 'localhost', 8080)
+}
+
 console.log('[admin.firebase] Firebase initialized successfully')

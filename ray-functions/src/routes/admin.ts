@@ -211,6 +211,7 @@ router.get('/analytics/dashboard', async (_req, res, next) => {
       totalListings, newListingsToday,
       activeListings, pendingReports,
       revenueData,
+      listingsWithGps, usersWithLocation,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ createdAt: { $gte: todayStart } }),
@@ -229,6 +230,8 @@ router.get('/analytics/dashboard', async (_req, res, next) => {
           },
         },
       ]),
+      Listing.countDocuments({ status: 'active', 'location.lat': { $exists: true, $ne: null } }),
+      User.countDocuments({ 'location.lat': { $exists: true, $ne: null } }),
     ])
 
     const totalRevenue = revenueData[0]?.total[0]?.sum ?? 0
@@ -284,6 +287,8 @@ router.get('/analytics/dashboard', async (_req, res, next) => {
       totalRevenue,
       revenueThisMonth,
       pendingReports,
+      listingsWithGps,
+      usersWithLocation,
       dailyActivity,
       categoryBreakdown: catRaw.map((c: { _id: string; count: number }) => ({
         name: c._id,

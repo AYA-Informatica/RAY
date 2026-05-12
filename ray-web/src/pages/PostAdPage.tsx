@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useForm, Controller } from 'react-hook-form'
@@ -6,18 +6,22 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
   Camera, X, ChevronRight, ChevronLeft, MapPin,
-  AlertCircle, Sparkles, Eye,
+  AlertCircle, Sparkles, Eye, Navigation, RefreshCw,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Button } from '@/components/atoms/Button'
 import { Input } from '@/components/atoms/Input'
 import { Badge } from '@/components/atoms/Badge'
 import { useAuthStore } from '@/store/authStore'
+import { useLocationStore } from '@/store/locationStore'
 import { listingsApi } from '@/services/api'
 import { CATEGORIES } from '@/constants/categories'
+import { CATEGORY_FIELDS } from '@/constants/categoryFields'
+import type { CategoryField } from '@/constants/categoryFields'
 import { KIGALI_NEIGHBORHOODS } from '@/constants/locations'
 import { STRINGS } from '@/constants/strings'
 import type { ListingCategory, ListingCondition } from '@/types'
+import type { UserLocation } from '@/store/locationStore'
 
 const TOTAL_STEPS = 6
 
@@ -49,11 +53,13 @@ const CONDITIONS: { label: string; value: ListingCondition; desc: string }[] = [
 export const PostAdPage = () => {
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const { requestGpsLocation, setManualLocation, isRequesting: isRequestingLocation, userLocation } = useLocationStore()
   const [step, setStep] = useState(1)
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [isPosting, setIsPosting] = useState(false)
   const [postError, setPostError] = useState<string | null>(null)
+  const [meta, setMeta] = useState<Record<string, string | number | boolean>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const {
@@ -79,6 +85,25 @@ export const PostAdPage = () => {
   const watchedTitle = watch('title')
   const watchedPrice = watch('price')
   const watchedCondition = watch('condition')
+
+  // Location state
+  const [selectedLocation, setSelectedLocation] = useState<UserLocation | null>(userLocation)
+  const [showManualSelect, setShowManualSelect] = useState(false)
+
+  // Pre-fill location from profile if available:
+  useEffect(() => {
+    if (!selectedLocation && user?.location) {
+      const profileLoc: UserLocation = {
+        lat:          user.location.lat,
+        lng:          user.location.lng,
+        displayLabel: user.location.displayLabel,
+        source:       user.location.source ?? 'manual',
+        obtainedAt:   new Date().toISOString(),
+      }
+      setSelectedLocation(profileLoc)
+      setValue('neighborhood', user.location.displayLabel)
+    }
+  }, [user])
 
   // ── Image handling ──
   const handleImageSelect = useCallback(
@@ -116,13 +141,33 @@ export const PostAdPage = () => {
 
   const goNext = async () => {
     const valid = await trigger(stepFields[step])
-    if (valid) setStep((s) => Math.min(TOTAL_STEPS, s + 1))
+    if (valid) {
+      // Validate required meta fields in step 3
+      if (step === 3 && watchedCategory) {
+        const requiredFields = CATEGORY_FIELDS[watchedCategory]?.filter((f) => f.required) ?? []
+        for (const field of requiredFields) {
+          if (!meta[field.key]) {
+            setPostError(`${field.label} is required`)
+            return
+          }
+        }
+      }
+      setStep((s) => Math.min(TOTAL_STEPS, s + 1))
+      setPostError(null)
+    }
   }
 
   const goBack = () => setStep((s) => Math.max(1, s - 1))
 
   // ── Submit ──
   const onSubmit = async (data: PostAdFormData) => {
+    console.log('[PostAd] 📝 Starting ad submission', {
+      title: data.title,
+      category: data.category,
+      price: data.price,
+      imageCount: imageFiles.length,
+      makeFeatured: data.makeFeatured,
+    })
     setIsPosting(true)
     setPostError(null)
     try {
@@ -131,9 +176,24 @@ export const PostAdPage = () => {
       Object.entries(data).forEach(([k, v]) => {
         if (k !== 'images' && v !== undefined) form.append(k, String(v))
       })
+      form.append('meta', JSON.stringify(meta))
+      
+      // Add location coordinates if available
+      if (selectedLocation) {
+        form.append('locationLat', String(selectedLocation.lat))
+        form.append('locationLng', String(selectedLocation.lng))
+        form.append('locationSource', selectedLocation.source)
+      }
+      
+      console.log('[PostAd] 📤 Sending listing to API...')
       const listing = await listingsApi.create(form)
+      console.log('[PostAd] ✅ Listing created successfully', {
+        listingId: listing.id,
+        title: listing.title,
+      })
       navigate(`/listing/${listing.id}?posted=1`)
     } catch (err) {
+      console.error('[PostAd] ❌ Failed to create listing', err)
       setPostError(err instanceof Error ? err.message : STRINGS.errors.generic)
     } finally {
       setIsPosting(false)
@@ -141,6 +201,12 @@ export const PostAdPage = () => {
   }
 
   const selectedCat = CATEGORIES.find((c) => c.id === watchedCategory)
+
+  useEffect(() => {
+    if (location) {
+      setValue('neighborhood', location.displayLabel)
+    }
+  }, [location, setValue])
 
   return (
     <>
@@ -409,6 +475,75 @@ export const PostAdPage = () => {
                   )}
                 />
               </div>
+
+              {/* Dynamic category fields */}
+              {watchedCategory && CATEGORY_FIELDS[watchedCategory]?.length > 0 && (
+                <div className="flex flex-col gap-4">
+                  {CATEGORY_FIELDS[watchedCategory].map((field: CategoryField) => (
+                    <div key={field.key} className="flex flex-col gap-1.5">
+                      <label className="text-sm font-semibold text-text-primary font-sans">
+                        {field.label}
+                        {!field.required && (
+                          <span className="text-text-muted font-normal ml-1">(Optional)</span>
+                        )}
+                      </label>
+
+                      {field.type === 'select' && (
+                        <select
+                          value={String(meta[field.key] ?? '')}
+                          onChange={(e) => setMeta((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          className="w-full bg-surface-modal border border-border rounded-2xl px-4 py-3 font-sans text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                        >
+                          <option value="">Select {field.label}</option>
+                          {field.options?.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      {field.type === 'text' && (
+                        <input
+                          type="text"
+                          placeholder={field.placeholder}
+                          value={String(meta[field.key] ?? '')}
+                          onChange={(e) => setMeta((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          className="w-full bg-surface-modal border border-border rounded-2xl px-4 py-3 font-sans text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      )}
+
+                      {field.type === 'number' && (
+                        <input
+                          type="number"
+                          placeholder={field.placeholder}
+                          value={String(meta[field.key] ?? '')}
+                          onChange={(e) => setMeta((prev) => ({ ...prev, [field.key]: Number(e.target.value) }))}
+                          className="w-full bg-surface-modal border border-border rounded-2xl px-4 py-3 font-sans text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      )}
+
+                      {field.type === 'toggle' && (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={Boolean(meta[field.key])}
+                          onClick={() => setMeta((prev) => ({ ...prev, [field.key]: !prev[field.key] }))}
+                          className={clsx(
+                            'relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                            meta[field.key] ? 'bg-primary' : 'bg-surface-modal border border-border'
+                          )}
+                        >
+                          <span
+                            className={clsx(
+                              'absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200',
+                              meta[field.key] ? 'translate-x-6' : 'translate-x-0.5'
+                            )}
+                          />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -448,46 +583,124 @@ export const PostAdPage = () => {
             </div>
           )}
 
-          {/* ══════════════ STEP 5: LOCATION ══════════════ */}
+          {/* ══════════════ STEP 5: LOCATION & CONTACT ══════════════ */}
           {step === 5 && (
             <div className="flex flex-col gap-5 animate-slide-up">
-              <h2 className="font-display font-bold text-text-primary text-lg">
-                {STRINGS.postAd.step5.title}
-              </h2>
+              <div>
+                <h2 className="font-display font-bold text-text-primary text-lg">
+                  Where is the item located?
+                </h2>
+                <p className="text-sm text-text-secondary font-sans mt-1">
+                  Buyers nearby will see your listing first
+                </p>
+              </div>
 
-              {/* Location selector */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold text-text-primary font-sans">
-                  {STRINGS.postAd.step5.label}
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
-                  <select
-                    className={clsx(
-                      'w-full pl-10 pr-4 py-3 bg-surface-modal border rounded-2xl appearance-none',
-                      'font-sans text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary',
-                      errors.neighborhood ? 'border-danger' : 'border-border'
-                    )}
-                    {...register('neighborhood')}
-                  >
-                    <option value="">{STRINGS.postAd.step5.label}</option>
-                    {KIGALI_NEIGHBORHOODS.map((n) => (
-                      <option key={n.name} value={n.displayLabel}>
-                        {n.displayLabel}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {errors.neighborhood && (
-                  <p className="text-sm text-danger font-sans">{errors.neighborhood.message}</p>
+              {/* Location status card */}
+              <div className="flex flex-col gap-3">
+
+                {/* If we already have a location, show it as confirmed */}
+                {selectedLocation ? (
+                  <div className="flex items-center gap-3 p-4 bg-success/10 border border-success/20 rounded-2xl">
+                    <div className="w-10 h-10 rounded-xl bg-success/20 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-5 h-5 text-success" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-text-primary font-sans">
+                        {selectedLocation.source === 'gps' ? 'Using your GPS location' : selectedLocation.displayLabel}
+                      </p>
+                      <p className="text-xs text-text-secondary font-sans mt-0.5">
+                        {selectedLocation.source === 'gps'
+                          ? `${selectedLocation.displayLabel} · GPS`
+                          : 'Manual selection'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLocation(null)}
+                      className="text-xs text-text-muted hover:text-danger font-sans transition-colors flex-shrink-0"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* GPS option — primary */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const loc = await requestGpsLocation()
+                        if (loc) setSelectedLocation(loc)
+                        else setShowManualSelect(true)
+                      }}
+                      disabled={isRequestingLocation}
+                      className={clsx(
+                        'flex items-center gap-3 p-4 bg-surface-card border-2 rounded-2xl text-left',
+                        'transition-all duration-150',
+                        isRequestingLocation
+                          ? 'border-border opacity-60 cursor-not-allowed'
+                          : 'border-border hover:border-primary hover:bg-primary/5'
+                      )}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        {isRequestingLocation
+                          ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          : <Navigation className="w-5 h-5 text-primary" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-text-primary font-sans">
+                          {isRequestingLocation ? 'Getting your location...' : 'Use my current location'}
+                        </p>
+                        <p className="text-xs text-text-secondary font-sans mt-0.5">
+                          Most accurate · Helps buyers find you
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-text-muted font-sans">or</span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+
+                    {/* Manual neighborhood selection */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-text-primary font-sans">
+                        Choose your neighborhood
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
+                        <select
+                          value={watch('neighborhood') ?? ''}
+                          onChange={(e) => {
+                            setValue('neighborhood', e.target.value)
+                            const loc = setManualLocation(e.target.value)
+                            if (loc) setSelectedLocation(loc)
+                          }}
+                          className={clsx(
+                            'w-full pl-10 pr-4 py-3 bg-surface-modal border rounded-2xl appearance-none',
+                            'font-sans text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary',
+                            errors.neighborhood ? 'border-danger' : 'border-border'
+                          )}
+                        >
+                          <option value="">Select a neighborhood in Kigali</option>
+                          {KIGALI_NEIGHBORHOODS.map((n) => (
+                            <option key={n.name} value={n.displayLabel}>
+                              {n.displayLabel}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* Phone */}
+              {/* Phone number */}
               <div className="flex flex-col gap-1.5">
                 <Input
-                  label={STRINGS.postAd.step5.phoneLabel}
-                  placeholder={STRINGS.postAd.step5.phonePlaceholder}
+                  label="Phone Number"
+                  placeholder="+250 7xx xxx xxxx"
                   type="tel"
                   error={errors.phone?.message}
                   {...register('phone')}
@@ -504,7 +717,7 @@ export const PostAdPage = () => {
                         className="w-4 h-4 accent-primary rounded"
                       />
                       <span className="text-sm font-sans text-text-secondary">
-                        {STRINGS.postAd.step5.hidePhone}
+                        Hide phone number in ad
                       </span>
                     </label>
                   )}

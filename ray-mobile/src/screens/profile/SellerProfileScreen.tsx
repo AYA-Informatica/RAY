@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   View,
   Text,
@@ -9,9 +9,11 @@ import {
   StyleSheet,
 } from 'react-native'
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native'
-import { ChevronLeft, MapPin, Star } from 'lucide-react-native'
+import { ChevronLeft, MapPin, Star, Calendar } from 'lucide-react-native'
 import { usersApi, listingsApi, chatApi } from '@/services/api'
 import { useAuthStore } from '@/store/authStore'
+import { useLocationStore } from '@/store/locationStore'
+import { haversineDistanceKm } from '@/constants/neighborhoodCoords'
 import { Colors } from '@/theme/colors'
 import { formatPrice } from '@/utils'
 import type { User, Listing } from '@/types'
@@ -27,11 +29,20 @@ export const SellerProfileScreen = () => {
   const navigation = useNavigation()
   const { userId } = route.params
   const { user: currentUser } = useAuthStore()
+  const { userLocation } = useLocationStore()
 
   const [seller, setSeller] = useState<User | null>(null)
   const [listings, setListings] = useState<Listing[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const distanceFromSeller = useMemo(() => {
+    if (!userLocation || !seller?.location?.lat || !seller?.location?.lng) return null
+    return haversineDistanceKm(
+      userLocation.lat, userLocation.lng,
+      seller.location.lat, seller.location.lng
+    )
+  }, [userLocation, seller])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -150,7 +161,12 @@ export const SellerProfileScreen = () => {
             <View style={styles.locationRow}>
               <MapPin color={Colors.text.secondary} size={14} />
               <Text style={styles.locationText}>
-                {seller.location?.displayLabel || 'Kigali'} • Member since {memberSince}
+                {seller.location?.displayLabel || 'Kigali'}
+                {distanceFromSeller !== null
+                  ? `  ·  ${distanceFromSeller < 1
+                      ? `${Math.round(distanceFromSeller * 1000)}m from you`
+                      : `${distanceFromSeller.toFixed(1)} km from you`}`
+                  : ''} • Member since {memberSince}
               </Text>
             </View>
           </View>

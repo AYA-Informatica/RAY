@@ -11,6 +11,7 @@ import { Avatar } from '@/components/atoms/Avatar'
 import { useAuthStore } from '@/store/authStore'
 import { usersApi } from '@/services/api'
 import { KIGALI_NEIGHBORHOODS } from '@/constants/locations'
+import { getCoordsForNeighborhood } from '@/constants/neighborhoodCoords'
 import { STRINGS } from '@/constants/strings'
 
 export const NotFoundPage = () => (
@@ -37,15 +38,20 @@ export const NotFoundPage = () => (
 // ─────────────────────────────────────────────
 // ProfileSetupPage — shown to new users after OTP
 // ─────────────────────────────────────────────
+import { useLocationStore } from '@/store/locationStore'
+import { Navigation } from 'lucide-react'
+
 export const ProfileSetupPage = () => {
   const navigate = useNavigate()
   const { user, updateUser } = useAuthStore()
+  const { requestGpsLocation, setManualLocation, isRequesting } = useLocationStore()
   const [displayName, setDisplayName] = useState('')
   const [neighborhood, setNeighborhood] = useState('')
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [setupLocation, setSetupLocation] = useState<{ displayLabel: string; lat: number; lng: number; source: 'gps' | 'manual' } | null>(null)
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -70,11 +76,23 @@ export const ProfileSetupPage = () => {
       await usersApi.updateProfile({
         displayName: displayName.trim(),
         avatar: avatarUrl,
-        location: selectedNeighborhood
+        location: setupLocation
+          ? {
+              district: setupLocation.displayLabel.split(', ')[1] ?? 'Kigali',
+              neighborhood: setupLocation.displayLabel.split(', ')[0],
+              displayLabel: setupLocation.displayLabel,
+              lat: setupLocation.lat,
+              lng: setupLocation.lng,
+              source: setupLocation.source,
+            }
+          : selectedNeighborhood
           ? {
               district: selectedNeighborhood.district,
               neighborhood: selectedNeighborhood.name,
               displayLabel: selectedNeighborhood.displayLabel,
+              lat: getCoordsForNeighborhood(selectedNeighborhood.displayLabel)?.lat ?? -1.9500,
+              lng: getCoordsForNeighborhood(selectedNeighborhood.displayLabel)?.lng ?? 30.0589,
+              source: 'manual',
             }
           : undefined,
       })
@@ -140,23 +158,59 @@ export const ProfileSetupPage = () => {
             />
 
             {/* Location */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-sm font-semibold text-text-primary font-sans">
-                {STRINGS.auth.locationLabel}
+                Your Location <span className="text-text-muted font-normal">(Optional)</span>
               </label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
-                <select
-                  value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-surface-modal border border-border rounded-2xl appearance-none font-sans text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Select your neighborhood</option>
-                  {KIGALI_NEIGHBORHOODS.map((n) => (
-                    <option key={n.name} value={n.name}>{n.displayLabel}</option>
-                  ))}
-                </select>
-              </div>
+
+              {setupLocation ? (
+                <div className="flex items-center gap-3 px-4 py-3 bg-success/10 border border-success/20 rounded-2xl">
+                  <MapPin className="w-4 h-4 text-success flex-shrink-0" />
+                  <span className="text-sm font-semibold text-text-primary font-sans flex-1 truncate">
+                    {setupLocation.source === 'gps' ? 'Using GPS location' : setupLocation.displayLabel}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSetupLocation(null)}
+                    className="text-xs text-text-muted hover:text-danger font-sans"
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const loc = await requestGpsLocation()
+                      if (loc) setSetupLocation({ ...loc, displayLabel: 'Your current location' })
+                    }}
+                    disabled={isRequesting}
+                    className="flex items-center gap-2 px-4 py-3 bg-surface-modal border border-border rounded-2xl text-sm font-semibold text-text-secondary hover:text-primary hover:border-primary transition-colors disabled:opacity-50"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    {isRequesting ? 'Getting location...' : 'Use my current location'}
+                  </button>
+
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
+                    <select
+                      value={neighborhood}
+                      onChange={(e) => {
+                        setNeighborhood(e.target.value)
+                        const loc = setManualLocation(e.target.value)
+                        if (loc) setSetupLocation(loc)
+                      }}
+                      className="w-full pl-10 pr-4 py-3 bg-surface-modal border border-border rounded-2xl appearance-none font-sans text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Or select a neighborhood</option>
+                      {KIGALI_NEIGHBORHOODS.map((n) => (
+                        <option key={n.name} value={n.displayLabel}>{n.displayLabel}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button type="submit" fullWidth size="lg" loading={isSubmitting}>

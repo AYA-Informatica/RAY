@@ -68,8 +68,8 @@ const UserSchema = new Schema<IUser>(
       district:     { type: String },
       neighborhood: { type: String },
       displayLabel: { type: String },
-      lat:          { type: Number },
-      lng:          { type: Number },
+      lat:          { type: Number, required: true },
+      lng:          { type: Number, required: true },
     },
 
     responseRate:    { type: Number, default: 0, min: 0, max: 100 },

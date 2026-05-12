@@ -1,4 +1,4 @@
-import { TouchableOpacity, View, Text, Image } from 'react-native'
+import { TouchableOpacity, View, Text, Image, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
 import { MapPin, Clock, CheckCircle2 } from 'lucide-react-native'
 import { Badge } from '@/components/atoms'
@@ -17,6 +17,20 @@ const conditionVariant = {
   new:      'success', like_new: 'primary',
   good:     'warning', fair:     'muted',
 } as const
+
+function getMetaBadge(category: string, meta?: Record<string, string | number | boolean>): string | null {
+  if (!meta) return null
+  switch (category) {
+    case 'vehicles':   return [meta['make'], meta['year']].filter(Boolean).join(' ') || null
+    case 'mobiles':    return [meta['brand'], meta['storage']].filter(Boolean).join(' · ') || null
+    case 'property':   return meta['bedrooms'] ? `${meta['bedrooms']} bed` : null
+    case 'electronics':return meta['brand'] ? String(meta['brand']) : null
+    case 'fashion':    return [meta['gender'], meta['size']].filter(Boolean).join(' · ') || null
+    case 'kids':       return meta['age_range'] ? String(meta['age_range']) : null
+    case 'food':       return meta['unit'] ? `Per ${meta['unit']}` : null
+    default:           return null
+  }
+}
 
 interface Props {
   listing: Listing
@@ -94,6 +108,12 @@ export const ListingCard = ({ listing, width, compact = false }: Props) => {
         <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: Typography.base, fontFamily: Typography.fontSansBold }}>
           Rwf {listing.price.toLocaleString()}
         </Text>
+        {(() => {
+          const badge = getMetaBadge(listing.category, listing.meta)
+          return badge ? (
+            <Text style={styles.metaBadge}>{badge}</Text>
+          ) : null
+        })()}
         <Text
           numberOfLines={1}
           style={{ color: Colors.textPrimary, fontSize: Typography.sm, fontWeight: '600', fontFamily: Typography.fontSansBold }}
@@ -126,3 +146,17 @@ export const ListingCard = ({ listing, width, compact = false }: Props) => {
     </TouchableOpacity>
   )
 }
+
+const styles = StyleSheet.create({
+  metaBadge: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    backgroundColor: Colors.surfaceModal,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 2,
+  },
+})

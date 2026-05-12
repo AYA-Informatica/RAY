@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import {
   Settings, ChevronRight, Heart, Bell, Star,
   Zap, HelpCircle, Shield, LogOut, Grid3X3,
+  MapPin, RefreshCw, Navigation
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Avatar } from '@/components/atoms/Avatar'
@@ -11,7 +12,9 @@ import { Badge } from '@/components/atoms/Badge'
 import { Button } from '@/components/atoms/Button'
 import { ListingGrid } from '@/components/organisms/ListingGrid'
 import { useAuthStore } from '@/store/authStore'
-import { listingsApi } from '@/services/api'
+import { useLocationStore } from '@/store/locationStore'
+import { usersApi, listingsApi } from '@/services/api'
+import { KIGALI_NEIGHBORHOODS } from '@/constants/locations'
 import { STRINGS } from '@/constants/strings'
 import type { Listing } from '@/types'
 
@@ -26,7 +29,8 @@ interface MenuRow {
 
 export const AccountPage = () => {
   const navigate = useNavigate()
-  const { user, logout } = useAuthStore()
+  const { user, logout, updateUser } = useAuthStore()
+  const { userLocation, requestGpsLocation, setManualLocation, setLocation, isRequesting: isRequestingLocation } = useLocationStore()
   const [myListings, setMyListings] = useState<Listing[]>([])
   const [isLoadingListings, setIsLoadingListings] = useState(true)
   const [activeTab, setActiveTab] = useState<'listings' | 'favourites'>('listings')
@@ -177,6 +181,156 @@ export const AccountPage = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Location card */}
+        <div className="bg-surface-card rounded-3xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+            <h3 className="font-display font-bold text-text-primary text-sm">Your Location</h3>
+            <span className="text-xs text-text-muted font-sans">Used for nearby listings</span>
+          </div>
+
+          <div className="p-5 flex flex-col gap-4">
+            {/* Current location display */}
+            <div className="flex items-center gap-3">
+              <div className={clsx(
+                'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                user?.location ? 'bg-success/10' : 'bg-surface-modal'
+              )}>
+                <MapPin className={clsx('w-5 h-5', user?.location ? 'text-success' : 'text-text-muted')} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-text-primary font-sans">
+                  {user?.location?.displayLabel ?? 'No location saved'}
+                </p>
+                <p className="text-xs text-text-muted font-sans mt-0.5">
+                  {user?.location
+                    ? `Saved · ${user.location.source === 'gps' ? 'GPS' : 'Manual'}`
+                    : 'Add a location to see nearby listings'}
+                </p>
+              </div>
+            </div>
+
+            {/* Update controls */}
+            <div className="flex flex-col gap-2">
+              {/* GPS refresh */}
+              <button
+                onClick={async () => {
+                  const loc = await requestGpsLocation()
+                  if (loc) {
+                    try {
+                      await usersApi.updateProfile({
+                        location: {
+                          district:     loc.displayLabel.split(', ')[1] ?? 'Kigali',
+                          neighborhood: loc.displayLabel.split(', ')[0],
+                          displayLabel: loc.displayLabel,
+                          lat:          loc.lat,
+                          lng:          loc.lng,
+                          source:       'gps',
+                        },
+                      })
+                      updateUser({
+                        location: {
+                          district:     loc.displayLabel.split(', ')[1] ?? 'Kigali',
+                          neighborhood: loc.displayLabel.split(', ')[0],
+                          displayLabel: loc.displayLabel,
+                          lat:          loc.lat,
+                          lng:          loc.lng,
+                          source:       'gps',
+                        },
+                      })
+                    } catch {
+                      // show error toast
+                    }
+                  }
+                }}
+                disabled={isRequestingLocation}
+                className={clsx(
+                  'flex items-center gap-2 px-4 py-2.5 bg-surface-modal border border-border rounded-xl',
+                  'text-sm font-semibold font-sans transition-colors',
+                  isRequestingLocation
+                    ? 'opacity-50 cursor-not-allowed text-text-muted'
+                    : 'text-text-secondary hover:border-primary hover:text-primary'
+                )}
+              >
+                {isRequestingLocation
+                  ? <div className="w-4 h-4 border-2 border-text-muted border-t-transparent rounded-full animate-spin" />
+                  : <RefreshCw className="w-4 h-4" />}
+                {isRequestingLocation ? 'Getting GPS location...' : 'Update with GPS'}
+              </button>
+
+              {/* Manual neighborhood select */}
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
+                <select
+                  defaultValue=""
+                  value={user?.location?.displayLabel ?? ''}
+                  onChange={async (e) => {
+                    if (!e.target.value) return
+                    const loc = setManualLocation(e.target.value)
+                    if (!loc) return
+                    try {
+                      await usersApi.updateProfile({
+                        location: {
+                          district:     loc.displayLabel.split(', ')[1] ?? 'Kigali',
+                          neighborhood: loc.displayLabel.split(', ')[0],
+                          displayLabel: loc.displayLabel,
+                          lat:          loc.lat,
+                          lng:          loc.lng,
+                          source:       'manual',
+                        },
+                      })
+                      updateUser({
+                        location: {
+                          district:     loc.displayLabel.split(', ')[1] ?? 'Kigali',
+                          neighborhood: loc.displayLabel.split(', ')[0],
+                          displayLabel: loc.displayLabel,
+                          lat:          loc.lat,
+                          lng:          loc.lng,
+                          source:       'manual',
+                        },
+                      })
+                    } catch {
+                      // show error toast
+                    }
+                  }}
+                  className="w-full pl-10 pr-4 py-2.5 bg-surface-modal border border-border rounded-xl appearance-none font-sans text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Change neighborhood manually</option>
+                  {KIGALI_NEIGHBORHOODS.map((n) => (
+                    <option key={n.name} value={n.displayLabel}>{n.displayLabel}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Location store vs profile mismatch notice */}
+            {userLocation && user?.location &&
+             userLocation.displayLabel !== user.location.displayLabel && (
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-warning/10 border border-warning/20 rounded-xl">
+                <span className="text-warning text-xs mt-0.5">⚠</span>
+                <p className="text-xs font-sans text-text-secondary">
+                  Your active search location ({userLocation.displayLabel.split(',')[0]}) differs
+                  from your saved profile location ({user.location.displayLabel.split(',')[0]}).{' '}
+                  <button
+                    onClick={async () => {
+                      if (!user.location) return
+                      setLocation({
+                        lat:          user.location.lat,
+                        lng:          user.location.lng,
+                        displayLabel: user.location.displayLabel,
+                        source:       user.location.source ?? 'manual',
+                        obtainedAt:   new Date().toISOString(),
+                      })
+                    }}
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    Use profile location
+                  </button>
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

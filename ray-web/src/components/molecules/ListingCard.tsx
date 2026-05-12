@@ -28,6 +28,20 @@ const conditionVariant = {
   fair: 'muted',
 } as const
 
+function getMetaBadge(category: string, meta?: Record<string, string | number | boolean>): string | null {
+  if (!meta) return null
+  switch (category) {
+    case 'vehicles':   return [meta['make'], meta['year']].filter(Boolean).join(' ') || null
+    case 'mobiles':    return [meta['brand'], meta['storage']].filter(Boolean).join(' · ') || null
+    case 'property':   return meta['bedrooms'] ? `${meta['bedrooms']} bed` : null
+    case 'electronics':return meta['brand'] ? String(meta['brand']) : null
+    case 'fashion':    return [meta['gender'], meta['size']].filter(Boolean).join(' · ') || null
+    case 'kids':       return meta['age_range'] ? String(meta['age_range']) : null
+    case 'food':       return meta['unit'] ? `Per ${meta['unit']}` : null
+    default:           return null
+  }
+}
+
 /**
  * ListingCard molecule — the core unit of the RAY feed.
  * Used in grids, horizontal scrolls, and search results.
@@ -135,6 +149,15 @@ export const ListingCard = ({ listing, className, compact = false }: ListingCard
             </span>
           )}
         </div>
+
+        {(() => {
+          const badge = getMetaBadge(listing.category, listing.meta)
+          return badge ? (
+            <span className="text-xs font-semibold font-sans text-text-secondary bg-surface-modal px-2 py-0.5 rounded-lg self-start">
+              {badge}
+            </span>
+          ) : null
+        })()}
 
         {/* Title */}
         <p className="text-sm font-semibold text-text-primary font-sans line-clamp-1 leading-snug">

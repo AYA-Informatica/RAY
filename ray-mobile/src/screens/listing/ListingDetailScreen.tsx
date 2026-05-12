@@ -173,6 +173,32 @@ export const ListingDetailScreen = () => {
             </>
           )}
 
+          {/* Details */}
+          {listing.meta && Object.keys(listing.meta).length > 0 && (
+            <View>
+              <Text style={styles.sectionTitle}>Details</Text>
+              <View style={styles.detailsGrid}>
+                {Object.entries(listing.meta).map(([key, value]) => {
+                  if (value === undefined || value === null || value === '') return null
+                  // Convert key from snake_case to Title Case for display
+                  const label = key
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, (c) => c.toUpperCase())
+                  const displayValue =
+                    typeof value === 'boolean'
+                      ? value ? 'Yes' : 'No'
+                      : String(value)
+                  return (
+                    <View key={key} style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>{label}</Text>
+                      <Text style={styles.detailValue}>{displayValue}</Text>
+                    </View>
+                  )
+                })}
+              </View>
+            </View>
+          )}
+
           {/* Seller card */}
           <View style={styles.sellerCard}>
             <View style={styles.sellerAvatar}>
@@ -249,6 +275,10 @@ const styles = StyleSheet.create({
   infoText:        { color: Colors.textSecondary, fontSize: 13 },
   sectionTitle:    { color: Colors.textPrimary, fontSize: 15, fontWeight: '700', marginTop: 16, marginBottom: 8 },
   description:     { color: Colors.textSecondary, fontSize: 14, lineHeight: 22 },
+  detailsGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  detailItem:      { width: '48%', backgroundColor: Colors.surfaceModal, borderRadius: 12, padding: 10 },
+  detailLabel:     { color: Colors.textMuted, fontSize: 10, fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 },
+  detailValue:     { color: Colors.textPrimary, fontSize: 12, fontWeight: '600' },
   sellerCard:      { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: Colors.surfaceCard, borderRadius: 16, marginTop: 20, borderWidth: 1, borderColor: Colors.border },
   sellerAvatar:    { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary + '30', alignItems: 'center', justifyContent: 'center' },
   sellerInitial:   { color: Colors.primary, fontSize: 18, fontWeight: '700' },

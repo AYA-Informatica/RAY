@@ -4,8 +4,18 @@ export type TrustLevel = 1 | 2 | 3
 export type ListingCondition = 'new' | 'like_new' | 'good' | 'fair'
 export type ListingStatus = 'active' | 'sold' | 'expired' | 'pending_review' | 'rejected'
 export type ListingCategory =
-  | 'mobiles' | 'cars' | 'properties' | 'electronics'
-  | 'fashion' | 'furniture' | 'jobs' | 'services' | 'other'
+  | 'mobiles'
+  | 'electronics'
+  | 'vehicles'
+  | 'property'
+  | 'fashion'
+  | 'furniture'
+  | 'food'
+  | 'services'
+  | 'jobs'
+  | 'health'
+  | 'sports'
+  | 'kids'
 export type SortOption = 'newest' | 'price_asc' | 'price_desc' | 'nearest'
 export type MessageType = 'text' | 'image' | 'system' | 'phone_shared'
 
@@ -38,8 +48,9 @@ export interface KigaliLocation {
   district: string
   neighborhood: string
   displayLabel: string
-  lat?: number
-  lng?: number
+  lat: number
+  lng: number
+  source: 'gps' | 'manual'
 }
 
 export interface Listing {

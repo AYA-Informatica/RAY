@@ -7,14 +7,20 @@ const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   'https://us-central1-your-project.cloudfunctions.net'
 
-const DEBUG_API = import.meta.env.DEV || import.meta.env.VITE_DEBUG_API === 'true'
+const DEBUG_API = import.meta.env.DEV || 
+  import.meta.env.VITE_DEBUG_API === 'true' || 
+  import.meta.env.VITE_DEBUG_ADMIN === 'true'
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const method = options.method ?? 'GET'
   const started = Date.now()
-  console.log('[admin.api] Request started', { method, endpoint })
+  if (DEBUG_API) {
+    console.log('[admin.api] Request started', { method, endpoint })
+  }
   const token = await auth.currentUser?.getIdToken(true) // Force refresh
-  console.log('[admin.api] Auth token', { hasToken: !!token })
+  if (DEBUG_API) {
+    console.log('[admin.api] Auth token', { hasToken: !!token })
+  }
   
   // Debug: decode token to see claims
   if (token && DEBUG_API) {
@@ -62,7 +68,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(err.message || `HTTP ${res.status}`)
   }
   const json = await res.json()
-  console.log('[admin.api] Request completed', { method, endpoint, hasData: !!json.data })
+  if (DEBUG_API) {
+    console.log('[admin.api] Request completed', { method, endpoint, hasData: !!json.data })
+  }
   return json.data ?? json
 }
 

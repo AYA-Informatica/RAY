@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 import { Button, Badge, Input, Skeleton } from '@/components/atoms'
 import { PageHeader } from '@/components/organisms/AdminLayout'
 import { adminListingsApi } from '@/services/api'
+import { CATEGORIES } from '@/constants/categories'
 import type { Listing, ListingStatus } from '@/types'
 
 const STATUS_BADGE: Record<ListingStatus, { label: string; variant: 'success' | 'warning' | 'danger' | 'muted' | 'primary' }> = {
@@ -29,6 +30,7 @@ export const AdminListingsPage = () => {
   const [sorting, setSorting]   = useState<SortingState>([])
   const [search, setSearch]     = useState('')
   const [statusFilter, setStatusFilter] = useState<ListingStatus | 'all'>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [page, setPage]         = useState(1)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const PAGE_SIZE = 20
@@ -42,6 +44,7 @@ export const AdminListingsPage = () => {
       }
       if (search) params.q = search
       if (statusFilter !== 'all') params.status = statusFilter
+      if (categoryFilter !== 'all') params.category = categoryFilter
       const res = await adminListingsApi.getAll(params)
       setListings(res.listings)
       setTotal(res.total)
@@ -50,7 +53,7 @@ export const AdminListingsPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [page, search, statusFilter])
+  }, [page, search, statusFilter, categoryFilter])
 
   useEffect(() => { fetchListings() }, [fetchListings])
 
@@ -118,11 +121,20 @@ export const AdminListingsPage = () => {
     }),
     columnHelper.accessor('location', {
       header: 'Location',
-      cell: (info) => (
-        <span className="text-xs text-text-muted font-sans">
-          {info.getValue().displayLabel}
-        </span>
-      ),
+      cell: (info) => {
+        const loc = info.getValue()
+        const hasCoords = loc.lat && loc.lng
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-text-secondary font-sans">{loc.displayLabel}</span>
+            {hasCoords ? (
+              <span title="Has GPS coordinates" className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
+            ) : (
+              <span title="No GPS coordinates" className="w-1.5 h-1.5 rounded-full bg-border flex-shrink-0" />
+            )}
+          </div>
+        )
+      },
       enableSorting: false,
     }),
     columnHelper.accessor('status', {
@@ -258,6 +270,36 @@ export const AdminListingsPage = () => {
               onChange={(e) => { setSearch(e.target.value); setPage(1) }}
               className="pl-9 pr-4 py-2 bg-surface-modal border border-border rounded-xl text-sm font-sans text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary w-64"
             />
+          </div>
+
+          {/* Category filter row */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => { setCategoryFilter('all'); setPage(1) }}
+              className={clsx(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold font-sans border flex-shrink-0 transition-all',
+                categoryFilter === 'all'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-surface-modal text-text-secondary border-border hover:border-primary'
+              )}
+            >
+              All Categories
+            </button>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => { setCategoryFilter(cat.id); setPage(1) }}
+                className={clsx(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold font-sans border flex-shrink-0 transition-all',
+                  categoryFilter === cat.id
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-surface-modal text-text-secondary border-border hover:border-primary'
+                )}
+              >
+                <span>{cat.emoji}</span>
+                {cat.label}
+              </button>
+            ))}
           </div>
 
           {/* Status tabs */}

@@ -1,22 +1,34 @@
-const admin = require('firebase-admin');
-require('dotenv').config();
+// Script to set admin role for emulator testing
+const { initializeApp } = require('firebase/app');
+const { getAuth, connectAuthEmulator } = require('firebase/auth');
 
-// Initialize Firebase Admin
-const serviceAccount = require('../ray-production-firebase-adminsdk.json');
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+// Initialize Firebase
+const app = initializeApp({
+  apiKey: process.env.FIREBASE_API_KEY || 'fake-key',
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN || 'fake-domain',
+  projectId: process.env.FIREBASE_PROJECT_ID || 'fake-project',
 });
 
-const uid = '9dTLpO8BJ7RwtOfxW6OxDBOMxnz1';
+const auth = getAuth(app);
+connectAuthEmulator(auth, 'http://localhost:9099');
 
-admin.auth().setCustomUserClaims(uid, { role: 'admin' })
-  .then(() => {
-    console.log('✅ Admin role successfully set for UID:', uid);
-    console.log('The user can now log in to the admin dashboard at http://localhost:5174');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('❌ Error setting admin role:', error);
-    process.exit(1);
-  });
+// Set admin role
+async function setAdminRole(email) {
+  try {
+    // Get user by email
+    const { getUserByEmail } = require('firebase-admin/auth');
+    const user = await getUserByEmail(email);
+    
+    // Set custom claims
+    await auth.setCustomUserClaims(user.uid, { role: 'admin' });
+    console.log(`✅ Admin role set for ${email} (UID: ${user.uid})`);
+  } catch (error) {
+    console.error('❌ Error setting admin role:', error.message);
+  }
+}
+
+// Run if called directly
+if (require.main === module) {
+  const email = process.argv[2] || 'admin@test.com';
+  setAdminRole(email);
+}

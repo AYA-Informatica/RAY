@@ -6,6 +6,7 @@ import { CategoryNav } from '@/components/organisms/CategoryNav'
 import { Button } from '@/components/atoms/Button'
 import { useHomeListings } from '@/hooks/useListings'
 import { STRINGS } from '@/constants/strings'
+import { LocationPrompt } from '@/components/molecules/LocationPrompt'
 
 /**
  * HomePage — main feed.
@@ -35,6 +36,9 @@ export const HomePage = () => {
       </Helmet>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-8">
+
+        {/* ── Location Prompt ── */}
+        <LocationPrompt context="home" className="mb-2" />
 
         {/* ── Categories ── */}
         <section className="flex flex-col gap-4">

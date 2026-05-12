@@ -52,15 +52,21 @@ export const ListingDetailPage = () => {
 
   const handleChat = async () => {
     if (!user) {
+      console.log('[ListingDetail] 🚪 User not logged in, redirecting to login')
       navigate('/login', { state: { from: `/listing/${id}` } })
       return
     }
+    console.log('[ListingDetail] 💬 Starting chat with seller', {
+      listingId: id,
+      sellerId: listing?.seller.id,
+    })
     setStartingChat(true)
     try {
       const convo = await chatApi.startConversation(id!)
+      console.log('[ListingDetail] ✅ Chat started', { conversationId: convo.id })
       navigate(`/chat/${convo.id}`)
-    } catch {
-      // handled by error boundary
+    } catch (err) {
+      console.error('[ListingDetail] ❌ Failed to start chat', err)
     } finally {
       setStartingChat(false)
     }
@@ -236,6 +242,32 @@ export const ListingDetailPage = () => {
                     {descExpanded ? 'Show less' : 'Read more'}
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Details */}
+            {listing.meta && Object.keys(listing.meta).length > 0 && (
+              <div className="flex flex-col gap-3">
+                <h2 className="font-display font-bold text-text-primary">Details</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(listing.meta).map(([key, value]) => {
+                    if (value === undefined || value === null || value === '') return null
+                    // Convert key from snake_case to Title Case for display
+                    const label = key
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (c) => c.toUpperCase())
+                    const displayValue =
+                      typeof value === 'boolean'
+                        ? value ? 'Yes' : 'No'
+                        : String(value)
+                    return (
+                      <div key={key} className="flex flex-col gap-0.5 px-3 py-2.5 bg-surface-modal rounded-xl">
+                        <span className="text-xs text-text-muted font-sans uppercase tracking-wide">{label}</span>
+                        <span className="text-sm font-semibold text-text-primary font-sans">{displayValue}</span>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
 

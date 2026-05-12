@@ -28,37 +28,58 @@ const createSchema = z.object({
   phone:       z.string().min(10),
   hidePhone:   z.coerce.boolean().default(false),
   makeFeatured:z.coerce.boolean().default(false),
+  locationLat: z.coerce.number().optional(),
+  locationLng: z.coerce.number().optional(),
+  locationSource: z.enum(['gps', 'manual']).optional(),
 })
 
 const searchSchema = z.object({
-  query:    z.string().optional(),
-  category: z.string().optional(),
-  minPrice: z.coerce.number().optional(),
-  maxPrice: z.coerce.number().optional(),
-  condition:z.array(z.string()).optional(),
-  district: z.string().optional(),
+  query:      z.string().optional(),
+  category:   z.string().optional(),
+  minPrice:   z.coerce.number().optional(),
+  maxPrice:   z.coerce.number().optional(),
+  condition:  z.array(z.string()).optional(),
+  district:   z.string().optional(),
+  meta:       z.record(z.string()).optional(),
   distanceKm: z.coerce.number().optional(),
-  sortBy:   z.enum(['newest', 'price_asc', 'price_desc', 'nearest']).default('newest'),
-  page:     z.coerce.number().default(1),
-  limit:    z.coerce.number().max(50).default(20),
+  userLat:    z.coerce.number().optional(),
+  userLng:    z.coerce.number().optional(),
+  sortBy:     z.enum(['newest', 'price_asc', 'price_desc', 'nearest']).default('newest'),
+  page:       z.coerce.number().default(1),
+  limit:      z.coerce.number().min(1).max(50).default(20),
 })
+
+interface SearchParams {
+  query?: string
+  category?: string
+  minPrice?: number
+  maxPrice?: number
+  condition?: string[]
+  district?: string
+  meta?: Record<string, string>
+  distanceKm?: number
+  userLat?: number
+  userLng?: number
+  sortBy: 'newest' | 'price_asc' | 'price_desc' | 'nearest'
+  page: number
+  limit: number
+}
 
 // ─────────────────────────────────────────────
 // POST /listings/search
 // ─────────────────────────────────────────────
 router.post('/search', optionalAuth, async (req, res, next) => {
+  console.log('=== LISTINGS SEARCH REQUEST DEBUG ===')
+  console.log('Request body:', req.body)
+  console.log('User ID from auth:', (req as any).userId)
+  console.log('Environment check - NODE_ENV:', process.env.NODE_ENV)
+  console.log('Environment check - FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID)
+  
   try {
     await connectDB()
-    const parsed = searchSchema.parse(req.body)
-    debugLog('listings.search', 'Search request', {
-      userId: (req as AuthRequest).userId,
-      query: parsed.query,
-      category: parsed.category,
-      page: parsed.page,
-      limit: parsed.limit,
-      sortBy: parsed.sortBy,
-    })
-
+    const parsed = searchSchema.parse(req.body) as SearchParams
+    console.log('Parsed search parameters:', parsed)
+    
     const filter: Record<string, unknown> = { status: 'active' }
 
     if (parsed.query) {
@@ -76,6 +97,35 @@ router.post('/search', optionalAuth, async (req, res, next) => {
       filter.condition = { $in: parsed.condition }
     }
 
+    // Filter by meta fields (e.g. brand, make, year)
+    if (parsed.meta && typeof parsed.meta === 'object') {
+      for (const [key, value] of Object.entries(parsed.meta)) {
+        if (value !== undefined && value !== '') {
+          (filter as Record<string, unknown>)[`meta.${key}`] = value
+        }
+      }
+    }
+
+    // Distance filter with geospatial query
+    const hasDistance =
+      parsed.distanceKm !== undefined &&
+      parsed.userLat !== undefined &&
+      parsed.userLng !== undefined
+
+    if (hasDistance) {
+      // $nearSphere requires the 2dsphere index
+      // It automatically sorts by distance when used as the only sort
+      filter['geoPoint'] = {
+        $nearSphere: {
+          $geometry: {
+            type:        'Point',
+            coordinates: [parsed.userLng!, parsed.userLat!],   // lng, lat
+          },
+          $maxDistance: parsed.distanceKm! * 1000,   // metres
+        },
+      }
+    }
+
     type SortMap = Record<string, Record<string, number>>
     const sortMap: SortMap = {
       newest:     { isFeatured: -1, postedAt: -1 },
@@ -85,25 +135,34 @@ router.post('/search', optionalAuth, async (req, res, next) => {
     }
 
     const skip  = (parsed.page - 1) * parsed.limit
-    const sort = sortMap[parsed.sortBy] as Record<string, 1 | -1>
-
-    const [listings, total] = await Promise.all([
-      Listing.find(filter).sort(sort).skip(skip).limit(parsed.limit).lean(),
+    // Only apply sort if distance filter is NOT active ($nearSphere already sorts by distance)
+    const query = Listing.find(filter)
+    if (!hasDistance) {
+      const sort = sortMap[parsed.sortBy] as Record<string, 1 | -1>
+      query.sort(sort)
+    }
+    
+    const [docs, total] = await Promise.all([
+      query.skip(skip).limit(parsed.limit).lean(),
       Listing.countDocuments(filter),
     ])
 
-    ok(res, {
-      listings,
+    const result = {
+      listings: docs.map(doc => ({
+        id: doc._id.toString(),
+        ...doc.toObject(),
+      })),
+      hasMore: skip + docs.length < total,
       total,
-      page: parsed.page,
-      hasMore: skip + listings.length < total,
-    })
-    debugLog('listings.search', 'Search response', {
-      total,
-      returned: listings.length,
-      page: parsed.page,
-    })
+    }
+
+    console.log('✓ Search completed successfully, returning', result.listings.length, 'listings')
+    console.log('=== END LISTINGS SEARCH REQUEST DEBUG ===')
+    
+    ok(res, result)
   } catch (err) {
+    console.error('❌ Search request failed:', err)
+    console.log('=== END LISTINGS SEARCH REQUEST DEBUG (ERROR) ===')
     next(err)
   }
 })
@@ -213,6 +272,16 @@ router.post(
       })
       if (!files?.length) { badRequest(res, 'At least one image is required'); return }
 
+      // Parse meta field from form body
+      let meta: Record<string, string | number | boolean> = {}
+      if (req.body.meta) {
+        try {
+          meta = JSON.parse(req.body.meta)
+        } catch {
+          meta = {}
+        }
+      }
+
       // Get seller info
       const seller = await User.findOne({ firebaseUid: req.firebaseUid }).lean()
       if (!seller) { badRequest(res, 'User profile not found'); return }
@@ -268,6 +337,7 @@ router.post(
         status:     body.makeFeatured ? 'active' : 'active',
         isFeatured: body.makeFeatured,
         featuredUntil: body.makeFeatured ? new Date(Date.now() + 7 * 86400000) : undefined,
+        meta,
         postedAt:   new Date(),
         expiresAt,
       })

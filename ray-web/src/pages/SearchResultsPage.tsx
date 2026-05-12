@@ -1,16 +1,19 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { SlidersHorizontal, X, Navigation } from 'lucide-react'
 import { clsx } from 'clsx'
 import { ListingGrid } from '@/components/organisms/ListingGrid'
 import { FilterChip } from '@/components/molecules/FilterChip'
 import { Button } from '@/components/atoms/Button'
 import { useSearch } from '@/hooks/useListings'
 import { useListingsStore } from '@/store/listingsStore'
+import { useLocationStore } from '@/store/locationStore'
 import { STRINGS } from '@/constants/strings'
 import { CATEGORIES } from '@/constants/categories'
+import { CATEGORY_FIELDS } from '@/constants/categoryFields'
 import type { SortOption, ListingCondition } from '@/types'
+import { LocationPrompt } from '@/components/molecules/LocationPrompt'
 
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: STRINGS.search.sort.newest, value: 'newest' },
@@ -30,6 +33,9 @@ export const SearchResultsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const { filters, setFilters, results, total, isSearching } = useListingsStore()
   const { search } = useSearch()
+  const { userLocation, requestGpsLocation, shouldShowPrompt } = useLocationStore()
+  const [metaFilters, setMetaFilters] = useState<Record<string, string>>({})
+  const [showMetaPanel, setShowMetaPanel] = useState(false)
 
   const q = searchParams.get('q') ?? ''
   const cat = searchParams.get('cat') ?? ''
@@ -47,8 +53,9 @@ export const SearchResultsPage = () => {
 
   // Trigger search when filters change
   useEffect(() => {
-    search(filters)
-  }, [filters, search])
+    console.log('[SearchResults] 🔍 Triggering search with filters', filters)
+    search({ ...filters, meta: metaFilters })
+  }, [filters, metaFilters, search])
 
   const updateParam = useCallback(
     (key: string, value: string | null) => {
@@ -94,12 +101,62 @@ export const SearchResultsPage = () => {
                 <button
                   onClick={() => {
                     setFilters({ category: undefined, condition: undefined, minPrice: undefined, maxPrice: undefined })
+                    setMetaFilters({})
                     setSearchParams(new URLSearchParams(q ? { q } : {}))
                   }}
                   className="text-xs text-primary hover:text-primary-dark font-sans font-semibold"
                 >
                   Clear all
                 </button>
+              </div>
+
+              {/* Distance filter */}
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-semibold text-text-secondary font-sans uppercase tracking-wider">
+                  Distance
+                </p>
+
+                {!userLocation ? (
+                  // No location — offer a soft prompt inline
+                  <button
+                    onClick={requestGpsLocation}
+                    className="flex items-center gap-2 px-3 py-2.5 bg-surface-modal border border-dashed border-border rounded-xl text-sm font-sans text-text-secondary hover:border-primary hover:text-primary transition-colors w-full"
+                  >
+                    <Navigation className="w-4 h-4 flex-shrink-0" />
+                    Enable location for distance filter
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {([
+                      { label: 'Any distance', value: undefined },
+                      { label: 'Within 10 km', value: 10 },
+                      { label: 'Within 20 km', value: 20 },
+                      { label: 'Within 30 km', value: 30 },
+                      { label: 'Within 50 km', value: 50 },
+                    ] as { label: string; value: number | undefined }[]).map(({ label, value }) => (
+                      <label
+                        key={label}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer hover:bg-surface-modal transition-colors"
+                      >
+                        <input
+                          type="radio"
+                          name="distance"
+                          checked={filters.distanceKm === value}
+                          onChange={() => {
+                            setFilters({
+                              distanceKm: value as SearchFilters['distanceKm'],
+                              userLat:    value !== undefined ? userLocation.lat : undefined,
+                              userLng:    value !== undefined ? userLocation.lng : undefined,
+                              sortBy:     value !== undefined ? 'nearest' : filters.sortBy,
+                            })
+                          }}
+                          className="accent-primary w-4 h-4"
+                        />
+                        <span className="text-sm font-sans text-text-secondary">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Categories */}
@@ -181,9 +238,51 @@ export const SearchResultsPage = () => {
                 </div>
               </div>
 
+              {/* Category-specific meta filters */}
+              {cat && CATEGORY_FIELDS[cat]?.filter((f) => f.type === 'select').length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <div className="w-full h-px bg-border" />
+                  <p className="text-xs font-semibold text-text-secondary font-sans uppercase tracking-wider">
+                    More Filters
+                  </p>
+                  {CATEGORY_FIELDS[cat]
+                    .filter((f) => f.type === 'select')
+                    .map((field) => (
+                      <div key={field.key} className="flex flex-col gap-2">
+                        <p className="text-xs font-semibold text-text-secondary font-sans capitalize">
+                          {field.label}
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {field.options?.map((opt) => (
+                            <label
+                              key={opt}
+                              className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer hover:bg-surface-modal transition-colors"
+                            >
+                              <input
+                                type="radio"
+                                name={field.key}
+                                value={opt}
+                                checked={metaFilters[field.key] === opt}
+                                onChange={() =>
+                                  setMetaFilters((prev) => ({
+                                    ...prev,
+                                    [field.key]: prev[field.key] === opt ? '' : opt,
+                                  }))
+                                }
+                                className="accent-primary w-4 h-4"
+                              />
+                              <span className="text-sm font-sans text-text-secondary">{opt}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+
               <Button
                 fullWidth
-                onClick={() => search(filters)}
+                onClick={() => search({ ...filters, meta: metaFilters })}
                 loading={isSearching}
               >
                 Apply Filters
@@ -218,7 +317,99 @@ export const SearchResultsPage = () => {
                   onRemove={() => updateParam('sort', null)}
                 />
               ))}
+              {/* Mobile: More Filters chip */}
+              {cat && CATEGORY_FIELDS[cat]?.filter((f) => f.type === 'select').length > 0 && (
+                <FilterChip
+                  label="More Filters"
+                  active={Object.values(metaFilters).some(Boolean)}
+                  onClick={() => setShowMetaPanel(true)}
+                />
+              )}
+              {!userLocation && (
+                <button
+                  onClick={requestGpsLocation}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-border bg-surface-modal text-xs font-sans text-text-muted hover:border-primary hover:text-primary transition-colors flex-shrink-0"
+                >
+                  <Navigation className="w-3 h-3" />
+                  Near me
+                </button>
+              )}
+              {userLocation && (
+                <>
+                  {([10, 20, 30, 50] as const).map((km) => (
+                    <FilterChip
+                      key={km}
+                      label={`${km} km`}
+                      active={filters.distanceKm === km}
+                      removable={filters.distanceKm === km}
+                      onClick={() =>
+                        setFilters({
+                          distanceKm: filters.distanceKm === km ? undefined : km,
+                          userLat:    filters.distanceKm === km ? undefined : userLocation.lat,
+                          userLng:    filters.distanceKm === km ? undefined : userLocation.lng,
+                          sortBy:     filters.distanceKm === km ? 'newest' : 'nearest',
+                        })
+                      }
+                      onRemove={() =>
+                        setFilters({ distanceKm: undefined, userLat: undefined, userLng: undefined, sortBy: 'newest' })
+                      }
+                    />
+                  ))}
+                </>
+              )}
             </div>
+
+            {/* Mobile meta filters panel */}
+            {showMetaPanel && (
+              <>
+                <div
+                  className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+                  onClick={() => setShowMetaPanel(false)}
+                />
+                <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-card rounded-t-3xl border-t border-border p-6 flex flex-col gap-4 lg:hidden animate-slide-up">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display font-bold text-text-primary">More Filters</h3>
+                    <button
+                      onClick={() => setShowMetaPanel(false)}
+                      className="text-text-muted hover:text-text-primary transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {CATEGORY_FIELDS[cat]
+                    .filter((f) => f.type === 'select')
+                    .map((field) => (
+                      <div key={field.key} className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold text-text-primary font-sans">{field.label}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {field.options?.map((opt) => (
+                            <FilterChip
+                              key={opt}
+                              label={opt}
+                              active={metaFilters[field.key] === opt}
+                              onClick={() =>
+                                setMetaFilters((prev) => ({
+                                  ...prev,
+                                  [field.key]: prev[field.key] === opt ? '' : opt,
+                                }))
+                              }
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      search({ ...filters, meta: metaFilters })
+                      setShowMetaPanel(false)
+                    }}
+                  >
+                    Apply
+                  </Button>
+                </div>
+              </>
+            )}
 
             {/* Results header */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -250,8 +441,11 @@ export const SearchResultsPage = () => {
               </select>
             </div>
 
+            {/* Location Prompt */}
+            <LocationPrompt context="search" className="mb-4" />
+
             {/* Active filter chips */}
-            {(filters.condition?.length || filters.minPrice || filters.maxPrice) && (
+            {(filters.condition?.length || filters.minPrice || filters.maxPrice || Object.values(metaFilters).some(Boolean)) && (
               <div className="flex flex-wrap gap-2">
                 {filters.condition?.map((c) => (
                   <FilterChip
@@ -270,8 +464,22 @@ export const SearchResultsPage = () => {
                     onRemove={() => setFilters({ minPrice: undefined, maxPrice: undefined })}
                   />
                 )}
+                {Object.entries(metaFilters)
+                  .filter(([, v]) => v)
+                  .map(([key, value]) => (
+                    <FilterChip
+                      key={key}
+                      label={value}
+                      active
+                      removable
+                      onRemove={() => setMetaFilters((prev) => ({ ...prev, [key]: '' }))}
+                    />
+                  ))}
                 <button
-                  onClick={() => setFilters({ condition: undefined, minPrice: undefined, maxPrice: undefined })}
+                  onClick={() => {
+                    setFilters({ condition: undefined, minPrice: undefined, maxPrice: undefined })
+                    setMetaFilters({})
+                  }}
                   className="flex items-center gap-1 text-xs text-text-secondary hover:text-danger font-sans transition-colors"
                 >
                   <X className="w-3 h-3" />

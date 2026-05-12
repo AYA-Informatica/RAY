@@ -40,14 +40,26 @@ exports.onUserDeleted = exports.onUserCreated = exports.onMessageCreated = expor
 const functions = __importStar(require("firebase-functions"));
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
-const listings_1 = require("./routes/listings");
-const users_1 = require("./routes/users");
-const conversations_1 = require("./routes/conversations");
-const reports_1 = require("./routes/reports");
-const admin_1 = require("./routes/admin");
-const search_1 = require("./routes/search");
-const response_1 = require("./utils/response");
-const rateLimit_1 = require("./middleware/rateLimit");
+// ─────────────────────────────────────────────
+// Environment variable loading for local development
+// ─────────────────────────────────────────────
+// Load .env file only in development when running locally
+if (process.env.NODE_ENV === 'development' && !process.env.FIREBASE_PROJECT_ID) {
+    try {
+        require('dotenv').config();
+        console.log('✓ Loaded environment variables from .env');
+    }
+    catch (error) {
+        console.warn('⚠️ Could not load .env file:', error?.message || error);
+    }
+}
+// Verify critical environment variables are present
+const requiredVars = ['FIREBASE_PROJECT_ID', 'MONGODB_URI'];
+const missingVars = requiredVars.filter(varName => !process.env[varName]);
+if (missingVars.length > 0) {
+    console.error('❌ Missing required environment variables:', missingVars);
+    console.error('Functions may not work correctly without these variables');
+}
 // ─────────────────────────────────────────────
 // Express app
 // ─────────────────────────────────────────────
@@ -55,27 +67,40 @@ const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
     origin: [
         'http://localhost:5173',
-        'http://localhost:5174',
-        'https://ray.rw',
-        'https://admin.ray.rw',
-        /\.ray\.rw$/,
+        'http://127.0.0.1:5173',
+        'https://ray.vercel.app',
+        'https://ray-production.web.app',
+        'https://ray-production.firebaseapp.com',
     ],
     credentials: true,
 }));
-app.use(express_1.default.json({ limit: '2mb' }));
-app.use(express_1.default.urlencoded({ extended: true }));
-// Health check
-app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', ts: new Date().toISOString() });
+app.use(express_1.default.json({ limit: '10mb' }));
+// ─── Health check ─────────────────────────────
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        envLoaded: !!process.env.MONGODB_URI,
+        projectId: process.env.FIREBASE_PROJECT_ID
+    });
 });
-// ─── API routes ──────────────────────────────
-app.use('/api/listings', listings_1.listingsRouter);
-app.use('/api/users/me', rateLimit_1.authLimiter, users_1.usersRouter);
-app.use('/api/users', users_1.usersRouter);
-app.use('/api/conversations', conversations_1.conversationsRouter);
-app.use('/api/reports', reports_1.reportsRouter);
-app.use('/api/search', rateLimit_1.searchLimiter, search_1.searchRouter);
+// ─── API routes ───────────────────────────────
+const listings_1 = require("./routes/listings");
+const users_1 = require("./routes/users");
+const conversations_1 = require("./routes/conversations");
+const reports_1 = require("./routes/reports");
+const admin_1 = require("./routes/admin");
+const search_1 = require("./routes/search");
+const migrations_1 = require("./routes/migrations");
+const response_1 = require("./utils/response");
+const rateLimit_1 = require("./middleware/rateLimit");
+app.use('/listings', listings_1.listingsRouter);
+app.use('/users', users_1.usersRouter);
+app.use('/conversations', conversations_1.conversationsRouter);
+app.use('/reports', reports_1.reportsRouter);
+app.use('/search', rateLimit_1.searchLimiter, search_1.searchRouter);
 app.use('/admin', admin_1.adminRouter);
+app.use('/migrations', migrations_1.migrationsRouter);
 // ─── Global error handler ─────────────────────
 app.use(response_1.errorHandler);
 // ─────────────────────────────────────────────

@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Image, Alert,
+  StyleSheet, Image, Alert, ActivityIndicator,
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import {
   Settings, ChevronRight, Heart, Bell, Star,
   Zap, HelpCircle, Shield, LogOut, Grid3X3,
+  MapPin, RefreshCw, Navigation
 } from 'lucide-react-native'
 import { Colors } from '@/theme/colors'
 import { STRINGS } from '@/constants'
 import { useAuthStore } from '@/store/authStore'
-import { listingsApi } from '@/services/api'
+import { useLocationStore } from '@/store/locationStore'
+import { usersApi } from '@/services/api'
 import type { Listing } from '@/types'
 
 const MENU_ITEMS = [
@@ -27,12 +29,16 @@ const MENU_ITEMS = [
 
 export const ProfileScreen = () => {
   const navigation          = useNavigation<any>()
-  const { user, logout }    = useAuthStore()
+  const { user, logout, updateUser }    = useAuthStore()
   const [listings, setListings] = useState<Listing[]>([])
+  const { userLocation, requestGpsLocation, setManualLocation, isRequesting } = useLocationStore()
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
-      listingsApi.getByUser(user.id).then(setListings).catch(() => {})
+      setLoading(true)
+      usersApi.getByUser(user.id).then(setListings).catch(() => {})
+      .finally(() => setLoading(false))
     }
   }, [user])
 
@@ -104,6 +110,67 @@ export const ProfileScreen = () => {
         </View>
       </View>
 
+      {/* Location card */}
+      <View style={styles.locationCard}>
+        <View style={styles.locationCardHeader}>
+          <Text style={styles.locationCardTitle}>Your Location</Text>
+          <Text style={styles.locationCardSub}>Used for nearby listings</Text>
+        </View>
+
+        <View style={styles.locationCardBody}>
+          {/* Current location */}
+          <View style={styles.locationRow}>
+            <View style={[
+              styles.locationIcon,
+              { backgroundColor: user?.location ? Colors.success + '20' : Colors.surfaceModal }
+            ]}>
+              <MapPin size={16} color={user?.location ? Colors.success : Colors.textMuted} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.locationLabel}>
+                {userLocation?.displayLabel ?? user?.location?.displayLabel ?? 'No location saved'}
+              </Text>
+              <Text style={styles.locationSub}>
+                {userLocation
+                  ? `Active · ${userLocation.source === 'gps' ? 'GPS' : 'Manual'}`
+                  : 'Tap below to set your location'}
+              </Text>
+            </View>
+          </View>
+
+          {/* GPS button */}
+          <TouchableOpacity
+            style={styles.locationUpdateBtn}
+            onPress={async () => {
+              const loc = await requestGpsLocation()
+              if (loc && user) {
+                try {
+                  await usersApi.updateProfile({
+                    location: {
+                      district:     'Kigali',
+                      neighborhood: 'Current Location',
+                      displayLabel: 'Your current location',
+                      lat:          loc.lat,
+                      lng:          loc.lng,
+                      source:       'gps',
+                    },
+                  })
+                  updateUser({ location: { ...loc, district: 'Kigali', neighborhood: 'Current Location' } })
+                } catch { /* silent */ }
+              }
+            }}
+            disabled={isRequesting}
+          >
+            {isRequesting
+              ? <ActivityIndicator size="small" color={Colors.primary} />
+              : <RefreshCw size={14} color={Colors.primary} />}
+            <Text style={styles.locationUpdateBtnText}>
+              {isRequesting ? 'Getting location...' : 'Update with GPS'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Premium banner */}
       <TouchableOpacity style={styles.premiumBanner} onPress={() => navigation.navigate('Premium')}>
         <View style={styles.premiumLeft}>
@@ -172,6 +239,17 @@ const styles = StyleSheet.create({
   statDivider:    { width: 1, backgroundColor: Colors.border },
   statValue:      { color: Colors.textPrimary, fontSize: 18, fontWeight: '800' },
   statLabel:      { color: Colors.textMuted, fontSize: 11, marginTop: 2 },
+  locationCard:   { margin: 16, backgroundColor: Colors.surfaceCard, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },
+  locationCardHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  locationCardTitle: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
+  locationCardSub:  { color: Colors.textSecondary, fontSize: 12, marginTop: 2 },
+  locationCardBody: { padding: 16 },
+  locationRow:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  locationIcon:   { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  locationLabel:  { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
+  locationSub:    { color: Colors.textSecondary, fontSize: 12, marginTop: 2 },
+  locationUpdateBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, backgroundColor: Colors.surfaceModal, borderRadius: 12 },
+  locationUpdateBtnText: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
   premiumBanner:  { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, padding: 16, backgroundColor: Colors.navy, borderRadius: 18 },
   premiumLeft:    { flex: 1 },
   premiumTitle:   { color: '#fff', fontSize: 14, fontWeight: '700' },

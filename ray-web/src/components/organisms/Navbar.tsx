@@ -15,6 +15,8 @@ import {
 import { Button } from '@/components/atoms/Button'
 import { Avatar } from '@/components/atoms/Avatar'
 import { useAuthStore } from '@/store/authStore'
+import { useLocationStore } from '@/store/locationStore'
+import { LocationConfirmChip } from '@/components/molecules/LocationConfirmChip'
 import { STRINGS } from '@/constants/strings'
 
 /**
@@ -24,6 +26,7 @@ import { STRINGS } from '@/constants/strings'
 export const Navbar = () => {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const { userLocation, requestGpsLocation } = useLocationStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
 
@@ -55,17 +58,38 @@ export const Navbar = () => {
             {/* Location pill */}
             <button
               type="button"
+              onClick={async () => {
+                if (userLocation) {
+                  // Already have location — clicking refreshes it
+                  await requestGpsLocation()
+                } else {
+                  await requestGpsLocation()
+                }
+              }}
               className={clsx(
                 'hidden sm:flex items-center gap-1.5 px-3 h-11 rounded-l-2xl',
                 'bg-surface-modal border border-r-0 border-border text-sm font-sans',
-                'text-text-secondary hover:text-text-primary transition-colors flex-shrink-0',
-                'whitespace-nowrap'
+                'text-text-secondary hover:text-text-primary transition-colors flex-shrink-0 whitespace-nowrap'
               )}
             >
               <MapPin className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-              <span className="hidden md:block">Rwanda</span>
+              <span className="hidden md:block max-w-[120px] truncate">
+                {userLocation
+                  ? userLocation.displayLabel === 'Your current location'
+                    ? 'Near you'
+                    : userLocation.displayLabel.split(',')[0]   // show just the neighborhood
+                  : 'Rwanda'
+                }
+              </span>
               <ChevronDown className="w-3 h-3" />
             </button>
+
+            {/* Location confirmation chip */}
+            {user && !userLocation && (
+              <div className="hidden sm:flex ml-2">
+                <LocationConfirmChip />
+              </div>
+            )}
 
             {/* Search input */}
             <div className="relative flex-1">

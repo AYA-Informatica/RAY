@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { MapPin, Calendar, MessageCircle, Flag, Star, Zap } from 'lucide-react'
@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/atoms/Skeleton'
 import { ListingGrid } from '@/components/organisms/ListingGrid'
 import { usersApi, chatApi, listingsApi } from '@/services/api'
 import { useAuthStore } from '@/store/authStore'
+import { useLocationStore } from '@/store/locationStore'
+import { haversineDistanceKm } from '@/constants/neighborhoodCoords'
 import { STRINGS } from '@/constants/strings'
 import type { User, Listing } from '@/types'
 
@@ -16,11 +18,20 @@ export const SellerProfilePage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user: currentUser } = useAuthStore()
+  const { userLocation } = useLocationStore()
 
   const [seller, setSeller] = useState<User | null>(null)
   const [listings, setListings] = useState<Listing[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isStartingChat, setIsStartingChat] = useState(false)
+
+  const distanceFromSeller = useMemo(() => {
+    if (!userLocation || !seller?.location?.lat || !seller?.location?.lng) return null
+    return haversineDistanceKm(
+      userLocation.lat, userLocation.lng,
+      seller.location.lat, seller.location.lng
+    )
+  }, [userLocation, seller])
 
   useEffect(() => {
     if (!id) return
@@ -132,6 +143,13 @@ export const SellerProfilePage = () => {
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-primary" />
                     {seller.location.displayLabel}
+                    {distanceFromSeller !== null && (
+                      <span className="text-text-muted ml-1">
+                        · {distanceFromSeller < 1
+                            ? `${Math.round(distanceFromSeller * 1000)}m from you`
+                            : `${distanceFromSeller.toFixed(1)} km from you`}
+                      </span>
+                    )}
                   </span>
                 )}
                 <span className="flex items-center gap-1">

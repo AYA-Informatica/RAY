@@ -33,6 +33,9 @@ const createSchema = zod_1.z.object({
     phone: zod_1.z.string().min(10),
     hidePhone: zod_1.z.coerce.boolean().default(false),
     makeFeatured: zod_1.z.coerce.boolean().default(false),
+    locationLat: zod_1.z.coerce.number().optional(),
+    locationLng: zod_1.z.coerce.number().optional(),
+    locationSource: zod_1.z.enum(['gps', 'manual']).optional(),
 });
 const searchSchema = zod_1.z.object({
     query: zod_1.z.string().optional(),
@@ -41,26 +44,27 @@ const searchSchema = zod_1.z.object({
     maxPrice: zod_1.z.coerce.number().optional(),
     condition: zod_1.z.array(zod_1.z.string()).optional(),
     district: zod_1.z.string().optional(),
+    meta: zod_1.z.record(zod_1.z.string()).optional(),
     distanceKm: zod_1.z.coerce.number().optional(),
+    userLat: zod_1.z.coerce.number().optional(),
+    userLng: zod_1.z.coerce.number().optional(),
     sortBy: zod_1.z.enum(['newest', 'price_asc', 'price_desc', 'nearest']).default('newest'),
     page: zod_1.z.coerce.number().default(1),
-    limit: zod_1.z.coerce.number().max(50).default(20),
+    limit: zod_1.z.coerce.number().min(1).max(50).default(20),
 });
 // ─────────────────────────────────────────────
 // POST /listings/search
 // ─────────────────────────────────────────────
 router.post('/search', auth_1.optionalAuth, async (req, res, next) => {
+    console.log('=== LISTINGS SEARCH REQUEST DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('User ID from auth:', req.userId);
+    console.log('Environment check - NODE_ENV:', process.env.NODE_ENV);
+    console.log('Environment check - FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID);
     try {
         await (0, db_1.connectDB)();
         const parsed = searchSchema.parse(req.body);
-        (0, debug_1.debugLog)('listings.search', 'Search request', {
-            userId: req.userId,
-            query: parsed.query,
-            category: parsed.category,
-            page: parsed.page,
-            limit: parsed.limit,
-            sortBy: parsed.sortBy,
-        });
+        console.log('Parsed search parameters:', parsed);
         const filter = { status: 'active' };
         if (parsed.query) {
             filter.$text = { $search: parsed.query };
@@ -78,6 +82,31 @@ router.post('/search', auth_1.optionalAuth, async (req, res, next) => {
         if (parsed.condition?.length) {
             filter.condition = { $in: parsed.condition };
         }
+        // Filter by meta fields (e.g. brand, make, year)
+        if (parsed.meta && typeof parsed.meta === 'object') {
+            for (const [key, value] of Object.entries(parsed.meta)) {
+                if (value !== undefined && value !== '') {
+                    filter[`meta.${key}`] = value;
+                }
+            }
+        }
+        // Distance filter with geospatial query
+        const hasDistance = parsed.distanceKm !== undefined &&
+            parsed.userLat !== undefined &&
+            parsed.userLng !== undefined;
+        if (hasDistance) {
+            // $nearSphere requires the 2dsphere index
+            // It automatically sorts by distance when used as the only sort
+            filter['geoPoint'] = {
+                $nearSphere: {
+                    $geometry: {
+                        type: 'Point',
+                        coordinates: [parsed.userLng, parsed.userLat], // lng, lat
+                    },
+                    $maxDistance: parsed.distanceKm * 1000, // metres
+                },
+            };
+        }
         const sortMap = {
             newest: { isFeatured: -1, postedAt: -1 },
             price_asc: { price: 1 },
@@ -85,24 +114,31 @@ router.post('/search', auth_1.optionalAuth, async (req, res, next) => {
             nearest: { isFeatured: -1, postedAt: -1 }, // geo sort needs 2dsphere index
         };
         const skip = (parsed.page - 1) * parsed.limit;
-        const sort = sortMap[parsed.sortBy];
-        const [listings, total] = await Promise.all([
-            Listing_1.Listing.find(filter).sort(sort).skip(skip).limit(parsed.limit).lean(),
+        // Only apply sort if distance filter is NOT active ($nearSphere already sorts by distance)
+        const query = Listing_1.Listing.find(filter);
+        if (!hasDistance) {
+            const sort = sortMap[parsed.sortBy];
+            query.sort(sort);
+        }
+        const [docs, total] = await Promise.all([
+            query.skip(skip).limit(parsed.limit).lean(),
             Listing_1.Listing.countDocuments(filter),
         ]);
-        (0, response_1.ok)(res, {
-            listings,
+        const result = {
+            listings: docs.map(doc => ({
+                id: doc._id.toString(),
+                ...doc.toObject(),
+            })),
+            hasMore: skip + docs.length < total,
             total,
-            page: parsed.page,
-            hasMore: skip + listings.length < total,
-        });
-        (0, debug_1.debugLog)('listings.search', 'Search response', {
-            total,
-            returned: listings.length,
-            page: parsed.page,
-        });
+        };
+        console.log('✓ Search completed successfully, returning', result.listings.length, 'listings');
+        console.log('=== END LISTINGS SEARCH REQUEST DEBUG ===');
+        (0, response_1.ok)(res, result);
     }
     catch (err) {
+        console.error('❌ Search request failed:', err);
+        console.log('=== END LISTINGS SEARCH REQUEST DEBUG (ERROR) ===');
         next(err);
     }
 });
@@ -218,6 +254,16 @@ router.post('/', auth_1.requireAuth, rateLimit_1.listingCreateLimiter, upload.ar
             (0, response_1.badRequest)(res, 'At least one image is required');
             return;
         }
+        // Parse meta field from form body
+        let meta = {};
+        if (req.body.meta) {
+            try {
+                meta = JSON.parse(req.body.meta);
+            }
+            catch {
+                meta = {};
+            }
+        }
         // Get seller info
         const seller = await User_1.User.findOne({ firebaseUid: req.firebaseUid }).lean();
         if (!seller) {
@@ -268,6 +314,7 @@ router.post('/', auth_1.requireAuth, rateLimit_1.listingCreateLimiter, upload.ar
             status: body.makeFeatured ? 'active' : 'active',
             isFeatured: body.makeFeatured,
             featuredUntil: body.makeFeatured ? new Date(Date.now() + 7 * 86400000) : undefined,
+            meta,
             postedAt: new Date(),
             expiresAt,
         });

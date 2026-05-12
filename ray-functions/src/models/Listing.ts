@@ -7,7 +7,7 @@ export interface IListing extends Document {
   price: number
   negotiable: boolean
   condition: 'new' | 'like_new' | 'good' | 'fair'
-  category: string
+  category: 'mobiles' | 'electronics' | 'vehicles' | 'property' | 'fashion' | 'furniture' | 'food' | 'services' | 'jobs' | 'health' | 'sports' | 'kids'
   subcategory?: string
   images: string[]
   coverImage: string
@@ -15,8 +15,9 @@ export interface IListing extends Document {
     district: string
     neighborhood: string
     displayLabel: string
-    lat?: number
-    lng?: number
+    lat: number
+    lng: number
+    source: 'gps' | 'manual'
   }
   seller: {
     id: string
@@ -36,11 +37,16 @@ export interface IListing extends Document {
   chatCount: number
   savedCount: number
   tags: string[]
+  meta?: Record<string, string | number | boolean>
   postedAt: Date
   expiresAt: Date
   soldAt?: Date
   createdAt: Date
   updatedAt: Date
+  geoPoint?: {
+    type: 'Point'
+    coordinates: [number, number]   // [lng, lat] — GeoJSON order
+  }
 }
 
 const ListingSchema = new Schema<IListing>(
@@ -65,8 +71,9 @@ const ListingSchema = new Schema<IListing>(
       district:     { type: String, required: true, index: true },
       neighborhood: { type: String, required: true, index: true },
       displayLabel: { type: String, required: true },
-      lat:          { type: Number },
-      lng:          { type: Number },
+      lat:          { type: Number, required: true },
+      lng:          { type: Number, required: true },
+      source:       { type: String, enum: ['gps', 'manual'], default: 'manual' },
     },
 
     seller: {
@@ -96,6 +103,12 @@ const ListingSchema = new Schema<IListing>(
     savedCount: { type: Number, default: 0 },
     tags:       { type: [String], default: [] },
 
+    meta: {
+      type: Map,
+      of: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
     postedAt:  { type: Date, default: Date.now, index: true },
     expiresAt: { type: Date, required: true, index: true },
     soldAt:    { type: Date },
@@ -123,8 +136,38 @@ ListingSchema.index({ 'seller.id': 1, status: 1 })
 ListingSchema.index({ isFeatured: 1, status: 1, postedAt: -1 })
 ListingSchema.index({ title: 'text', description: 'text', tags: 'text' })
 
+// Category + brand (mobiles, electronics, fashion, health, sports)
+ListingSchema.index({ status: 1, category: 1, 'meta.brand': 1 })
+
+// Category + make/year (vehicles)
+ListingSchema.index({ status: 1, category: 1, 'meta.make': 1 })
+ListingSchema.index({ status: 1, category: 1, 'meta.year': 1 })
+
+// Category + bedrooms (property)
+ListingSchema.index({ status: 1, category: 1, 'meta.bedrooms': 1 })
+
+// Category + size (fashion, kids, sports)
+ListingSchema.index({ status: 1, category: 1, 'meta.size': 1 })
+
+// Category + age_range (kids)
+ListingSchema.index({ status: 1, category: 1, 'meta.age_range': 1 })
+
+// Geospatial index
+ListingSchema.index({ geoPoint: '2dsphere' })
+
 // ─── Auto-expire listings ────────────────────
 ListingSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
+// ─── Auto-populate geoPoint from location coordinates ────────────────────
+ListingSchema.pre('save', function (next) {
+  if (this.location?.lat && this.location?.lng) {
+    this.geoPoint = {
+      type:        'Point',
+      coordinates: [this.location.lng, this.location.lat],   // GeoJSON: lng first
+    }
+  }
+  next()
+})
 
 export const Listing: Model<IListing> =
   mongoose.models.Listing || mongoose.model<IListing>('Listing', ListingSchema)
