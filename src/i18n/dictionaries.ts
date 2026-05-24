@@ -1,0 +1,271 @@
+/**
+ * Lightweight i18n. English + Kinyarwanda (French = future expansion).
+ * No external library — a typed dictionary keeps the bundle small for
+ * low-bandwidth networks. Keys are dot-free flat strings for simplicity.
+ */
+export const LOCALES = ["en", "rw"] as const;
+export type Locale = (typeof LOCALES)[number];
+
+export const LOCALE_LABELS: Record<Locale, string> = {
+  en: "English",
+  rw: "Kinyarwanda",
+};
+
+type Dict = Record<string, string>;
+
+const en: Dict = {
+  // Global / nav
+  "nav.home": "Home",
+  "nav.search": "Search",
+  "nav.sell": "Sell",
+  "nav.messages": "Message",
+  "nav.profile": "Profile",
+  "common.continue": "Continue",
+  "common.cancel": "Cancel",
+  "common.save": "Save",
+  "common.delete": "Delete",
+  "common.edit": "Edit",
+  "common.back": "Back",
+  "common.loading": "Loading…",
+  "common.seeAll": "See all",
+  "common.negotiable": "Negotiable",
+
+  // Splash / auth
+  "splash.tagline": "Buy & Sell Anything Near You",
+  "splash.getStarted": "Get Started",
+  "auth.welcome": "Welcome",
+  "auth.subtitle": "Continue with Google to post ads, chat with sellers and save favorites.",
+  "auth.google": "Continue with Google",
+
+  // Home
+  "home.browseCategories": "Browse Categories",
+  "home.recentListings": "Recent Listings",
+  "home.premiumTitle": "Sell Faster with Premium",
+  "home.premiumSub": "Get 3x more visibility for your listings",
+  "home.upgradeNow": "Upgrade Now",
+  "home.searchPlaceholder": "Search for items, brands, or categories…",
+  "home.empty": "No listings yet — be the first to post.",
+  "home.postAd": "Post an ad",
+
+  // Listing detail
+  "listing.details": "Details",
+  "listing.description": "Description",
+  "listing.chatWith": "Chat with",
+  "listing.safetyNote": "Meet in a public place. Never pay before seeing the item.",
+  "listing.views": "views",
+  "listing.report": "Report",
+
+  // Sell
+  "sell.whatSelling": "What are you selling?",
+  "sell.addPhotos": "Add up to 7 photos. The first is your cover.",
+  "sell.cover": "Cover",
+  "sell.title": "Title",
+  "sell.price": "Price",
+  "sell.priceNegotiable": "Price is negotiable",
+  "sell.condition": "Condition",
+  "sell.descriptionLabel": "Description",
+  "sell.useLocation": "Use my current location",
+  "sell.locationDetected": "Location detected ✓",
+  "sell.city": "City",
+  "sell.district": "District",
+  "sell.neighborhood": "Neighborhood",
+  "sell.postAd": "Post Ad",
+  "sell.goesLive": "Your ad goes live instantly and stays active for 30 days.",
+  "sell.signInToPost": "Sign in to upload photos and post your ad.",
+
+  // Search
+  "search.placeholder": "Search in RAY…",
+  "search.noResults": "No results found",
+  "search.noResultsSub": "Try a different search, widen the distance, or clear filters.",
+  "search.clear": "Clear search",
+  "search.found": "Found",
+  "search.results": "results",
+  "search.filters": "Filters",
+  "search.priceRange": "Price range",
+  "search.distance": "Distance",
+  "search.reset": "Reset",
+  "search.apply": "Apply",
+
+  // Chat
+  "chat.title": "Messages",
+  "chat.empty": "No messages yet",
+  "chat.emptySub": "When you chat with a seller about a listing, it'll show up here.",
+  "chat.sayHello": "Say hello 👋 — ask if it's still available.",
+  "chat.typeMessage": "Type a message…",
+  "chat.online": "Online",
+  "chat.lastSeen": "Last seen",
+  "chat.block": "Block user",
+  "chat.unblock": "Unblock",
+  "chat.blocked": "You blocked this user. Unblock to continue.",
+  "chat.reply.available": "Is this available?",
+  "chat.reply.lastPrice": "Last price?",
+  "chat.reply.meet": "Can we meet today?",
+  "chat.reply.whySelling": "Why are you selling it?",
+  "chat.reply.howLong": "How long have you used it?",
+
+  // Profile
+  "profile.title": "My Account",
+  "profile.activeAds": "Active Ads",
+  "profile.totalViews": "Total Views",
+  "profile.favourites": "Favourites",
+  "profile.goPremium": "Go Premium",
+  "profile.goPremiumSub": "Sell 3x faster with featured listings",
+  "profile.upgrade": "Upgrade",
+  "profile.myAds": "My Ads",
+  "profile.notifications": "Notifications",
+  "profile.reviews": "Reviews & Ratings",
+  "profile.upgradePremium": "Upgrade to Premium",
+  "profile.settings": "Settings",
+  "profile.help": "Help & Support",
+  "profile.safety": "Safety Tips",
+  "profile.logout": "Logout",
+  "profile.language": "Language",
+
+  // My Ads
+  "myAds.title": "My Ads",
+  "myAds.empty": "You haven't posted anything yet",
+  "myAds.emptySub": "Your listings will appear here. Post your first ad in under a minute.",
+  "myAds.editAd": "Edit ad",
+  "myAds.markSold": "Mark as sold",
+  "myAds.markActive": "Mark active",
+  "myAds.deleteAd": "Delete ad",
+  "myAds.deleteConfirm": "Delete this listing? This can't be undone.",
+  "myAds.status.active": "Active",
+  "myAds.status.sold": "Sold",
+  "myAds.status.expired": "Expired",
+  "myAds.status.removed": "Removed",
+  "myAds.status.flagged": "Under review",
+
+  // Favorites
+  "fav.title": "Favourites",
+  "fav.empty": "No favourites yet",
+  "fav.emptySub": "Tap the heart on any listing to save it here for later.",
+  "fav.browse": "Browse listings",
+};
+
+const rw: Dict = {
+  "nav.home": "Ahabanza",
+  "nav.search": "Shakisha",
+  "nav.sell": "Gurisha",
+  "nav.messages": "Ubutumwa",
+  "nav.profile": "Umwirondoro",
+  "common.continue": "Komeza",
+  "common.cancel": "Hagarika",
+  "common.save": "Bika",
+  "common.delete": "Siba",
+  "common.edit": "Hindura",
+  "common.back": "Subira inyuma",
+  "common.loading": "Birimo gupakira…",
+  "common.seeAll": "Reba byose",
+  "common.negotiable": "Birashobora kuganirwaho",
+
+  "splash.tagline": "Gura & Gurisha Ikintu Cyose Hafi Yawe",
+  "splash.getStarted": "Tangira",
+  "auth.welcome": "Murakaza neza",
+  "auth.subtitle": "Komeza ukoresheje Google kugira ngo ushyireho amatangazo, uganire n'abagurisha, kandi ubike ibyo ukunda.",
+  "auth.google": "Komeza na Google",
+
+  "home.browseCategories": "Reba Ibyiciro",
+  "home.recentListings": "Amatangazo Mashya",
+  "home.premiumTitle": "Gurisha Vuba na Premium",
+  "home.premiumSub": "Bona kugaragara inshuro 3 kurushaho",
+  "home.upgradeNow": "Zamura Nonaha",
+  "home.searchPlaceholder": "Shakisha ibintu, amazina, cyangwa ibyiciro…",
+  "home.empty": "Nta matangazo arahaba — ba uwa mbere gushyiraho.",
+  "home.postAd": "Shyiraho itangazo",
+
+  "listing.details": "Amakuru",
+  "listing.description": "Ibisobanuro",
+  "listing.chatWith": "Ganira na",
+  "listing.safetyNote": "Muhurire ahantu hagaragara. Ntukishyure mbere yo kubona ikintu.",
+  "listing.views": "abarebye",
+  "listing.report": "Tanga raporo",
+
+  "sell.whatSelling": "Urimo kugurisha iki?",
+  "sell.addPhotos": "Shyiraho amafoto agera kuri 7. Irya mbere ni igifuniko.",
+  "sell.cover": "Igifuniko",
+  "sell.title": "Umutwe",
+  "sell.price": "Igiciro",
+  "sell.priceNegotiable": "Igiciro birashobora kuganirwaho",
+  "sell.condition": "Imiterere",
+  "sell.descriptionLabel": "Ibisobanuro",
+  "sell.useLocation": "Koresha aho ndi ubu",
+  "sell.locationDetected": "Aho uri haramenyekanye ✓",
+  "sell.city": "Umujyi",
+  "sell.district": "Akarere",
+  "sell.neighborhood": "Umudugudu",
+  "sell.postAd": "Shyiraho Itangazo",
+  "sell.goesLive": "Itangazo ryawe rigaragara ako kanya kandi rimara iminsi 30.",
+  "sell.signInToPost": "Injira kugira ngo ushyireho amafoto utangaze.",
+
+  "search.placeholder": "Shakisha muri RAY…",
+  "search.noResults": "Nta byabonetse",
+  "search.noResultsSub": "Gerageza ikindi, wagure intera, cyangwa usibe muyunguruzi.",
+  "search.clear": "Siba ishakisha",
+  "search.found": "Habonetse",
+  "search.results": "ibisubizo",
+  "search.filters": "Muyunguruzi",
+  "search.priceRange": "Urwego rw'igiciro",
+  "search.distance": "Intera",
+  "search.reset": "Subiramo",
+  "search.apply": "Emeza",
+
+  "chat.title": "Ubutumwa",
+  "chat.empty": "Nta butumwa burahaba",
+  "chat.emptySub": "Iyo uganiriye n'umugurisha ku itangazo, bizagaragara hano.",
+  "chat.sayHello": "Mwaramutse 👋 — baza niba kikiriho.",
+  "chat.typeMessage": "Andika ubutumwa…",
+  "chat.online": "Kuri interineti",
+  "chat.lastSeen": "Aheruka kuboneka",
+  "chat.block": "Buza umuntu",
+  "chat.unblock": "Kuraho kubuza",
+  "chat.blocked": "Wabujije uyu muntu. Kuraho kubuza kugira ngo ukomeze.",
+  "chat.reply.available": "Iki kikiriho?",
+  "chat.reply.lastPrice": "Igiciro cya nyuma?",
+  "chat.reply.meet": "Twahurira uyu munsi?",
+  "chat.reply.whySelling": "Kuki urigurisha?",
+  "chat.reply.howLong": "Wamaze igihe kingana iki ukoresha?",
+
+  "profile.title": "Konti Yanjye",
+  "profile.activeAds": "Amatangazo Akora",
+  "profile.totalViews": "Abarebye Bose",
+  "profile.favourites": "Ibikunzwe",
+  "profile.goPremium": "Jya kuri Premium",
+  "profile.goPremiumSub": "Gurisha inshuro 3 vuba n'amatangazo yatoranyijwe",
+  "profile.upgrade": "Zamura",
+  "profile.myAds": "Amatangazo Yanjye",
+  "profile.notifications": "Amatangazo",
+  "profile.reviews": "Isuzuma & Amanota",
+  "profile.upgradePremium": "Zamura ujye kuri Premium",
+  "profile.settings": "Igenamiterere",
+  "profile.help": "Ubufasha",
+  "profile.safety": "Inama z'Umutekano",
+  "profile.logout": "Sohoka",
+  "profile.language": "Ururimi",
+
+  "myAds.title": "Amatangazo Yanjye",
+  "myAds.empty": "Nta cyo warashyiraho",
+  "myAds.emptySub": "Amatangazo yawe azagaragara hano. Shyiraho itangazo rya mbere mu munota.",
+  "myAds.editAd": "Hindura itangazo",
+  "myAds.markSold": "Shyira ku byagurishijwe",
+  "myAds.markActive": "Garura ku bikora",
+  "myAds.deleteAd": "Siba itangazo",
+  "myAds.deleteConfirm": "Siba iri tangazo? Ntibishoboka gusubiramo.",
+  "myAds.status.active": "Rikora",
+  "myAds.status.sold": "Ryagurishijwe",
+  "myAds.status.expired": "Ryarangiye",
+  "myAds.status.removed": "Ryakuweho",
+  "myAds.status.flagged": "Rirasuzumwa",
+
+  "fav.title": "Ibikunzwe",
+  "fav.empty": "Nta bikunzwe birahaba",
+  "fav.emptySub": "Kanda ku mutima ku itangazo iryo ari ryo ryose kugira ngo uribike.",
+  "fav.browse": "Reba amatangazo",
+};
+
+export const dictionaries: Record<Locale, Dict> = { en, rw };
+
+/** Translate a key for a locale, falling back to English then the key itself. */
+export function translate(locale: Locale, key: string): string {
+  return dictionaries[locale][key] ?? dictionaries.en[key] ?? key;
+}

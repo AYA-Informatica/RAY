@@ -1,253 +1,253 @@
-# RAY — The Operating System for Local Commerce in East Africa
+# RAY
 
-> **Buy & Sell Anything Near You** — Kigali-first hyperlocal classifieds platform.
+**The Operating System for Local Commerce in Rwanda & East Africa.**
 
----
+A modern, mobile-first, hyperlocal marketplace where people buy, sell, rent, and discover trusted deals nearby — more structured than Facebook Marketplace, more local than Jiji, more modern than OLX.
 
-## Monorepo Structure
-
-```
-ray/
-├── ray-web/          # User-facing web app (React + Vite + TypeScript)
-├── ray-admin/        # Internal admin dashboard (React + Vite + TypeScript)
-└── README.md
-```
-
-The **React Native mobile app** follows the same architecture and shares all types, constants, and service patterns from `ray-web/src/`.
+This repository is the **MVP foundation**: user accounts (Google Sign-In), posting ads, search & filters, real-time chat, categories, hyperlocal location targeting, listing discovery, a basic moderation pipeline, and a trust-first UX — plus an admin dashboard.
 
 ---
 
-## Tech Stack
+## Tech stack (non-negotiable)
 
-| Layer | Technology |
-|---|---|
-| Web Frontend | React 18 + Vite + TypeScript (strict) |
-| Admin Dashboard | React 18 + Vite + TypeScript |
-| Styling | Tailwind CSS (dark-first, RAY palette) |
-| State | Zustand + TanStack Query |
-| Forms | React Hook Form + Zod |
-| Auth | Firebase Phone Auth (OTP) |
-| Database | MongoDB via Firebase Cloud Functions |
-| Realtime | Firebase Firestore (chat) |
-| Storage | Firebase Storage (images) |
-| Push | Firebase Cloud Messaging |
-| Charts | Recharts |
-| Tables | TanStack Table v8 |
-| Animations | Framer Motion |
-| SEO | React Helmet Async + JSON-LD |
-| Fonts | DM Sans + Syne (Google Fonts) |
+| Layer | Choice |
+| --- | --- |
+| Framework | Next.js 14 (App Router), React 18, TypeScript (strict) |
+| Styling | Tailwind CSS — dark-mode native, fixed brand tokens |
+| Motion | Framer Motion |
+| State | Zustand |
+| Forms / validation | React Hook Form + Zod |
+| Backend | Supabase (Auth · PostgreSQL · Storage · Realtime · RLS) |
+| ORM | Prisma |
+| Rate limiting | Upstash Redis (`@upstash/ratelimit`) |
+| Logging | Pino |
+| Deploy | Vercel · PWA-first (Capacitor later) |
 
 ---
 
-## Quick Start
+## What you need to provide (secrets)
 
-### 1. Clone & install
+The code is complete and runnable, but a few values can only come from **your** accounts. Nothing in this repo can fabricate them:
+
+1. A **Supabase project** (URL + anon key + service-role key + database connection strings).
+2. **Google OAuth** configured *inside* Supabase (Auth → Providers → Google).
+3. (Optional in dev) an **Upstash Redis** instance for rate limiting. Without it, the limiter safely no-ops in development.
+
+---
+
+## Setup — step by step
+
+### 1. Install
 
 ```bash
-# Web app
-cd ray-web
 npm install
-
-# Admin dashboard
-cd ../ray-admin
-npm install
+cp .env.example .env
 ```
 
-### 2. Configure environment
+### 2. Create the Supabase project
+
+- Go to https://supabase.com → New project.
+- **Project Settings → API**: copy `Project URL`, `anon public` key, and `service_role` key into `.env`
+  (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
+- **Project Settings → Database → Connection string**: copy the pooled (port `6543`) string into `DATABASE_URL`
+  and the direct (port `5432`) string into `DIRECT_URL`.
+
+### 3. Configure Google Sign-In
+
+- In Google Cloud Console, create an **OAuth 2.0 Client** (Web application).
+- Authorized redirect URI: `https://<your-project-ref>.supabase.co/auth/v1/callback`.
+- In Supabase: **Authentication → Providers → Google** → paste the Client ID & Secret, enable.
+- In Supabase: **Authentication → URL Configuration** → add your site URL(s) and
+  `http://localhost:3000/auth/callback` (and your production `/auth/callback`) to redirect URLs.
+
+> Auth is **Google-only** by design. There is no phone OTP (removed per the v2.0 build spec).
+
+### 4. Create the schema, triggers & RLS
 
 ```bash
-# ray-web/
-cp .env .env.backup  # Backup if needed
-# Edit .env with your Firebase and Cloudinary values
-
-# ray-admin/
-cp .env .env.backup
-# Edit .env with your Firebase values
+npm run prisma:generate          # generate the Prisma client
+npm run prisma:deploy            # apply migrations (creates tables)
 ```
 
-### 3. Firebase setup
+Then open the **Supabase SQL Editor** and run the contents of [`prisma/setup.sql`](./prisma/setup.sql).
+This installs:
 
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Enable **Phone Authentication** (Auth → Sign-in methods)
-3. Enable **Firestore Database** (start in production mode)
-4. Enable **Storage** (or use Cloudinary - see below)
-5. Enable **Cloud Messaging** (for push notifications)
-6. Deploy Cloud Functions (see `/functions/` — to be added)
-7. Set custom claims for admin users:
+- the `auth.users → public."User"` sync triggers (so Google sign-ups appear as marketplace users), and
+- all **Row Level Security** policies (UUID ownership isolation, buyer/seller-only chat, private favorites, etc.).
 
-```javascript
-// In Firebase Admin SDK (Cloud Function or script)
-admin.auth().setCustomUserClaims(uid, { role: 'admin' })
-```
-
-**Alternative: Use Cloudinary for Image Storage** (Recommended)
-
-Cloudinary offers better performance and automatic image optimization:
-- 25GB free storage (vs Firebase's 5GB)
-- Automatic WebP conversion (40% smaller images)
-- On-the-fly image resizing
-- No credit card required
-
-See [CLOUDINARY_SETUP_GUIDE.md](./CLOUDINARY_SETUP_GUIDE.md) for setup instructions.
-
-### 4. Run dev servers
+### 5. Seed the launch categories
 
 ```bash
-# Web app → http://localhost:5173
-cd ray-web && npm run dev
+npm run db:seed
+```
 
-# Admin dashboard → http://localhost:5174
-cd ray-admin && npm run dev
+Seeds the 10 launch categories (Phones, Electronics, Cars, Bikes, Rentals, Furniture, Fashion, Jobs, Services, Kids) and their **dynamic attribute schemas** (e.g. Phones → Brand/Storage/RAM; Cars → Year/Mileage/Transmission; Rentals → Bedrooms/Furnished).
+
+### 6. Create the Storage buckets
+
+In Supabase **Storage**, create three **public** buckets:
+
+```
+listings
+avatars
+chat-images
+```
+
+Images are compressed client-side to WebP before upload (low-bandwidth optimization).
+
+### 7. (Optional) Rate limiting
+
+Create an Upstash Redis database and set `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`.
+Skip in dev — the limiter logs a warning and allows all requests.
+
+### 7b. Cron secret (for listing expiry)
+
+Set `CRON_SECRET` to a long random string in your Vercel env vars. The daily
+expiry job (`vercel.json`) only runs on Vercel; Vercel Cron sends the secret
+automatically. In local dev you can omit it (the route then runs unauthenticated).
+
+### 8. Run
+
+```bash
+npm run dev          # http://localhost:3000
+```
+
+> **Before any of the above is configured**, the app still boots and renders a set of demo listings so you can see the UI. Real data replaces them automatically once the database is reachable and seeded.
+
+### 9. Make yourself an admin
+
+After signing in once, promote your user in the Supabase SQL editor:
+
+```sql
+update public."User" set role = 'ADMIN' where email = 'you@example.com';
+```
+
+Then visit `/admin`.
+
+---
+
+## Scripts
+
+```bash
+npm run dev              # local dev server
+npm run build            # prisma generate + next build
+npm run start            # run the production build
+npm run typecheck        # tsc --noEmit (strict)
+npm run lint             # next lint
+npm run prisma:deploy    # apply migrations
+npm run db:seed          # seed categories + attributes
+npm run prisma:studio    # browse the DB
 ```
 
 ---
 
-## Color Palette
-
-| Token | Hex | Usage |
-|---|---|---|
-| `primary` | `#E8390E` | Brand orange-red, CTAs, prices |
-| `primary-dark` | `#C42E08` | Hover/active states |
-| `surface-card` | `#242424` | Listing cards, panels |
-| `surface-modal` | `#2C2C2C` | Inputs, modals |
-| `background` | `#111111` | Page background |
-| `navy` | `#1B2B5E` | Premium banners |
-| `success` | `#22C55E` | Verified badges, availability |
-| `warning` | `#F59E0B` | Pending states, fast reply |
-| `danger` | `#EF4444` | Errors, scam alerts |
-| `text-primary` | `#FFFFFF` | Main body text |
-| `text-secondary` | `#A0A0A0` | Labels, captions |
-
----
-
-## Project Architecture
-
-### `ray-web/src/`
+## Project structure
 
 ```
-components/
-  atoms/         Button, Input, Badge, Avatar, Skeleton
-  molecules/     ListingCard, FilterChip, UserRow, ChatBubble
-  organisms/     Navbar, CategoryNav, ListingGrid
-  Layout.tsx     Sticky nav + footer + mobile tab bar
-  ProtectedRoute.tsx
-
-pages/
-  HomePage.tsx           Categories + 3 listing sections
-  SearchResultsPage.tsx  Sidebar filters + sortable grid
-  ListingDetailPage.tsx  Image gallery + seller card + chat CTA
-  PostAdPage.tsx         6-step posting flow (<60s target)
-  AuthPage.tsx           Phone OTP login
-  ChatPages.tsx          ChatList + ChatDetail (real-time)
-  AccountPage.tsx        Profile + stats + menu
-  SellerProfilePage.tsx  Public seller view
-  CategoryPage.tsx       Browse by category
-  misc.tsx               NotFoundPage + ProfileSetupPage
-
-hooks/
-  useListings.ts   useHomeListings, useSearch, useListing, useSimilarListings
-  useAuth.ts       Firebase auth state
-  useChat.ts       useConversations, useChatMessages (Firestore real-time)
-
-store/
-  authStore.ts     User auth + OTP flow
-  listingsStore.ts Search filters + results + home sections
-
-services/
-  firebase.ts      App, Auth, Firestore, Storage, FCM
-  api.ts           All MongoDB endpoints via Cloud Functions
-
-constants/
-  categories.ts    8 categories + subcategories
-  locations.ts     All Kigali neighborhoods by district
-  strings.ts       All UI text (i18n-ready: EN/KIN/FR)
-
-types/
-  index.ts         User, Listing, Chat, Search, Notification types
-```
-
-### `ray-admin/src/`
-
-```
-pages/
-  AdminLoginPage.tsx     Email + password login (role-checked)
-  DashboardPage.tsx      Stats + Area/Bar/Pie charts (Recharts)
-  AdminListingsPage.tsx  Full CRUD table (TanStack Table)
-  AdminUsersPage.tsx     User management + ban/verify
-  AdminReportsPage.tsx   Moderation queue + action workflow
-  AdminAnalyticsPage.tsx Revenue charts + platform health
-
-guards/
-  AdminGuard.tsx   Firebase custom claims role check
-
-components/
-  organisms/AdminLayout.tsx  Sidebar + PageHeader
-  atoms/index.tsx            Shared UI atoms
+src/
+├── app/
+│   ├── (auth)/login         Google Sign-In
+│   ├── (admin)/admin        Role-gated dashboard (overview/listings/reports/users)
+│   ├── auth/callback        OAuth code exchange
+│   ├── home                 Marketplace feed
+│   ├── listing/[id]         Listing detail (+ SEO metadata, JSON-LD)
+│   ├── sell                 6-step posting wizard
+│   ├── search               Search + filters
+│   ├── chat, chat/[id]      Inbox + realtime thread
+│   ├── profile, favorites   Account + saved listings
+│   ├── api/                 Route handlers (listings, search, chat, favorites, reports, users, admin, categories)
+│   ├── sitemap.ts           Dynamic sitemap
+│   └── error/not-found/...  Custom error & loading states
+├── components/  ui · listings · search · chat · profile · layout · admin · shared
+├── features/    (reserved for feature modules)
+├── lib/         prisma · supabase · auth · permissions · validations · sanitization · ratelimit · storage · utils
+├── services/    server-side data access (graceful fallbacks)
+├── store/       zustand (favorites, sell draft)
+├── design/      design tokens (colors/typography/spacing/radius/shadows/motion)
+├── constants/   theme · categories · locations
+├── types/       shared TS types
+└── middleware.ts  session refresh + route gating
+prisma/          schema.prisma · setup.sql · seed.ts
 ```
 
 ---
 
-## Screens Built
+## Security model
 
-### Web App
-- ✅ Home — categories + 3 feed sections + premium banner
-- ✅ Search results — filters sidebar + sort + pagination
-- ✅ Listing detail — gallery + sticky seller card + chat CTA + JSON-LD SEO
-- ✅ Post Ad — 6-step flow with photo upload + featured upsell
-- ✅ Auth — phone OTP (Firebase Phone Auth)
-- ✅ Profile setup — new user onboarding
-- ✅ Chat list — real-time conversations
-- ✅ Chat detail — real-time messages + quick replies + safety banner
-- ✅ Account — stats + menu + my listings tabs
-- ✅ Seller profile — public view + ratings + listings grid
-- ✅ Category browse — subcategory chips + listings
-- ✅ 404 page
-
-### Admin Dashboard
-- ✅ Login — email/password + role validation
-- ✅ Dashboard — 4 stat cards + activity charts + category pie
-- ✅ Listings — searchable/filterable table + approve/reject/feature/delete
-- ✅ Users — searchable table + ban/unban/verify
-- ✅ Reports — moderation queue + expand/resolve/dismiss workflow
-- ✅ Analytics — revenue line chart + monetisation breakdown + health metrics
+- **Auth**: Supabase Google OAuth. `middleware.ts` refreshes the session and gates `/sell`, `/chat`, `/favorites`, `/profile`, `/admin`.
+- **UUID ownership isolation**: every mutating query is scoped to `auth.uid()`; RLS enforces it at the database layer too.
+- **Input**: Zod validation + DOMPurify sanitization on all writes (titles, descriptions, bios, messages).
+- **Rate limiting**: per-route Upstash limiters (listing creation, chat, reports, uploads, search).
+- **Errors**: a standard envelope (`lib/utils/api.ts`) — clients never see stack traces or SQL.
+- **Chat**: participant-checked on every read/write; blocked users (either direction) can't message; phone numbers are never exposed (shared manually in-message only).
+- **CORS / headers**: security headers in `next.config.js`; lock `ALLOWED_ORIGINS` in production.
 
 ---
 
-## Monetisation (Implemented)
+## Chat & trust features
 
-| Feature | Status |
-|---|---|
-| Free listing (core) | ✅ default |
-| Featured listing upsell (Rwf 499) | ✅ PostAdPage step 6 |
-| Premium seller banner | ✅ Home + Account |
-| Boost listings | 🔜 Phase 2 |
-| Business subscriptions | 🔜 Phase 2 |
-| Banner ads | 🔜 Phase 3 |
+- **Realtime messaging** via Supabase Realtime — text, image, and location sharing.
+- **Presence**: online dot + "last seen" driven by a lightweight `/api/presence` heartbeat (`lastSeenAt`, online if seen within 2 minutes).
+- **Quick replies** (transaction-oriented prompts) to speed up deals.
+- **Block / unblock** a user (`/api/blocks/[userId]`) — enforced server-side on message send.
+- **Report** with reactive moderation: 3+ open reports auto-flag a listing for review.
+- **Delivery/read ticks** on messages.
+
+## Seller tools
+
+- **My Ads** (`/profile/ads`): manage your listings — edit, mark sold / reactivate, delete.
+- **Edit listing** (`/profile/ads/[id]/edit`): full form including photos and dynamic category attributes; persists via `PATCH /api/listings/[id]`.
+- Listings auto-expire after 30 days.
+
+## Internationalization
+
+English + Kinyarwanda, switchable in **Profile → Language** (or Settings). A typed dictionary (`src/i18n/dictionaries.ts`) with a cookie-backed `I18nProvider`; the server layout reads the cookie for SSR. French is a future expansion (add an `fr` dictionary and locale).
+
+## Listing expiry (Vercel Cron)
+
+Listings carry `expiresAt` (now + 30 days). A scheduled job enforces the lifecycle:
+
+- Route: `GET /api/cron/expire-listings` — flips `ACTIVE` listings past `expiresAt` to `EXPIRED`.
+- Schedule: daily at 03:00 UTC, configured in `vercel.json`.
+- Security: guarded by `CRON_SECRET`. Vercel Cron automatically sends `Authorization: Bearer <CRON_SECRET>`; requests without it are rejected. Set `CRON_SECRET` in your Vercel env vars.
+
+To test locally: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/expire-listings`.
+
+## PWA (installable + offline-aware)
+
+Wired up with `next-pwa`. The build generates a service worker (`public/sw.js`, gitignored) with runtime caching tuned for low bandwidth:
+
+- Supabase Storage images → cache-first (200 entries, 7 days).
+- Google Fonts → cache-first (1 year).
+- Static JS/CSS/assets → stale-while-revalidate.
+- HTML navigations → network-first with a 5s timeout (offline-aware).
+- `/api/*` → never cached (auth, chat, search stay fresh).
+
+PWA is disabled in development to avoid stale-cache friction; it activates on `next build`. The manifest + icons were already in place, so the app is installable from the browser ("Add to Home Screen").
 
 ---
 
-## Localisation
+## Design system
 
-All user-facing strings are centralised in `src/constants/strings.ts`.
-Three languages are stubbed: **English**, **Kinyarwanda**, **French**.
-Currency: **Rwf (Rwandan Franc)** — formatted via `STRINGS.currency.format()`.
-Default phone prefix: **+250 (Rwanda)**.
+Dark-mode native. The palette is fixed — components consume only these tokens:
 
----
+`primary #E8390E` · `primary-dark #C42E08` · `background #111111` · `surface-card #242424` · `surface-modal #2C2C2C` · `navy #1B2B5E` (premium only) · `success #22C55E` · `warning #F59E0B` · `danger #EF4444` · text `#FFFFFF / #A0A0A0 / #666666` · `border #2E2E2E`.
 
-## Next Steps
+Fonts: **Syne** (display/headings) + **DM Sans** (body), via `next/font`.
 
-- [ ] Firebase Cloud Functions backend (`/functions/`)
-- [ ] MongoDB schemas + indexes
-- [ ] React Native mobile app
-- [ ] Push notification service worker (`/public/firebase-messaging-sw.js`)
-- [ ] Vite SSR / prerender plugin for listing SEO
-- [ ] Sitemap generation
-- [ ] i18n — Kinyarwanda + French translations
-- [ ] Payment integration (MoMo API)
-- [ ] Dealer dashboard (Phase 2)
-- [ ] In-app boost purchasing flow
+> The provided wireframes are light-themed; per the (newer) Brand & Design System, RAY ships **dark**. Layout, hierarchy, spacing and component priority follow the wireframes; color follows the design tokens.
 
 ---
 
-*Built for East Africa. Kigali-first. Speed, trust, and local relevance.*
+## Not in this MVP (future phases, architecture-ready)
+
+Payments, escrow, delivery, **ratings/reviews**, subscriptions, AI recommendations, advanced analytics, seller monetization, **premium memberships**, auctions/bidding. The schema and UI leave room for these (e.g. the navy "Go Premium" surfaces, and the `/profile/reviews` and `/profile/premium` placeholder screens) without a rebuild. Block-user and basic moderation **are** implemented; ratings are not.
+
+---
+
+## Deploy (Vercel)
+
+1. Push to GitHub, import into Vercel.
+2. Add all `.env` values to Vercel project env vars (set `NEXT_PUBLIC_SITE_URL` and `ALLOWED_ORIGINS` to your domain).
+3. Add your production `/auth/callback` URL to Supabase redirect URLs.
+4. Deploy. Vercel runs `prisma generate && next build`. Use preview deploys for feature branches; promote to production via `main`.
