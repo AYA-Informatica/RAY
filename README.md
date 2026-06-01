@@ -25,57 +25,34 @@ This repository is the **MVP foundation**: user accounts (Google Sign-In), posti
 
 ---
 
-## What you need to provide (secrets)
+## Configuration Status
 
-The code is complete and runnable, but a few values can only come from **your** accounts. Nothing in this repo can fabricate them:
-
-1. A **Supabase project** (URL + anon key + service-role key + database connection strings).
-2. **Google OAuth** configured *inside* Supabase (Auth → Providers → Google).
-3. (Optional in dev) an **Upstash Redis** instance for rate limiting. Without it, the limiter safely no-ops in development.
+✅ **Supabase** — Fully configured (project: paocrurwdkwxkbfizgfm, EU Central - Frankfurt)
+✅ **Google OAuth** — Configured in Supabase Dashboard
+✅ **Upstash Redis** — Configured for rate limiting
+✅ **Environment variables** — All secrets configured in `.env`
 
 ---
 
 ## Setup — step by step
 
-### 1. Install
+### 1. Install dependencies
 
 ```bash
 npm install
-cp .env.example .env
 ```
 
-### 2. Create the Supabase project
+> **Note:** `.env` is already configured with Supabase, Upstash Redis, and all required secrets.
 
-- Go to https://supabase.com → New project.
-- **Project Settings → API**: copy `Project URL`, `anon public` key, and `service_role` key into `.env`
-  (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
-- **Project Settings → Database → Connection string**: copy the pooled (port `6543`) string into `DATABASE_URL`
-  and the direct (port `5432`) string into `DIRECT_URL`.
-
-### 3. Configure Google Sign-In
-
-- In Google Cloud Console, create an **OAuth 2.0 Client** (Web application).
-- Authorized redirect URI: `https://<your-project-ref>.supabase.co/auth/v1/callback`.
-- In Supabase: **Authentication → Providers → Google** → paste the Client ID & Secret, enable.
-- In Supabase: **Authentication → URL Configuration** → add your site URL(s) and
-  `http://localhost:3000/auth/callback` (and your production `/auth/callback`) to redirect URLs.
-
-> Auth is **Google-only** by design. There is no phone OTP (removed per the v2.0 build spec).
-
-### 4. Create the schema, triggers & RLS
+### 2. Generate the Prisma Client
 
 ```bash
 npm run prisma:generate          # generate the Prisma client
-npm run prisma:deploy            # apply migrations (creates tables)
 ```
 
-Then open the **Supabase SQL Editor** and run the contents of [`prisma/setup.sql`](./prisma/setup.sql).
-This installs:
+> **Note:** Database schema and migrations are already applied on Supabase. The `auth.users → public."User"` sync triggers and all **Row Level Security** policies (UUID ownership isolation, buyer/seller-only chat, private favorites, etc.) are already configured.
 
-- the `auth.users → public."User"` sync triggers (so Google sign-ups appear as marketplace users), and
-- all **Row Level Security** policies (UUID ownership isolation, buyer/seller-only chat, private favorites, etc.).
-
-### 5. Seed the launch categories
+### 3. Seed the launch categories
 
 ```bash
 npm run db:seed
@@ -83,7 +60,7 @@ npm run db:seed
 
 Seeds the 10 launch categories (Phones, Electronics, Cars, Bikes, Rentals, Furniture, Fashion, Jobs, Services, Kids) and their **dynamic attribute schemas** (e.g. Phones → Brand/Storage/RAM; Cars → Year/Mileage/Transmission; Rentals → Bedrooms/Furnished).
 
-### 6. Create the Storage buckets
+### 4. Create the Storage buckets
 
 In Supabase **Storage**, create three **public** buckets:
 
@@ -95,26 +72,13 @@ chat-images
 
 Images are compressed client-side to WebP before upload (low-bandwidth optimization).
 
-### 7. (Optional) Rate limiting
-
-Create an Upstash Redis database and set `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`.
-Skip in dev — the limiter logs a warning and allows all requests.
-
-### 7b. Cron secret (for listing expiry)
-
-Set `CRON_SECRET` to a long random string in your Vercel env vars. The daily
-expiry job (`vercel.json`) only runs on Vercel; Vercel Cron sends the secret
-automatically. In local dev you can omit it (the route then runs unauthenticated).
-
-### 8. Run
+### 5. Run
 
 ```bash
 npm run dev          # http://localhost:3000
 ```
 
-> **Before any of the above is configured**, the app still boots and renders a set of demo listings so you can see the UI. Real data replaces them automatically once the database is reachable and seeded.
-
-### 9. Make yourself an admin
+### 6. Make yourself an admin
 
 After signing in once, promote your user in the Supabase SQL editor:
 
@@ -134,7 +98,7 @@ npm run build            # prisma generate + next build
 npm run start            # run the production build
 npm run typecheck        # tsc --noEmit (strict)
 npm run lint             # next lint
-npm run prisma:deploy    # apply migrations
+npm run prisma:generate  # generate Prisma client
 npm run db:seed          # seed categories + attributes
 npm run prisma:studio    # browse the DB
 ```
