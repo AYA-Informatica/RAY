@@ -5,7 +5,9 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { LOCALES, LOCALE_LABELS } from "@/i18n/dictionaries";
 import { cn } from "@/lib/utils/cn";
 
-/** Inline language switcher (English / Kinyarwanda). */
+const LOCALE_SHORT: Record<string, string> = { en: "EN", rw: "RW", fr: "FR" };
+
+/** Inline language switcher — auto-adapts when new locales are added. */
 export function LanguageToggle({ className }: { className?: string }) {
   const { locale, setLocale, t } = useI18n();
   return (
@@ -17,12 +19,14 @@ export function LanguageToggle({ className }: { className?: string }) {
           <button
             key={l}
             onClick={() => setLocale(l)}
+            aria-label={LOCALE_LABELS[l]}
+            aria-pressed={locale === l}
             className={cn(
               "rounded-pill px-3 py-1 text-xs font-medium transition-colors",
-              locale === l ? "bg-primary text-text-primary" : "text-text-secondary",
+              locale === l ? "bg-primary text-text-primary" : "text-text-secondary hover:text-text-primary",
             )}
           >
-            {LOCALE_LABELS[l]}
+            {LOCALE_SHORT[l] ?? l.toUpperCase()}
           </button>
         ))}
       </div>

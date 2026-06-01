@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { Settings, Heart, Bell, Star, Crown, HelpCircle, ShieldCheck, LayoutList } from "lucide-react";
+import { Settings, Heart, MessageCircle, Star, Crown, HelpCircle, ShieldCheck, LayoutList, Lock } from "lucide-react";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { ProfileRow } from "./ProfileRow";
 import { LogoutButton } from "./LogoutButton";
 import { LanguageToggle } from "@/components/shared/LanguageToggle";
@@ -27,10 +27,12 @@ export function ProfileMenu({ name, email, avatarUrl, activeAds, totalViews, fav
       <div className="relative bg-primary px-4 pb-12 pt-5">
         <div className="flex items-center justify-between text-text-primary">
           <h1 className="font-display text-2xl font-bold">{t("profile.title")}</h1>
-          <Settings size={24} />
+          <Link href="/profile/settings" aria-label="Settings">
+            <Settings size={24} />
+          </Link>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <div className="relative h-16 w-16 overflow-hidden rounded-pill bg-surface-modal ring-2 ring-text-primary/40">
+          <Link href="/profile/edit" className="relative h-16 w-16 overflow-hidden rounded-pill bg-surface-modal ring-2 ring-text-primary/40">
             {avatarUrl ? (
               <Image src={avatarUrl} alt={name} fill className="object-cover" />
             ) : (
@@ -38,10 +40,13 @@ export function ProfileMenu({ name, email, avatarUrl, activeAds, totalViews, fav
                 {name.charAt(0).toUpperCase()}
               </span>
             )}
-          </div>
+          </Link>
           <div className="text-text-primary">
             <p className="font-display text-lg font-bold">{name}</p>
             <p className="text-sm opacity-90">{email}</p>
+            <Link href="/profile/edit" className="mt-0.5 inline-block text-xs text-text-primary/70 underline-offset-2 hover:underline">
+              Edit profile
+            </Link>
           </div>
         </div>
       </div>
@@ -55,29 +60,17 @@ export function ProfileMenu({ name, email, avatarUrl, activeAds, totalViews, fav
         </Card>
       </div>
 
-      {/* Premium upsell (navy = exclusivity). Architecture-ready, not yet active. */}
-      <div className="px-4 pt-4">
-        <Card className="flex items-center justify-between border-none bg-navy p-4">
-          <div>
-            <p className="font-display text-lg font-bold">{t("profile.goPremium")}</p>
-            <p className="text-sm text-text-secondary">{t("profile.goPremiumSub")}</p>
-          </div>
-          <Button variant="secondary" size="sm" className="bg-text-primary text-navy">
-            {t("profile.upgrade")}
-          </Button>
-        </Card>
-      </div>
-
       {/* Menu */}
       <div className="mt-4 divide-y divide-border border-y border-border">
         <ProfileRow href="/profile/ads" icon={<LayoutList size={20} />} label={t("profile.myAds")} count={activeAds} />
         <ProfileRow href="/favorites" icon={<Heart size={20} />} label={t("profile.favourites")} count={favourites} />
-        <ProfileRow href="/chat" icon={<Bell size={20} />} label={t("profile.notifications")} />
-        <ProfileRow href="/profile/reviews" icon={<Star size={20} />} label={t("profile.reviews")} />
-        <ProfileRow href="/profile/premium" icon={<Crown size={20} />} label={t("profile.upgradePremium")} highlight />
+        <ProfileRow href="/chat" icon={<MessageCircle size={20} />} label={t("nav.messages")} />
+        <ProfileRow href="/profile/reviews" icon={<Star size={20} />} label={t("profile.reviews")} comingSoon />
+        <ProfileRow href="/profile/premium" icon={<Crown size={20} />} label={t("profile.upgradePremium")} comingSoon />
         <ProfileRow href="/profile/settings" icon={<Settings size={20} />} label={t("profile.settings")} />
         <ProfileRow href="/profile/help" icon={<HelpCircle size={20} />} label={t("profile.help")} />
         <ProfileRow href="/profile/safety" icon={<ShieldCheck size={20} />} label={t("profile.safety")} />
+        <ProfileRow href="/privacy" icon={<Lock size={20} />} label="Privacy Policy" />
         <LanguageToggle />
         <LogoutButton />
       </div>

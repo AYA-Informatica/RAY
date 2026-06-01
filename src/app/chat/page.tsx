@@ -19,6 +19,9 @@ export default async function ChatInboxPage() {
     <AppShell>
       <header className="border-b border-border px-4 py-4">
         <h1 className="font-display text-2xl font-bold">Messages</h1>
+        <p className="mt-0.5 text-xs text-text-muted">
+          Start a conversation by tapping "Chat with Seller" on any listing.
+        </p>
       </header>
       {conversations.length === 0 ? (
         <EmptyState

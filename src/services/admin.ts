@@ -15,15 +15,27 @@ export async function getAdminStats() {
   }
 }
 
-/** Recent listings for moderation (flagged first). */
+/** Recent listings for moderation (flagged first), with thumbnail + reports. */
 export async function getModerationListings() {
   try {
     return prisma.listing.findMany({
       orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-      take: 50,
+      take: 100,
       include: {
         user: { select: { id: true, name: true, email: true } },
         category: { select: { name: true } },
+        images: { orderBy: { order: "asc" }, take: 1 },
+        reports: {
+          where: { resolved: false },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            reason: true,
+            details: true,
+            createdAt: true,
+            reporter: { select: { name: true, email: true } },
+          },
+        },
         _count: { select: { reports: true } },
       },
     });
@@ -59,6 +71,7 @@ export async function getManagedUsers() {
         id: true,
         name: true,
         email: true,
+        avatarUrl: true,
         role: true,
         isBanned: true,
         createdAt: true,

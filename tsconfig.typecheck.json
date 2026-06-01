@@ -2,8 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"],
-      "@prisma/client": ["/tmp/prisma-shim/@prisma/client/index.d.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "exclude": ["node_modules", "prisma/seed.ts"]

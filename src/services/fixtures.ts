@@ -18,7 +18,7 @@ export const DEMO_LISTINGS: ListingCardData[] = [
     status: "ACTIVE",
     coverImage: "https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=600&q=70",
     category: { slug: "phones", name: "Phones", icon: "📱" },
-    distanceKm: 3,
+    views: 0, distanceKm: 3,
     featured: true,
   },
   {
@@ -33,7 +33,7 @@ export const DEMO_LISTINGS: ListingCardData[] = [
     status: "ACTIVE",
     coverImage: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&q=70",
     category: { slug: "cars", name: "Cars", icon: "🚗" },
-    distanceKm: 0.45,
+    views: 0, distanceKm: 0.45,
   },
   {
     id: "demo-3",
@@ -47,7 +47,7 @@ export const DEMO_LISTINGS: ListingCardData[] = [
     status: "ACTIVE",
     coverImage: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=70",
     category: { slug: "rentals", name: "Rentals", icon: "🏠" },
-    distanceKm: 15,
+    views: 0, distanceKm: 15,
   },
   {
     id: "demo-4",
@@ -61,7 +61,7 @@ export const DEMO_LISTINGS: ListingCardData[] = [
     status: "ACTIVE",
     coverImage: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&q=70",
     category: { slug: "electronics", name: "Electronics", icon: "💻" },
-    distanceKm: 6,
+    views: 0, distanceKm: 6,
   },
   {
     id: "demo-5",
@@ -75,7 +75,7 @@ export const DEMO_LISTINGS: ListingCardData[] = [
     status: "ACTIVE",
     coverImage: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=70",
     category: { slug: "furniture", name: "Furniture", icon: "🛋️" },
-    distanceKm: 9,
+    views: 0, distanceKm: 9,
   },
   {
     id: "demo-6",
@@ -89,7 +89,7 @@ export const DEMO_LISTINGS: ListingCardData[] = [
     status: "ACTIVE",
     coverImage: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=600&q=70",
     category: { slug: "phones", name: "Phones", icon: "📱" },
-    distanceKm: 4,
+    views: 0, distanceKm: 4,
   },
 ];
 

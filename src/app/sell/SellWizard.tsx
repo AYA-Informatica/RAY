@@ -12,8 +12,9 @@ import { PriceTag } from "@/components/listings/PriceTag";
 import { useSellDraft } from "@/store/useSellDraft";
 import { useI18n } from "@/i18n/I18nProvider";
 import { uploadImages } from "@/lib/storage/upload";
-import { RWANDA_CITIES } from "@/constants/locations";
+import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
 import { cn } from "@/lib/utils/cn";
+import { RWANDA_CITIES } from "@/constants/locations";
 import type { CategoryWithAttributes } from "@/types";
 
 interface SellCategory {
@@ -51,6 +52,11 @@ export function SellWizard({
   const [schema, setSchema] = useState<CategoryWithAttributes | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [permissionPrompt, setPermissionPrompt] = useState<"camera" | "location" | null>(null);
+  const [draftNotice, setDraftNotice] = useState(
+    // Show the notice on first render if there's a saved draft worth restoring.
+    Boolean(draft.title || draft.images.length > 0 || draft.categoryId),
+  );
   const [error, setError] = useState<string | null>(null);
 
   const selectedCategory = categories.find((c) => c.id === draft.categoryId);
@@ -79,14 +85,29 @@ export function SellWizard({
     return districts.find((d) => d.name === draft.district)?.neighborhoods ?? [];
   }, [districts, draft.district]);
 
+  // Step 3 (Specs) is auto-skipped when the chosen category has no required
+  // attributes — the spec's "feel like sending a message" target wins over
+  // ceremony for categories like Furniture or Fashion.
+  const skipSpecs = (schema?.attributes ?? []).every((a) => !a.required);
+
   function next() {
     setError(null);
-    if (step < STEPS.length - 1) setStep(step + 1);
+    setDraftNotice(false);
+    if (step < STEPS.length - 1) {
+      const target = step + 1;
+      // Skip Specs step (index 3) forward when no required attributes exist.
+      if (target === 3 && skipSpecs) setStep(4);
+      else setStep(target);
+    }
   }
   function back() {
     setError(null);
-    if (step > 0) setStep(step - 1);
-    else router.back();
+    if (step > 0) {
+      const target = step - 1;
+      // Mirror the skip when navigating backwards.
+      if (target === 3 && skipSpecs) setStep(2);
+      else setStep(target);
+    } else router.back();
   }
 
   async function handleFiles(files: FileList | null) {
@@ -106,6 +127,11 @@ export function SellWizard({
 
   function detectLocation() {
     if (!navigator.geolocation) return;
+    // Show RAY's explanation before the OS permission dialog.
+    setPermissionPrompt("location");
+  }
+
+  function doDetectLocation() {
     navigator.geolocation.getCurrentPosition(
       (pos) => set({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
       () => setError("Couldn't detect location — pick it manually."),
@@ -158,34 +184,82 @@ export function SellWizard({
     }
   }
 
-  // Per-step "can advance" gate.
-  const canNext = (() => {
+  // Per-step "can advance" gate + a human reason when blocked, surfaced under
+  // the Continue button so users aren't hunting for the missing field.
+  const gate: { ok: true } | { ok: false; reason: string } = (() => {
     switch (step) {
       case 0:
-        return Boolean(draft.categoryId);
+        return draft.categoryId
+          ? { ok: true }
+          : { ok: false, reason: t("sell.gate.pickCategory") };
       case 1:
-        return draft.images.length > 0;
-      case 2:
-        return draft.title.length >= 3 && Number(draft.price) >= 0 && draft.price !== "" && draft.condition !== "";
-      case 3:
-        return (schema?.attributes ?? []).every((a) => !a.required || draft.attributes[a.id]);
+        return draft.images.length > 0
+          ? { ok: true }
+          : { ok: false, reason: t("sell.gate.addPhoto") };
+      case 2: {
+        if (draft.title.trim().length < 3) return { ok: false, reason: t("sell.gate.title") };
+        if (draft.price === "" || Number(draft.price) < 0) return { ok: false, reason: t("sell.gate.price") };
+        if (draft.condition === "") return { ok: false, reason: t("sell.gate.condition") };
+        return { ok: true };
+      }
+      case 3: {
+        const missing = (schema?.attributes ?? []).find((a) => a.required && !draft.attributes[a.id]);
+        return missing
+          ? { ok: false, reason: t("sell.gate.required").replace("{field}", missing.label) }
+          : { ok: true };
+      }
       case 4:
-        return Boolean(draft.city && draft.district);
+        if (!draft.city) return { ok: false, reason: t("sell.gate.city") };
+        if (!draft.district) return { ok: false, reason: t("sell.gate.district") };
+        return { ok: true };
       default:
-        return true;
+        return { ok: true };
     }
   })();
+  const canNext = gate.ok;
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background lg:max-w-2xl">
+      {permissionPrompt && (
+        <PermissionPrompt
+          type={permissionPrompt}
+          onAllow={() => {
+            const p = permissionPrompt;
+            setPermissionPrompt(null);
+            if (p === "location") doDetectLocation();
+          }}
+          onDismiss={() => setPermissionPrompt(null)}
+        />
+      )}
+
+      {/* Draft restored banner */}
+      {draftNotice && (
+        <div className="flex items-center justify-between bg-primary/15 px-4 py-2 text-sm">
+          <span className="text-text-primary">📝 {t("chat.draftRestored")}</span>
+          <button
+            onClick={() => { reset(); setDraftNotice(false); }}
+            className="text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary"
+          >
+            {t("chat.startFresh")}
+          </button>
+        </div>
+      )}
       {/* Header + progress */}
       <header className="sticky top-0 z-10 border-b border-border bg-background px-4 py-3">
         <div className="flex items-center gap-3">
-          <button onClick={back} aria-label="Back" className="text-text-secondary">
+          <button
+            onClick={back}
+            aria-label="Back"
+            className="-ml-2 grid h-11 w-11 place-items-center text-text-secondary hover:text-text-primary"
+          >
             <ArrowLeft size={22} />
           </button>
           <h1 className="font-display text-lg font-bold">{STEPS[step]}</h1>
-          <span className="ml-auto text-sm text-text-muted">
+          <span
+            className="ml-auto text-sm text-text-muted"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             {step + 1}/{STEPS.length}
           </span>
         </div>
@@ -223,10 +297,12 @@ export function SellWizard({
                   <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
                   <button
                     onClick={() => set({ images: draft.images.filter((u) => u !== url) })}
-                    className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-pill bg-black/60"
+                    className="absolute -right-1 -top-1 grid h-11 w-11 place-items-center"
                     aria-label="Remove photo"
                   >
-                    <X size={14} />
+                    <span className="grid h-7 w-7 place-items-center rounded-pill bg-black/70">
+                      <X size={16} />
+                    </span>
                   </button>
                   {i === 0 && (
                     <span className="absolute bottom-1 left-1 rounded-sm bg-primary px-1.5 text-[10px] font-bold">
@@ -292,12 +368,17 @@ export function SellWizard({
               value={draft.condition}
               onChange={(e) => set({ condition: e.target.value as typeof draft.condition })}
             />
-            <Textarea
-              label={t("sell.descriptionLabel")}
-              placeholder="Describe your item — what's included, why you're selling…"
-              value={draft.description}
-              onChange={(e) => set({ description: e.target.value })}
-            />
+            <div className="space-y-1">
+              <Textarea
+                label={t("sell.descriptionLabel")}
+                placeholder="Describe your item — what's included, why you're selling…"
+                value={draft.description}
+                onChange={(e) => set({ description: e.target.value })}
+              />
+              <p className="text-right text-xs text-text-muted">
+                {draft.description.length} / 500 chars recommended
+              </p>
+            </div>
           </div>
         )}
 
@@ -393,11 +474,39 @@ export function SellWizard({
             <div className="overflow-hidden rounded-lg border border-border bg-surface-card">
               {draft.images[0] && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={draft.images[0]} alt="Cover" className="aspect-video w-full object-cover" />
+                <img src={draft.images[0]} alt="Cover" className="aspect-[4/3] w-full object-cover" />
               )}
-              <div className="space-y-1 p-4">
+              <div className="space-y-2 p-4">
                 <h3 className="font-display text-lg font-bold">{draft.title || "Untitled"}</h3>
                 <PriceTag amount={Number(draft.price) || 0} />
+                <div className="flex flex-wrap gap-2">
+                  {draft.condition && (
+                    <span className="rounded-pill bg-surface-modal px-2 py-0.5 text-xs text-text-secondary">
+                      {draft.condition.replace("_", " ")}
+                    </span>
+                  )}
+                  {draft.negotiable && (
+                    <span className="rounded-pill bg-success/15 px-2 py-0.5 text-xs text-success">Negotiable</span>
+                  )}
+                  {draft.images.length > 0 && (
+                    <span className="rounded-pill bg-surface-modal px-2 py-0.5 text-xs text-text-secondary">
+                      {draft.images.length} photo{draft.images.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+                {/* Dynamic attributes summary */}
+                {Object.keys(draft.attributes).length > 0 && schema && (
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
+                    {schema.attributes
+                      .filter((a) => draft.attributes[a.id])
+                      .map((a) => (
+                        <div key={a.id} className="flex flex-col">
+                          <dt className="text-xs text-text-muted">{a.label}</dt>
+                          <dd className="text-sm font-medium text-text-primary">{draft.attributes[a.id]}</dd>
+                        </div>
+                      ))}
+                  </dl>
+                )}
                 <p className="text-sm text-text-secondary">
                   {[draft.neighborhood, draft.district, draft.city].filter(Boolean).join(", ")}
                 </p>
@@ -406,9 +515,7 @@ export function SellWizard({
                 )}
               </div>
             </div>
-            <p className="text-xs text-text-muted">
-              {t("sell.goesLive")}
-            </p>
+            <p className="text-xs text-text-muted">{t("sell.goesLive")}</p>
           </div>
         )}
 
@@ -416,7 +523,16 @@ export function SellWizard({
       </main>
 
       {/* Footer CTA */}
-      <footer className="sticky bottom-0 border-t border-border bg-background p-4">
+      <footer className="sticky bottom-0 space-y-2 border-t border-border bg-background p-4">
+        {!gate.ok && step < STEPS.length - 1 && (
+          <p
+            role="status"
+            aria-live="polite"
+            className="text-center text-xs text-text-secondary"
+          >
+            {gate.reason}
+          </p>
+        )}
         {step < STEPS.length - 1 ? (
           <Button fullWidth size="lg" disabled={!canNext} onClick={next}>
             {t("common.continue")}

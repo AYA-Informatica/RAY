@@ -19,7 +19,7 @@ export function ListingGallery({ images, title }: { images: string[]; title: str
           fill
           priority
           className="object-cover"
-          sizes="(max-width: 480px) 100vw, 480px"
+          sizes="(max-width: 1024px) 100vw, 560px"
         />
       </div>
       {images.length > 1 && (

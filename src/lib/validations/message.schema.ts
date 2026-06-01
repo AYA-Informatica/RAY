@@ -11,10 +11,17 @@ export const sendMessageSchema = z
     imageUrl: z.string().url().optional(),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
+    offerAmount: z.number().positive().optional(),
   })
   .refine(
-    (d) => Boolean(d.content || d.imageUrl || (d.latitude != null && d.longitude != null)),
+    (d) => Boolean(d.content || d.imageUrl || (d.latitude != null && d.longitude != null) || d.offerAmount),
     { message: "Message cannot be empty" },
   );
 
+export const respondOfferSchema = z.object({
+  messageId: z.string().min(1),
+  status: z.enum(["accepted", "declined"]),
+});
+
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
+export type RespondOfferInput = z.infer<typeof respondOfferSchema>;

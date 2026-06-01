@@ -19,21 +19,27 @@ export const useFavorites = create<FavoritesState>((set, get) => ({
   has: (id) => get().ids.has(id),
   toggle: async (listingId) => {
     const had = get().ids.has(listingId);
-    // optimistic update
     set((s) => {
       const next = new Set(s.ids);
-      if (had) next.delete(listingId);
-      else next.add(listingId);
+      if (had) next.delete(listingId); else next.add(listingId);
       return { ids: next };
     });
     try {
-      await fetch(`/api/favorites/${listingId}`, { method: had ? "DELETE" : "POST" });
+      const res = await fetch(`/api/favorites/${listingId}`, { method: had ? "DELETE" : "POST" });
+      if (res.status === 401) {
+        // Not signed in — revert and redirect to login.
+        set((s) => {
+          const next = new Set(s.ids);
+          if (had) next.add(listingId); else next.delete(listingId);
+          return { ids: next };
+        });
+        window.location.href = `/login?redirect=/listing/${listingId}`;
+        return;
+      }
     } catch {
-      // revert on failure
       set((s) => {
         const next = new Set(s.ids);
-        if (had) next.add(listingId);
-        else next.delete(listingId);
+        if (had) next.add(listingId); else next.delete(listingId);
         return { ids: next };
       });
     }

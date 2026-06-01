@@ -16,7 +16,11 @@ export function LogoutButton() {
     router.refresh();
   }
   return (
-    <button onClick={logout} className="flex w-full items-center gap-3 px-4 py-3.5 text-primary">
+    <button
+      onClick={logout}
+      aria-label={t("profile.logout")}
+      className="flex w-full items-center gap-3 px-4 py-3.5 text-primary"
+    >
       <LogOut size={20} />
       <span className="font-medium">{t("profile.logout")}</span>
       <span className="ml-auto text-text-muted">›</span>

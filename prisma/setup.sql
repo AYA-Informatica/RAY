@@ -135,3 +135,27 @@ create policy "Users remove own blocks"
 
 -- NOTE: Admin/moderator access bypasses RLS via the service-role key, used only
 -- on the server in the admin API. Never expose the service-role key client-side.
+
+-- ListingAttributeValue: owners insert via listing (service role handles updates/deletes).
+-- Direct inserts via the API are always through the listing owner's context.
+create policy "Listing owners write attribute values"
+  on public."ListingAttributeValue" for insert
+  with check (
+    exists (
+      select 1 from public."Listing" l
+      where l.id = "listingId" and l."userId" = auth.uid()
+    )
+  );
+
+create policy "Listing owners delete attribute values"
+  on public."ListingAttributeValue" for delete
+  using (
+    exists (
+      select 1 from public."Listing" l
+      where l.id = "listingId" and l."userId" = auth.uid()
+    )
+  );
+
+-- CategoryAttribute: only admins (service role) may write categories/attributes.
+-- No explicit policy needed — unmatched INSERT/UPDATE/DELETE are denied by default when RLS is ON.
+-- The service role bypasses RLS entirely, so seeding via the API works correctly.

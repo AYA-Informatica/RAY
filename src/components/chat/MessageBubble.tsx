@@ -1,7 +1,10 @@
+"use client";
+
 import Image from "next/image";
-import { Check, CheckCheck, MapPin } from "lucide-react";
+import { Check, CheckCheck, MapPin, Tag, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
-import { timeAgo } from "@/lib/utils/format";
+import { timeAgo, formatPrice } from "@/lib/utils/format";
 
 export interface ChatMessage {
   id: string;
@@ -9,24 +12,55 @@ export interface ChatMessage {
   imageUrl: string | null;
   latitude: number | null;
   longitude: number | null;
+  offerAmount: number | null;
+  offerStatus: string | null; // "pending" | "accepted" | "declined" | null
   isRead: boolean;
   senderId: string;
   createdAt: string | Date;
 }
 
-/** A single chat message. Delivery/read ticks per the spec. */
-export function MessageBubble({ message, mine }: { message: ChatMessage; mine: boolean }) {
+/**
+ * Renders a single chat message. Supports text, image, location pin,
+ * and price offer cards (OLX-style "Make Offer" feature).
+ */
+export function MessageBubble({
+  message,
+  mine,
+  isSeller,
+  onOfferRespond,
+}: {
+  message: ChatMessage;
+  mine: boolean;
+  /** True when the viewer is the listing seller — only they can accept/decline. */
+  isSeller?: boolean;
+  onOfferRespond?: (messageId: string, status: "accepted" | "declined") => void;
+}) {
+  const isOffer = message.offerAmount != null;
+
+  if (isOffer) {
+    return (
+      <OfferCard
+        message={message}
+        mine={mine}
+        isSeller={isSeller ?? false}
+        onRespond={onOfferRespond}
+      />
+    );
+  }
+
   return (
     <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
       <div
         className={cn(
           "max-w-[78%] rounded-lg px-3 py-2",
-          mine ? "rounded-br-sm bg-primary text-text-primary" : "rounded-bl-sm bg-surface-card text-text-primary",
+          mine
+            ? "rounded-br-sm bg-primary text-text-primary"
+            : "rounded-bl-sm bg-surface-card text-text-primary",
         )}
       >
         {message.imageUrl && (
           <div className="relative mb-1 h-40 w-48 overflow-hidden rounded-md bg-surface-modal">
-            <Image src={message.imageUrl} alt="Shared photo" fill className="object-cover" />
+            <Image src={message.imageUrl} alt="Shared photo" fill className="object-cover" sizes="192px" />
           </div>
         )}
         {message.latitude != null && message.longitude != null && (
@@ -39,11 +73,109 @@ export function MessageBubble({ message, mine }: { message: ChatMessage; mine: b
             <MapPin size={14} /> Shared location
           </a>
         )}
-        {message.content && <p className="whitespace-pre-wrap text-sm">{message.content}</p>}
-        <div className={cn("mt-0.5 flex items-center justify-end gap-1 text-[10px]", mine ? "text-text-primary/70" : "text-text-muted")}>
+        {message.content && (
+          <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+        )}
+        <div
+          className={cn(
+            "mt-0.5 flex items-center justify-end gap-1 text-[10px]",
+            mine ? "text-text-primary/70" : "text-text-muted",
+          )}
+        >
           {timeAgo(message.createdAt)}
           {mine && (message.isRead ? <CheckCheck size={13} /> : <Check size={13} />)}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Offer card — shown when a buyer taps "Make Offer".
+ *
+ * States:
+ *   pending  → seller sees Accept / Decline buttons; buyer sees "awaiting response".
+ *   accepted → both see a green accepted card.
+ *   declined → both see a muted declined card.
+ */
+function OfferCard({
+  message,
+  mine,
+  isSeller,
+  onRespond,
+}: {
+  message: ChatMessage;
+  mine: boolean;
+  isSeller: boolean;
+  onRespond?: (messageId: string, status: "accepted" | "declined") => void;
+}) {
+  const [responding, setResponding] = useState(false);
+  const status = message.offerStatus as "pending" | "accepted" | "declined" | null;
+
+  const statusColor =
+    status === "accepted"
+      ? "border-success/40 bg-success/10"
+      : status === "declined"
+        ? "border-border bg-surface-modal opacity-70"
+        : "border-primary/40 bg-primary/10";
+
+  async function respond(s: "accepted" | "declined") {
+    setResponding(true);
+    try {
+      await fetch("/api/chat/messages", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: message.id, status: s }),
+      });
+      onRespond?.(message.id, s);
+    } finally {
+      setResponding(false);
+    }
+  }
+
+  return (
+    <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
+      <div className={cn("w-56 rounded-xl border p-3", statusColor)}>
+        <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <Tag size={12} />
+          {mine ? "Your offer" : "Offer from buyer"}
+        </div>
+        <p className="mt-1 font-display text-xl font-bold text-text-primary">
+          {formatPrice(message.offerAmount!)}
+        </p>
+        {status === "accepted" && (
+          <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-success">
+            <ThumbsUp size={13} /> Offer accepted
+          </p>
+        )}
+        {status === "declined" && (
+          <p className="mt-1.5 flex items-center gap-1 text-xs text-text-muted">
+            <ThumbsDown size={13} /> Offer declined
+          </p>
+        )}
+        {status === "pending" && isSeller && !mine && (
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={() => void respond("accepted")}
+              disabled={responding}
+              className="flex flex-1 items-center justify-center gap-1 rounded-md bg-success/20 py-1.5 text-xs font-semibold text-success hover:bg-success/30 disabled:opacity-50"
+            >
+              {responding ? <Loader2 size={12} className="animate-spin" /> : <ThumbsUp size={12} />}
+              Accept
+            </button>
+            <button
+              onClick={() => void respond("declined")}
+              disabled={responding}
+              className="flex flex-1 items-center justify-center gap-1 rounded-md bg-surface-modal py-1.5 text-xs font-semibold text-text-secondary hover:bg-surface-card disabled:opacity-50"
+            >
+              <ThumbsDown size={12} /> Decline
+            </button>
+          </div>
+        )}
+        {status === "pending" && mine && (
+          <p className="mt-1.5 text-xs text-text-muted">Waiting for seller's response…</p>
+        )}
+        <div className="mt-2 text-right text-[10px] text-text-muted">{timeAgo(message.createdAt)}</div>
       </div>
     </div>
   );

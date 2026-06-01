@@ -16,13 +16,17 @@ export type SellerSummary = Pick<
   User,
   "id" | "name" | "avatarUrl" | "city" | "createdAt"
 > & {
+  /** Auth-sync trigger sets this on every login; presence ticks refresh it. */
+  lastSeenAt: Date;
   listingsCount?: number;
+  /** Median first-reply minutes over the last 30 days. Undefined when unknown. */
+  responseTimeMins?: number;
 };
 
 /** Listing as rendered in the grid (card). */
 export type ListingCardData = Pick<
   Listing,
-  "id" | "title" | "price" | "negotiable" | "city" | "district" | "neighborhood" | "createdAt" | "status"
+  "id" | "title" | "price" | "negotiable" | "city" | "district" | "neighborhood" | "createdAt" | "status" | "views"
 > & {
   coverImage: string | null;
   category: Pick<Category, "slug" | "name" | "icon">;

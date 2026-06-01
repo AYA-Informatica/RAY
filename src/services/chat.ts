@@ -45,6 +45,7 @@ export interface ThreadHeader {
   listingTitle: string;
   listingImage: string | null;
   listingPrice: number;
+  sellerId: string;
   otherId: string;
   otherName: string;
   otherAvatar: string | null;
@@ -89,6 +90,7 @@ export async function getThread(
       listingTitle: c.listing.title,
       listingImage: c.listing.images[0]?.url ?? null,
       listingPrice: c.listing.price,
+      sellerId: c.sellerId,
       otherId: other.id,
       otherName: other.name ?? "RAY user",
       otherAvatar: other.avatarUrl,

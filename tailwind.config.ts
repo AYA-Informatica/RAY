@@ -33,7 +33,7 @@ const config: Config = {
         text: {
           primary: "#FFFFFF",
           secondary: "#A0A0A0",
-          muted: "#666666",
+          muted: "#8A8A8A",
         },
         border: "#2E2E2E",
       },

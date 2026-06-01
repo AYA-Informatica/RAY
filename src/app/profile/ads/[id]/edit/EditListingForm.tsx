@@ -140,7 +140,7 @@ export function EditListingForm({
   const canSave = title.trim().length >= 3 && price !== "" && Number(price) >= 0;
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background lg:max-w-2xl">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-4 py-3">
         <button onClick={() => router.back()} aria-label={t("common.back")} className="text-text-secondary">
           <ArrowLeft size={22} />
@@ -162,10 +162,10 @@ export function EditListingForm({
                 <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
                 <button
                   onClick={() => setImages(images.filter((u) => u !== url))}
-                  className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-pill bg-black/60"
+                  className="absolute -right-1 -top-1 grid h-11 w-11 place-items-center"
                   aria-label="Remove photo"
                 >
-                  <X size={14} />
+                  <span className="grid h-7 w-7 place-items-center rounded-pill bg-black/70"><X size={16} /></span>
                 </button>
                 {i === 0 && (
                   <span className="absolute bottom-1 left-1 rounded-sm bg-primary px-1.5 text-[10px] font-bold">

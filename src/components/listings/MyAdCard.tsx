@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, CheckCircle2, RotateCcw, Loader2 } from "lucide-react";
+import { Pencil, Trash2, CheckCircle2, RotateCcw, Loader2, Eye, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "./PriceTag";
@@ -13,22 +13,13 @@ import { timeAgo } from "@/lib/utils/format";
 import type { ListingCardData } from "@/types";
 
 const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "muted" | "navy"> = {
-  ACTIVE: "success",
-  SOLD: "navy",
-  EXPIRED: "muted",
-  REMOVED: "danger",
-  FLAGGED: "warning",
+  ACTIVE: "success", SOLD: "navy", EXPIRED: "muted", REMOVED: "danger", FLAGGED: "warning",
 };
-
 const STATUS_KEY: Record<string, string> = {
-  ACTIVE: "myAds.status.active",
-  SOLD: "myAds.status.sold",
-  EXPIRED: "myAds.status.expired",
-  REMOVED: "myAds.status.removed",
-  FLAGGED: "myAds.status.flagged",
+  ACTIVE: "myAds.status.active", SOLD: "myAds.status.sold",
+  EXPIRED: "myAds.status.expired", REMOVED: "myAds.status.removed", FLAGGED: "myAds.status.flagged",
 };
 
-/** A seller's own listing with management actions (edit, mark sold, delete). */
 export function MyAdCard({ listing }: { listing: ListingCardData }) {
   const router = useRouter();
   const { t } = useI18n();
@@ -37,7 +28,7 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
 
   async function setListingStatus(next: "ACTIVE" | "SOLD") {
     setBusy(true);
-    setStatus(next); // optimistic
+    setStatus(next);
     try {
       await fetch(`/api/listings/${listing.id}`, {
         method: "PATCH",
@@ -45,11 +36,24 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
         body: JSON.stringify({ status: next }),
       });
       router.refresh();
-    } catch {
-      setStatus(listing.status);
-    } finally {
-      setBusy(false);
-    }
+    } catch { setStatus(listing.status); }
+    finally { setBusy(false); }
+  }
+
+  async function repost() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/listings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repostFromId: listing.id }),
+      });
+      if (res.ok) {
+        const { data } = (await res.json()) as { data: { id: string } };
+        router.push(`/listing/${data.id}`);
+      }
+    } catch { /* no-op */ }
+    finally { setBusy(false); }
   }
 
   async function remove() {
@@ -58,12 +62,8 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
     try {
       await fetch(`/api/listings/${listing.id}`, { method: "DELETE" });
       router.refresh();
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }
-
-  const tone = STATUS_TONE[status] ?? "muted";
 
   return (
     <Card className="overflow-hidden">
@@ -80,40 +80,55 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
             <Link href={`/listing/${listing.id}`} className="line-clamp-1 font-medium text-text-primary">
               {listing.title}
             </Link>
-            <Badge tone={tone}>{t(STATUS_KEY[status] ?? status)}</Badge>
+            <Badge tone={STATUS_TONE[status] ?? "muted"}>{t(STATUS_KEY[status] ?? status)}</Badge>
           </div>
           <PriceTag amount={listing.price} size="sm" />
-          <p className="text-[11px] text-text-muted">{timeAgo(listing.createdAt)}</p>
+          <div className="mt-0.5 flex items-center gap-3 text-[11px] text-text-muted">
+            <span>{timeAgo(listing.createdAt)}</span>
+            <span className="flex items-center gap-0.5">
+              <Eye size={11} /> {listing.views ?? 0} views
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-1 border-t border-border px-2 py-1.5">
-        <Link
-          href={`/profile/ads/${listing.id}/edit`}
-          className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
-        >
-          <Pencil size={14} /> {t("common.edit")}
-        </Link>
-
-        {status === "SOLD" ? (
+        {status === "EXPIRED" || status === "REMOVED" ? (
           <button
-            onClick={() => setListingStatus("ACTIVE")}
+            onClick={repost}
             disabled={busy}
-            className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-success hover:bg-surface-modal disabled:opacity-50"
+            className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-50"
           >
-            <RotateCcw size={14} /> {t("myAds.markActive")}
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            Repost
           </button>
         ) : (
-          <button
-            onClick={() => setListingStatus("SOLD")}
-            disabled={busy}
-            className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-text-secondary hover:bg-surface-modal disabled:opacity-50"
-          >
-            <CheckCircle2 size={14} /> {t("myAds.markSold")}
-          </button>
+          <>
+            <Link
+              href={`/profile/ads/${listing.id}/edit`}
+              className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
+            >
+              <Pencil size={14} /> {t("common.edit")}
+            </Link>
+            {status === "SOLD" ? (
+              <button
+                onClick={() => setListingStatus("ACTIVE")}
+                disabled={busy}
+                className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-success hover:bg-surface-modal disabled:opacity-50"
+              >
+                <RotateCcw size={14} /> {t("myAds.markActive")}
+              </button>
+            ) : (
+              <button
+                onClick={() => setListingStatus("SOLD")}
+                disabled={busy}
+                className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-text-secondary hover:bg-surface-modal disabled:opacity-50"
+              >
+                <CheckCircle2 size={14} /> {t("myAds.markSold")}
+              </button>
+            )}
+          </>
         )}
-
         <button
           onClick={remove}
           disabled={busy}

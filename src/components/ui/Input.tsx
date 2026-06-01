@@ -40,13 +40,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             className,
           )}
           aria-invalid={Boolean(error)}
+          aria-required={props.required}
+          aria-describedby={
+            error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
+          }
           {...props}
         />
       </div>
       {error ? (
-        <p className="text-xs text-danger">{error}</p>
+        <p id={`${inputId}-error`} role="alert" className="text-xs text-danger">{error}</p>
       ) : hint ? (
-        <p className="text-xs text-text-muted">{hint}</p>
+        <p id={`${inputId}-hint`} className="text-xs text-text-muted">{hint}</p>
       ) : null}
     </div>
   );

@@ -45,11 +45,21 @@ export function ReportButton({ listingId }: { listingId: string }) {
       >
         <Flag size={13} /> Report
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Report listing">
+      <Modal open={open} onClose={() => { setOpen(false); if (status === "done") setStatus("idle"); }} title="Report listing">
         {status === "done" ? (
-          <p className="py-4 text-center text-sm text-text-secondary">
-            Thanks — our moderation team will review this.
-          </p>
+          <div className="space-y-4 py-2 text-center">
+            <p className="text-2xl">✅</p>
+            <p className="font-display font-bold">Report received</p>
+            <p className="text-sm text-text-secondary">
+              Our moderation team will review this listing. Thank you for keeping RAY safe.
+            </p>
+            <button
+              onClick={() => { setOpen(false); setStatus("idle"); setDetails(""); }}
+              className="w-full rounded-md bg-surface-card py-2.5 text-sm font-medium text-text-primary hover:bg-surface-modal"
+            >
+              Close
+            </button>
+          </div>
         ) : (
           <div className="space-y-4">
             <Select

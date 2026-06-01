@@ -2,7 +2,10 @@ node_modules
 .next
 out
 .env
+.env.local
 .env*.local
+.env.production
+.env.production.local
 .vercel
 *.log
 .DS_Store

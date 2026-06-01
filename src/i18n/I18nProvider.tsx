@@ -25,7 +25,12 @@ export function I18nProvider({
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
-    // 1-year cookie; read by the server layout for SSR.
+    // Update the html[lang] attribute immediately so screen readers
+    // announce content in the correct language without waiting for SSR.
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = l;
+    }
+    // 1-year cookie; read by the server layout for SSR on next load.
     document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
   }, []);
 

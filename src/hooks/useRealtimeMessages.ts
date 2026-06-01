@@ -33,6 +33,14 @@ export function useRealtimeMessages(conversationId: string) {
         (payload) => {
           const m = payload.new as ChatMessage;
           setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+          // Mark as read immediately if we're the recipient (not the sender).
+          // The GET endpoint already marks on load; this handles messages arriving
+          // while we're actively in the thread.
+          void fetch(`/api/chat/messages/read`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversationId }),
+          }).catch(() => null);
         },
       )
       .subscribe();

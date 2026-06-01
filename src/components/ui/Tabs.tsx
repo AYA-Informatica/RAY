@@ -21,7 +21,7 @@ export function Tabs({ tabs, active, onChange, className }: TabsProps) {
             "shrink-0 rounded-pill px-4 py-2 text-sm font-medium transition-colors",
             active === t.id
               ? "bg-primary text-text-primary"
-              : "bg-surface-card text-text-secondary hover:text-text-primary",
+              : "border border-border bg-surface-card text-text-secondary hover:text-text-primary",
           )}
         >
           {t.label}

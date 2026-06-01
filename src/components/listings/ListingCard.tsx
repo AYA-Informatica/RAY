@@ -46,10 +46,9 @@ export function ListingCard({ listing }: { listing: ListingCardData }) {
                 {listing.neighborhood ?? listing.district}, {listing.city}
               </span>
             </span>
-            <span className="shrink-0 text-right text-text-muted">
+            <span className="shrink-0 text-right">
               {timeAgo(listing.createdAt)}
-              {listing.distanceKm != null && <br />}
-              {listing.distanceKm != null && formatDistance(listing.distanceKm)}
+              {listing.distanceKm != null && ` · ${formatDistance(listing.distanceKm)}`}
             </span>
           </div>
         </div>
@@ -78,7 +77,7 @@ export function ListingRow({ listing }: { listing: ListingCardData }) {
             <span className="flex items-center gap-0.5">
               <MapPin size={12} /> {listing.neighborhood ?? listing.district}, {listing.city}
             </span>
-            <span className="text-text-muted">
+            <span className="shrink-0">
               {timeAgo(listing.createdAt)}
               {listing.distanceKm != null && ` · ${formatDistance(listing.distanceKm)}`}
             </span>

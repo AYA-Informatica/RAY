@@ -58,6 +58,10 @@ const withPWA = require("next-pwa")({
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Disable build-time font optimization — fonts are loaded via <link> at runtime.
+  // This prevents the FontStylesheetGatheringPlugin from trying to fetch and inline
+  // Google Fonts CSS, which fails in restricted-network build environments.
+  optimizeFonts: false,
   images: {
     formats: ["image/webp"],
     remotePatterns: [
@@ -66,10 +70,31 @@ const nextConfig = {
     ],
   },
   async headers() {
+    const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
+    // CSP: tight policy for RAY's stack.
+    // - scripts/styles: self only (Tailwind is inlined at build; no CDN scripts)
+    // - connect: self + Supabase (auth, DB, realtime, storage) + Upstash (rate limit)
+    // - img: self + Supabase storage + data URIs (canvas-compressed WebP blobs)
+    // - frame/object: deny (no embeds)
+    const csp = [
+      "default-src 'self'",
+      `script-src 'self' 'unsafe-inline'`,   // Next.js requires unsafe-inline for inline scripts
+      `style-src 'self' 'unsafe-inline'`,    // Tailwind inlines styles
+      `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com`,
+      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io`,
+      `font-src 'self' https://fonts.gstatic.com`,
+      `frame-src 'none'`,
+      `object-src 'none'`,
+      `base-uri 'self'`,
+      `form-action 'self'`,
+      `upgrade-insecure-requests`,
+    ].join("; ");
+
     return [
       {
         source: "/(.*)",
         headers: [
+          { key: "Content-Security-Policy", value: csp },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

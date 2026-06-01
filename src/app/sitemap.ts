@@ -12,6 +12,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
+    // Category landing pages — meaningful SEO targets.
+    const categories = await prisma.category.findMany({ select: { slug: true } });
+    const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
+      url: `${base}/search?category=${c.slug}`,
+      changeFrequency: "daily" as const,
+      priority: 0.75,
+    }));
     const listings = await prisma.listing.findMany({
       where: { status: "ACTIVE" },
       select: { id: true, updatedAt: true },
@@ -24,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.7,
     }));
-    return [...staticRoutes, ...listingRoutes];
+    return [...staticRoutes, ...categoryRoutes, ...listingRoutes];
   } catch {
     return staticRoutes;
   }

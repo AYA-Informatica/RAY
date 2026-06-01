@@ -237,6 +237,21 @@ Fonts: **Syne** (display/headings) + **DM Sans** (body), via `next/font`.
 
 > The provided wireframes are light-themed; per the (newer) Brand & Design System, RAY ships **dark**. Layout, hierarchy, spacing and component priority follow the wireframes; color follows the design tokens.
 
+### Responsive layout (mobile → tablet → laptop)
+
+> **Accessibility deviation:** `text-muted` ships as **#8A8A8A** rather than the spec's #666666. The spec value yields a 3.2:1 contrast ratio on the #111 background, which fails WCAG AA for body text. #8A8A8A reaches ~5.4:1 (AA pass). Every other token matches the spec exactly.
+
+RAY is mobile-first but fully responsive on every screen size:
+
+- **Navigation** — a fixed bottom tab bar on phones/tablets (`< lg`); at `lg+` it is replaced by a sticky top navigation bar (brand, links, Sell button, favourites, profile).
+- **Feed & search grids** — listing cards reflow `2 → 3 → 4 → 5` columns from mobile to wide desktop. The home "Recent Listings" rail shows wireframe-style wide rows on phones and a card grid from `sm` up.
+- **Listing detail** — single stacked column on mobile (with a sticky "Chat with Seller" bar); a two-column gallery + details layout with an inline CTA on `lg+`.
+- **Content width** — account/inbox/settings screens use a comfortable reading width (`max-w-2xl`); feed/search/favourites use a wider canvas (`max-w-6xl`). Forms (sell, edit) and the chat thread center themselves on large screens.
+
+Tailwind breakpoints used: `sm 640 · md 768 · lg 1024 · xl 1280`.
+
+> **Note on the Prisma client:** `prisma generate` runs automatically as part of `npm run build`. After a fresh `npm install`, run `npm run prisma:generate` before `tsc` to generate the client types. This requires network access to `binaries.prisma.sh` to download the query engine — on a standard machine this is automatic.
+
 ---
 
 ## Not in this MVP (future phases, architecture-ready)

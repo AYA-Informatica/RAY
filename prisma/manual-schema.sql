@@ -1,211 +1,356 @@
 -- ============================================================================
--- RAY - Complete Database Schema for Manual Setup
--- Run this ENTIRE script in Supabase SQL Editor
--- This creates all tables, enums, and indexes from the Prisma schema
+-- RAY — Manual Schema Setup
+-- ============================================================================
+-- Run this in the Supabase SQL Editor to create the entire RAY database schema
+-- from scratch. Use this when you cannot run Prisma migrations locally (e.g.
+-- ISP-level PostgreSQL port blocking).
+--
+-- EXECUTION ORDER:
+--   1. Run THIS FILE  →  creates all tables, enums, indexes, foreign keys
+--   2. Run prisma/setup.sql  →  adds auth triggers + RLS policies
+--   3. Run db:seed SQL below (Step 3 section)  →  seeds categories
+--
+-- IDEMPOTENT: Safe to re-run. All objects are created with IF NOT EXISTS /
+-- OR REPLACE, and DROP ... IF EXISTS guards are used throughout.
+--
+-- Last updated to match prisma/schema.prisma (Prisma v5, RAY MVP).
 -- ============================================================================
 
--- Create Enums
-CREATE TYPE "Condition" AS ENUM ('NEW', 'LIKE_NEW', 'GOOD', 'FAIR', 'USED');
-CREATE TYPE "ListingStatus" AS ENUM ('ACTIVE', 'SOLD', 'EXPIRED', 'REMOVED', 'FLAGGED');
-CREATE TYPE "ReportReason" AS ENUM ('SPAM', 'FAKE', 'STOLEN', 'HARASSMENT', 'SCAM', 'INAPPROPRIATE');
-CREATE TYPE "UserRole" AS ENUM ('USER', 'MODERATOR', 'ADMIN');
-CREATE TYPE "AttributeType" AS ENUM ('TEXT', 'NUMBER', 'SELECT', 'BOOLEAN');
 
--- User Table (mirrored from auth.users)
-CREATE TABLE "User" (
-  id UUID PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  name VARCHAR(255),
-  "avatarUrl" TEXT,
-  bio TEXT,
-  city VARCHAR(255),
-  district VARCHAR(255),
-  neighborhood VARCHAR(255),
-  role "UserRole" NOT NULL DEFAULT 'USER',
-  "isBanned" BOOLEAN NOT NULL DEFAULT false,
-  "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+-- ----------------------------------------------------------------------------
+-- STEP 0 — Clean slate (drop everything in dependency order)
+-- Comment this block out if you want to preserve existing data.
+-- ----------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS public."Report"                CASCADE;
+DROP TABLE IF EXISTS public."Block"                 CASCADE;
+DROP TABLE IF EXISTS public."Message"               CASCADE;
+DROP TABLE IF EXISTS public."Conversation"          CASCADE;
+DROP TABLE IF EXISTS public."Favorite"              CASCADE;
+DROP TABLE IF EXISTS public."ListingAttributeValue" CASCADE;
+DROP TABLE IF EXISTS public."ListingImage"          CASCADE;
+DROP TABLE IF EXISTS public."Listing"               CASCADE;
+DROP TABLE IF EXISTS public."CategoryAttribute"     CASCADE;
+DROP TABLE IF EXISTS public."Category"              CASCADE;
+DROP TABLE IF EXISTS public."User"                  CASCADE;
+
+DROP TYPE IF EXISTS public."Condition"      CASCADE;
+DROP TYPE IF EXISTS public."ListingStatus"  CASCADE;
+DROP TYPE IF EXISTS public."ReportReason"   CASCADE;
+DROP TYPE IF EXISTS public."UserRole"       CASCADE;
+DROP TYPE IF EXISTS public."AttributeType"  CASCADE;
+
+
+-- ----------------------------------------------------------------------------
+-- STEP 1 — Enums
+-- ----------------------------------------------------------------------------
+
+CREATE TYPE public."Condition" AS ENUM (
+  'NEW',
+  'LIKE_NEW',
+  'GOOD',
+  'FAIR',
+  'USED'
 );
 
-CREATE INDEX "User_city_idx" ON "User"("city");
-CREATE INDEX "User_district_idx" ON "User"("district");
-
--- Block Table
-CREATE TABLE "Block" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  "blockerId" UUID NOT NULL,
-  "blockedId" UUID NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT "Block_blockerId_fkey" FOREIGN KEY ("blockerId") REFERENCES "User"(id) ON DELETE CASCADE,
-  CONSTRAINT "Block_blockedId_fkey" FOREIGN KEY ("blockedId") REFERENCES "User"(id) ON DELETE CASCADE
+CREATE TYPE public."ListingStatus" AS ENUM (
+  'ACTIVE',
+  'SOLD',
+  'EXPIRED',
+  'REMOVED',
+  'FLAGGED'
 );
 
-CREATE UNIQUE INDEX "Block_blockerId_blockedId_key" ON "Block"("blockerId", "blockedId");
-CREATE INDEX "Block_blockerId_idx" ON "Block"("blockerId");
-CREATE INDEX "Block_blockedId_idx" ON "Block"("blockedId");
-
--- Category Table
-CREATE TABLE "Category" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(255) NOT NULL,
-  slug VARCHAR(255) UNIQUE NOT NULL,
-  icon VARCHAR(255),
-  "order" INTEGER NOT NULL DEFAULT 0,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+CREATE TYPE public."ReportReason" AS ENUM (
+  'SPAM',
+  'FAKE',
+  'STOLEN',
+  'HARASSMENT',
+  'SCAM',
+  'INAPPROPRIATE'
 );
 
--- CategoryAttribute Table
-CREATE TABLE "CategoryAttribute" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  "categoryId" VARCHAR(255) NOT NULL,
-  label VARCHAR(255) NOT NULL,
-  key VARCHAR(255) NOT NULL,
-  type "AttributeType" NOT NULL,
-  required BOOLEAN NOT NULL DEFAULT false,
-  placeholder VARCHAR(255),
-  options JSONB,
-  "order" INTEGER NOT NULL DEFAULT 0,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT "CategoryAttribute_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"(id) ON DELETE CASCADE
+CREATE TYPE public."UserRole" AS ENUM (
+  'USER',
+  'MODERATOR',
+  'ADMIN'
 );
 
-CREATE UNIQUE INDEX "CategoryAttribute_categoryId_key_key" ON "CategoryAttribute"("categoryId", "key");
-CREATE INDEX "CategoryAttribute_categoryId_idx" ON "CategoryAttribute"("categoryId");
-
--- Listing Table
-CREATE TABLE "Listing" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  title VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL,
-  price DOUBLE PRECISION NOT NULL,
-  negotiable BOOLEAN NOT NULL DEFAULT true,
-  condition "Condition" NOT NULL,
-  city VARCHAR(255) NOT NULL,
-  district VARCHAR(255) NOT NULL,
-  neighborhood VARCHAR(255),
-  latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION,
-  status "ListingStatus" NOT NULL DEFAULT 'ACTIVE',
-  views INTEGER NOT NULL DEFAULT 0,
-  "expiresAt" TIMESTAMP(3) NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "userId" UUID NOT NULL,
-  "categoryId" VARCHAR(255) NOT NULL,
-  
-  CONSTRAINT "Listing_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE,
-  CONSTRAINT "Listing_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"(id)
+CREATE TYPE public."AttributeType" AS ENUM (
+  'TEXT',
+  'NUMBER',
+  'SELECT',
+  'BOOLEAN'
 );
 
-CREATE INDEX "Listing_city_idx" ON "Listing"("city");
-CREATE INDEX "Listing_district_idx" ON "Listing"("district");
-CREATE INDEX "Listing_categoryId_idx" ON "Listing"("categoryId");
-CREATE INDEX "Listing_status_idx" ON "Listing"("status");
-CREATE INDEX "Listing_createdAt_idx" ON "Listing"("createdAt");
 
--- ListingImage Table
-CREATE TABLE "ListingImage" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  url TEXT NOT NULL,
-  "order" INTEGER NOT NULL DEFAULT 0,
-  "listingId" VARCHAR(255) NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT "ListingImage_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "Listing"(id) ON DELETE CASCADE
+-- ----------------------------------------------------------------------------
+-- STEP 2 — Core tables
+-- ----------------------------------------------------------------------------
+
+-- User — public marketplace identity, mirrored from Supabase auth.users
+-- id == auth.uid() (UUID from Supabase Auth).
+CREATE TABLE public."User" (
+  id            UUID          PRIMARY KEY,              -- mirrors auth.users.id
+  email         TEXT          NOT NULL UNIQUE,
+  name          TEXT,
+  "avatarUrl"   TEXT,
+  bio           TEXT,
+  city          TEXT,
+  district      TEXT,
+  neighborhood  TEXT,
+  role          public."UserRole"  NOT NULL DEFAULT 'USER',
+  "isBanned"    BOOLEAN       NOT NULL DEFAULT FALSE,
+  "lastSeenAt"  TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  "createdAt"   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  "updatedAt"   TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX "ListingImage_listingId_idx" ON "ListingImage"("listingId");
+CREATE INDEX IF NOT EXISTS idx_user_city     ON public."User" (city);
+CREATE INDEX IF NOT EXISTS idx_user_district ON public."User" (district);
 
--- ListingAttributeValue Table
-CREATE TABLE "ListingAttributeValue" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  "listingId" VARCHAR(255) NOT NULL,
-  "attributeId" VARCHAR(255) NOT NULL,
-  value TEXT NOT NULL,
-  
-  CONSTRAINT "ListingAttributeValue_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "Listing"(id) ON DELETE CASCADE,
-  CONSTRAINT "ListingAttributeValue_attributeId_fkey" FOREIGN KEY ("attributeId") REFERENCES "CategoryAttribute"(id) ON DELETE CASCADE
+
+-- Block — user safety control (hide/mute another user in chat)
+CREATE TABLE public."Block" (
+  id          TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "blockerId" UUID        NOT NULL REFERENCES public."User" (id) ON DELETE CASCADE,
+  "blockedId" UUID        NOT NULL REFERENCES public."User" (id) ON DELETE CASCADE,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE ("blockerId", "blockedId")
 );
 
-CREATE UNIQUE INDEX "ListingAttributeValue_listingId_attributeId_key" ON "ListingAttributeValue"("listingId", "attributeId");
-CREATE INDEX "ListingAttributeValue_listingId_idx" ON "ListingAttributeValue"("listingId");
-CREATE INDEX "ListingAttributeValue_attributeId_idx" ON "ListingAttributeValue"("attributeId");
+CREATE INDEX IF NOT EXISTS idx_block_blocker ON public."Block" ("blockerId");
+CREATE INDEX IF NOT EXISTS idx_block_blocked ON public."Block" ("blockedId");
 
--- Favorite Table
-CREATE TABLE "Favorite" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  "userId" UUID NOT NULL,
-  "listingId" VARCHAR(255) NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT "Favorite_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE,
-  CONSTRAINT "Favorite_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "Listing"(id) ON DELETE CASCADE
+
+-- Category — listing categories (seeded; not user-created)
+CREATE TABLE public."Category" (
+  id          TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  name        TEXT        NOT NULL,
+  slug        TEXT        NOT NULL UNIQUE,
+  icon        TEXT,                         -- emoji used in the category grid
+  "order"     INTEGER     NOT NULL DEFAULT 0,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX "Favorite_userId_listingId_key" ON "Favorite"("userId", "listingId");
-CREATE INDEX "Favorite_userId_idx" ON "Favorite"("userId");
-CREATE INDEX "Favorite_listingId_idx" ON "Favorite"("listingId");
 
--- Conversation Table
-CREATE TABLE "Conversation" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  "listingId" VARCHAR(255) NOT NULL,
-  "buyerId" UUID NOT NULL,
-  "sellerId" UUID NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT "Conversation_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "Listing"(id) ON DELETE CASCADE,
-  CONSTRAINT "Conversation_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "User"(id),
-  CONSTRAINT "Conversation_sellerId_fkey" FOREIGN KEY ("sellerId") REFERENCES "User"(id)
+-- CategoryAttribute — schema-driven listing fields per category
+-- (Brand, Storage, Year, Bedrooms…) without needing new DB columns.
+CREATE TABLE public."CategoryAttribute" (
+  id            TEXT                   PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "categoryId"  TEXT                   NOT NULL REFERENCES public."Category" (id) ON DELETE CASCADE,
+  label         TEXT                   NOT NULL,
+  key           TEXT                   NOT NULL,
+  type          public."AttributeType" NOT NULL,
+  required      BOOLEAN                NOT NULL DEFAULT FALSE,
+  placeholder   TEXT,
+  options       JSONB,                  -- for SELECT: '["Apple","Samsung",...]'
+  "order"       INTEGER                NOT NULL DEFAULT 0,
+  "createdAt"   TIMESTAMPTZ            NOT NULL DEFAULT NOW(),
+  UNIQUE ("categoryId", key)
 );
 
-CREATE UNIQUE INDEX "Conversation_listingId_buyerId_key" ON "Conversation"("listingId", "buyerId");
-CREATE INDEX "Conversation_buyerId_idx" ON "Conversation"("buyerId");
-CREATE INDEX "Conversation_sellerId_idx" ON "Conversation"("sellerId");
-CREATE INDEX "Conversation_listingId_idx" ON "Conversation"("listingId");
+CREATE INDEX IF NOT EXISTS idx_catattr_category ON public."CategoryAttribute" ("categoryId");
 
--- Message Table
-CREATE TABLE "Message" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  "conversationId" VARCHAR(255) NOT NULL,
-  "senderId" UUID NOT NULL,
-  content TEXT,
-  "imageUrl" TEXT,
-  latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION,
-  "isRead" BOOLEAN NOT NULL DEFAULT false,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT "Message_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation"(id) ON DELETE CASCADE,
-  CONSTRAINT "Message_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "User"(id)
+
+-- Listing — the heart of RAY
+CREATE TABLE public."Listing" (
+  id            TEXT                     PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  title         TEXT                     NOT NULL,
+  description   TEXT                     NOT NULL,
+  price         DOUBLE PRECISION         NOT NULL,
+  negotiable    BOOLEAN                  NOT NULL DEFAULT TRUE,
+  condition     public."Condition"       NOT NULL,
+  city          TEXT                     NOT NULL,
+  district      TEXT                     NOT NULL,
+  neighborhood  TEXT,
+  latitude      DOUBLE PRECISION,
+  longitude     DOUBLE PRECISION,
+  status        public."ListingStatus"   NOT NULL DEFAULT 'ACTIVE',
+  views         INTEGER                  NOT NULL DEFAULT 0,
+  "expiresAt"   TIMESTAMPTZ              NOT NULL,
+  "createdAt"   TIMESTAMPTZ              NOT NULL DEFAULT NOW(),
+  "updatedAt"   TIMESTAMPTZ              NOT NULL DEFAULT NOW(),
+  "userId"      UUID                     NOT NULL REFERENCES public."User" (id)     ON DELETE CASCADE,
+  "categoryId"  TEXT                     NOT NULL REFERENCES public."Category" (id)
 );
 
-CREATE INDEX "Message_conversationId_idx" ON "Message"("conversationId");
-CREATE INDEX "Message_senderId_idx" ON "Message"("senderId");
+CREATE INDEX IF NOT EXISTS idx_listing_city       ON public."Listing" (city);
+CREATE INDEX IF NOT EXISTS idx_listing_district   ON public."Listing" (district);
+CREATE INDEX IF NOT EXISTS idx_listing_category   ON public."Listing" ("categoryId");
+CREATE INDEX IF NOT EXISTS idx_listing_status     ON public."Listing" (status);
+CREATE INDEX IF NOT EXISTS idx_listing_created    ON public."Listing" ("createdAt");
 
--- Report Table
-CREATE TABLE "Report" (
-  id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-  reason "ReportReason" NOT NULL,
-  details TEXT,
-  "reporterId" UUID NOT NULL,
-  "listingId" VARCHAR(255),
-  resolved BOOLEAN NOT NULL DEFAULT false,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT "Report_reporterId_fkey" FOREIGN KEY ("reporterId") REFERENCES "User"(id),
-  CONSTRAINT "Report_listingId_fkey" FOREIGN KEY ("listingId") REFERENCES "Listing"(id) ON DELETE CASCADE
+
+-- ListingImage — photos attached to a listing (max 7 per app logic)
+CREATE TABLE public."ListingImage" (
+  id          TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  url         TEXT        NOT NULL,
+  "order"     INTEGER     NOT NULL DEFAULT 0,
+  "listingId" TEXT        NOT NULL REFERENCES public."Listing" (id) ON DELETE CASCADE,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX "Report_listingId_idx" ON "Report"("listingId");
-CREATE INDEX "Report_reporterId_idx" ON "Report"("reporterId");
-CREATE INDEX "Report_resolved_idx" ON "Report"("resolved");
+CREATE INDEX IF NOT EXISTS idx_listingimage_listing ON public."ListingImage" ("listingId");
+
+
+-- ListingAttributeValue — filled-in dynamic fields for a specific listing
+CREATE TABLE public."ListingAttributeValue" (
+  id            TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "listingId"   TEXT        NOT NULL REFERENCES public."Listing" (id)           ON DELETE CASCADE,
+  "attributeId" TEXT        NOT NULL REFERENCES public."CategoryAttribute" (id) ON DELETE CASCADE,
+  value         TEXT        NOT NULL,
+  UNIQUE ("listingId", "attributeId")
+);
+
+CREATE INDEX IF NOT EXISTS idx_attrval_listing   ON public."ListingAttributeValue" ("listingId");
+CREATE INDEX IF NOT EXISTS idx_attrval_attribute ON public."ListingAttributeValue" ("attributeId");
+
+
+-- Favorite — saved listings per user
+CREATE TABLE public."Favorite" (
+  id          TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId"    UUID        NOT NULL REFERENCES public."User" (id)    ON DELETE CASCADE,
+  "listingId" TEXT        NOT NULL REFERENCES public."Listing" (id) ON DELETE CASCADE,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE ("userId", "listingId")
+);
+
+CREATE INDEX IF NOT EXISTS idx_favorite_user    ON public."Favorite" ("userId");
+CREATE INDEX IF NOT EXISTS idx_favorite_listing ON public."Favorite" ("listingId");
+
+
+-- Conversation — one thread per buyer per listing (enforced by unique constraint)
+CREATE TABLE public."Conversation" (
+  id          TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "listingId" TEXT        NOT NULL REFERENCES public."Listing" (id) ON DELETE CASCADE,
+  "buyerId"   UUID        NOT NULL REFERENCES public."User" (id),
+  "sellerId"  UUID        NOT NULL REFERENCES public."User" (id),
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE ("listingId", "buyerId")
+);
+
+CREATE INDEX IF NOT EXISTS idx_conv_buyer   ON public."Conversation" ("buyerId");
+CREATE INDEX IF NOT EXISTS idx_conv_seller  ON public."Conversation" ("sellerId");
+CREATE INDEX IF NOT EXISTS idx_conv_listing ON public."Conversation" ("listingId");
+
+
+-- Message — individual chat messages; supports text, image, and location
+CREATE TABLE public."Message" (
+  id               TEXT        PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "conversationId" TEXT        NOT NULL REFERENCES public."Conversation" (id) ON DELETE CASCADE,
+  "senderId"       UUID        NOT NULL REFERENCES public."User" (id),
+  content          TEXT,
+  "imageUrl"       TEXT,
+  latitude         DOUBLE PRECISION,
+  longitude        DOUBLE PRECISION,
+  "isRead"         BOOLEAN     NOT NULL DEFAULT FALSE,
+  "createdAt"      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_conversation ON public."Message" ("conversationId");
+CREATE INDEX IF NOT EXISTS idx_message_sender       ON public."Message" ("senderId");
+
+
+-- Report — content moderation; auto-flagged at ≥3 open reports (see API)
+CREATE TABLE public."Report" (
+  id           TEXT                    PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  reason       public."ReportReason"   NOT NULL,
+  details      TEXT,
+  "reporterId" UUID                    NOT NULL REFERENCES public."User" (id),
+  "listingId"  TEXT                    REFERENCES public."Listing" (id) ON DELETE CASCADE,
+  resolved     BOOLEAN                 NOT NULL DEFAULT FALSE,
+  "createdAt"  TIMESTAMPTZ             NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_report_listing  ON public."Report" ("listingId");
+CREATE INDEX IF NOT EXISTS idx_report_reporter ON public."Report" ("reporterId");
+CREATE INDEX IF NOT EXISTS idx_report_resolved ON public."Report" (resolved);
+
+
+-- ----------------------------------------------------------------------------
+-- STEP 3 — Seed: launch categories + dynamic attributes
+-- Matches prisma/seed.ts exactly (10 Rwanda-optimised categories).
+-- ----------------------------------------------------------------------------
+
+INSERT INTO public."Category" (id, name, slug, icon, "order") VALUES
+  ('cat_phones',       'Mobiles',      'phones',       '📱', 1),
+  ('cat_electronics',  'Electronics',  'electronics',  '💻', 2),
+  ('cat_cars',         'Cars',         'cars',         '🚗', 3),
+  ('cat_bikes',        'Bikes',        'bikes',        '🚲', 4),
+  ('cat_rentals',      'Rentals',      'rentals',      '🏠', 5),
+  ('cat_furniture',    'Furniture',    'furniture',    '🛋️', 6),
+  ('cat_fashion',      'Fashion',      'fashion',      '👕', 7),
+  ('cat_jobs',         'Jobs',         'jobs',         '💼', 8),
+  ('cat_services',     'Services',     'services',     '🔧', 9),
+  ('cat_kids',         'Kids',         'kids',         '🧸', 10)
+ON CONFLICT (slug) DO NOTHING;
+
+
+-- Phones — brand, storage, RAM, condition
+INSERT INTO public."CategoryAttribute" (id, "categoryId", label, key, type, required, placeholder, options, "order") VALUES
+  ('attr_phones_brand',   'cat_phones', 'Brand',   'brand',   'TEXT',   TRUE,  'e.g. Apple, Samsung', NULL, 1),
+  ('attr_phones_storage', 'cat_phones', 'Storage', 'storage', 'SELECT', FALSE, NULL,
+    '["16GB","32GB","64GB","128GB","256GB","512GB"]'::jsonb, 2),
+  ('attr_phones_ram',     'cat_phones', 'RAM',     'ram',     'SELECT', FALSE, NULL,
+    '["2GB","3GB","4GB","6GB","8GB","12GB","16GB"]'::jsonb, 3)
+ON CONFLICT ("categoryId", key) DO NOTHING;
+
+
+-- Electronics — brand, model
+INSERT INTO public."CategoryAttribute" (id, "categoryId", label, key, type, required, placeholder, options, "order") VALUES
+  ('attr_elec_brand', 'cat_electronics', 'Brand', 'brand', 'TEXT', TRUE,  'e.g. Dell, HP, Sony', NULL, 1),
+  ('attr_elec_model', 'cat_electronics', 'Model', 'model', 'TEXT', FALSE, 'e.g. XPS 13, MacBook Air', NULL, 2)
+ON CONFLICT ("categoryId", key) DO NOTHING;
+
+
+-- Cars — brand, year, mileage, transmission, fuel type
+INSERT INTO public."CategoryAttribute" (id, "categoryId", label, key, type, required, placeholder, options, "order") VALUES
+  ('attr_cars_brand',    'cat_cars', 'Brand',        'brand',    'TEXT',   TRUE,  'e.g. Toyota, Honda', NULL, 1),
+  ('attr_cars_year',     'cat_cars', 'Year',         'year',     'NUMBER', TRUE,  'e.g. 2018', NULL, 2),
+  ('attr_cars_mileage',  'cat_cars', 'Mileage (km)', 'mileage',  'NUMBER', FALSE, 'e.g. 80000', NULL, 3),
+  ('attr_cars_trans',    'cat_cars', 'Transmission', 'transmission', 'SELECT', FALSE, NULL,
+    '["Manual","Automatic","Semi-automatic"]'::jsonb, 4),
+  ('attr_cars_fuel',     'cat_cars', 'Fuel',         'fuel',     'SELECT', FALSE, NULL,
+    '["Petrol","Diesel","Hybrid","Electric"]'::jsonb, 5)
+ON CONFLICT ("categoryId", key) DO NOTHING;
+
+
+-- Bikes — brand, type
+INSERT INTO public."CategoryAttribute" (id, "categoryId", label, key, type, required, placeholder, options, "order") VALUES
+  ('attr_bikes_brand', 'cat_bikes', 'Brand', 'brand', 'TEXT',   FALSE, 'e.g. Trek, Giant', NULL, 1),
+  ('attr_bikes_type',  'cat_bikes', 'Type',  'type',  'SELECT', FALSE, NULL,
+    '["Mountain","Road","City","Electric","Other"]'::jsonb, 2)
+ON CONFLICT ("categoryId", key) DO NOTHING;
+
+
+-- Rentals — bedrooms, bathrooms, furnished
+INSERT INTO public."CategoryAttribute" (id, "categoryId", label, key, type, required, placeholder, options, "order") VALUES
+  ('attr_rent_beds',      'cat_rentals', 'Bedrooms',  'bedrooms',  'SELECT', TRUE,  NULL,
+    '["Studio","1","2","3","4","5+"]'::jsonb, 1),
+  ('attr_rent_baths',     'cat_rentals', 'Bathrooms', 'bathrooms', 'SELECT', FALSE, NULL,
+    '["1","2","3","4+"]'::jsonb, 2),
+  ('attr_rent_furnished', 'cat_rentals', 'Furnished', 'furnished', 'SELECT', FALSE, NULL,
+    '["Furnished","Unfurnished","Partially furnished"]'::jsonb, 3)
+ON CONFLICT ("categoryId", key) DO NOTHING;
+
+
+-- (Furniture, Fashion, Jobs, Services, Kids have no required attributes — 
+--  the sell wizard auto-skips the Specs step for these categories.)
+
+
+-- ----------------------------------------------------------------------------
+-- Done.
+-- Next: run prisma/setup.sql in a NEW SQL Editor tab for triggers + RLS.
+-- ----------------------------------------------------------------------------
+
+SELECT 'Schema created successfully! Run prisma/setup.sql next.' AS status;
 
 -- ============================================================================
--- SUCCESS MESSAGE
+-- Migration: Add offer fields to Message (run after initial setup)
 -- ============================================================================
-SELECT 'Database schema created successfully!' AS message;
+ALTER TABLE public."Message"
+  ADD COLUMN IF NOT EXISTS "offerAmount" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "offerStatus" TEXT
+  CHECK ("offerStatus" IN ('pending', 'accepted', 'declined'));

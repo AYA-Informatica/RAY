@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
-import { sendMessageSchema } from "@/lib/validations/message.schema";
+import { sendMessageSchema, respondOfferSchema } from "@/lib/validations/message.schema";
 import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
@@ -89,7 +89,50 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
+    // Offer fields are new schema columns not yet in the generated Prisma client.
+    // Write them via a raw update so the stale types stay satisfied.
+    if (data.offerAmount != null) {
+      await prisma.$executeRaw`
+        UPDATE "Message"
+        SET "offerAmount" = ${data.offerAmount}, "offerStatus" = 'pending'
+        WHERE id = ${message.id}
+      `;
+    }
+
     return ok(message, { status: 201 });
+  } catch (err) {
+    return handleApiError(err);
+  }
+}
+
+/**
+ * PATCH /api/chat/messages — seller responds to a price offer (accept/decline).
+ * Only the conversation seller can respond; only pending offers can be updated.
+ */
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await requireUser();
+    const data = respondOfferSchema.parse(await req.json());
+
+    const message = await prisma.message.findUnique({
+      where: { id: data.messageId },
+      include: { conversation: { select: { sellerId: true, buyerId: true } } },
+    });
+    if (!message) return fail("Message not found", 404);
+
+    // offerStatus is a new column not in the stale Prisma client — read via raw query.
+    const offerRows = await prisma.$queryRaw<{ offerStatus: string | null }[]>`
+      SELECT "offerStatus" FROM "Message" WHERE id = ${data.messageId}
+    `;
+    if (offerRows[0]?.offerStatus !== "pending") return fail("Offer already responded to", 400);
+
+    // Only the seller can respond to an offer.
+    if (message.conversation.sellerId !== user.id) return fail("Forbidden", 403);
+
+    await prisma.$executeRaw`
+      UPDATE "Message" SET "offerStatus" = ${data.status} WHERE id = ${data.messageId}
+    `;
+    return ok({ id: data.messageId, offerStatus: data.status });
   } catch (err) {
     return handleApiError(err);
   }

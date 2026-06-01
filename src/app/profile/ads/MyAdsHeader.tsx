@@ -9,7 +9,7 @@ export function MyAdsHeader() {
   const { t } = useI18n();
   return (
     <header className="flex items-center gap-3 border-b border-border px-4 py-4">
-      <Link href="/profile" aria-label={t("common.back")} className="text-text-secondary">
+      <Link href="/profile" aria-label={t("common.back")} className="text-text-secondary lg:hidden">
         <ArrowLeft size={22} />
       </Link>
       <h1 className="font-display text-xl font-bold">{t("myAds.title")}</h1>

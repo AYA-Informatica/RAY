@@ -1,22 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Syne, DM_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import { I18nProvider, parseLocale } from "@/i18n/I18nProvider";
 import "./globals.css";
-
-const syne = Syne({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-syne",
-  display: "swap",
-});
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-dm-sans",
-  display: "swap",
-});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -54,9 +39,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang={locale}
-      className={`${syne.variable} ${dmSans.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        {/* Load Google Fonts at runtime — avoids build-time network dependency.
+            eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap"
+        />
+      </head>
       <body className="min-h-dvh bg-background">
         <I18nProvider initialLocale={locale}>{children}</I18nProvider>
       </body>

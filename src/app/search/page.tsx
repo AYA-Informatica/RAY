@@ -10,7 +10,7 @@ export const metadata = { title: "Search" };
 export default async function SearchPage() {
   const categories = await getCategories();
   return (
-    <AppShell>
+    <AppShell width="wide">
       <Suspense fallback={<div className="p-4"><ListingGridSkeleton /></div>}>
         <SearchClient
           categories={[

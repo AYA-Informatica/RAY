@@ -30,6 +30,7 @@ function toCard(l: RawListing, origin?: { lat: number; lng: number }): ListingCa
     neighborhood: l.neighborhood,
     createdAt: l.createdAt,
     status: l.status,
+    views: l.views,
     coverImage: l.images[0]?.url ?? null,
     category: { slug: l.category.slug, name: l.category.name, icon: l.category.icon ?? "📦" },
     distanceKm:
@@ -62,7 +63,18 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   if (q.category) where.category = { slug: q.category };
   if (q.city) where.city = q.city;
   if (q.district) where.district = q.district;
+  if (q.neighborhood) where.neighborhood = q.neighborhood;
   if (q.condition) where.condition = q.condition;
+  if (q.brand) {
+    // Brand lives on the dynamic CategoryAttribute system (key === "brand"),
+    // so filter via the attributeValues join. Case-insensitive equality.
+    where.attributeValues = {
+      some: {
+        attribute: { is: { key: "brand" } },
+        value: { equals: q.brand, mode: "insensitive" },
+      },
+    };
+  }
   if (q.minPrice != null || q.maxPrice != null) {
     where.price = {
       ...(q.minPrice != null ? { gte: q.minPrice } : {}),
@@ -144,6 +156,7 @@ export async function getUserListings(userId: string): Promise<ListingCardData[]
       neighborhood: r.neighborhood,
       createdAt: r.createdAt,
       status: r.status,
+      views: r.views,
       coverImage: r.images[0]?.url ?? null,
       category: { slug: r.category.slug, name: r.category.name, icon: r.category.icon ?? "📦" },
     }));

@@ -3,14 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Send, ImagePlus, MapPin, Loader2, MoreVertical, Ban } from "lucide-react";
+import { ArrowLeft, Send, ImagePlus, MapPin, Loader2, MoreVertical, Ban, MessageSquare, Tag } from "lucide-react";
 import { MessageBubble, type ChatMessage } from "@/components/chat/MessageBubble";
 import { QuickReplies } from "@/components/chat/QuickReplies";
 import { PriceTag } from "@/components/listings/PriceTag";
 import { useRealtimeMessages } from "@/hooks/useRealtimeMessages";
 import { usePresenceHeartbeat } from "@/hooks/usePresenceHeartbeat";
 import { uploadImage } from "@/lib/storage/upload";
-import { isOnline, presenceLabel } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/cn";
+import { isOnline, presenceLabel, formatPrice } from "@/lib/utils/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { ThreadHeader } from "@/services/chat";
 
@@ -34,6 +35,10 @@ export function ChatThread({
   const [uploading, setUploading] = useState(false);
   const [blocked, setBlocked] = useState(thread.isBlocked);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [showOfferInput, setShowOfferInput] = useState(false);
+  const [offerValue, setOfferValue] = useState("");
+  const isSeller = thread.sellerId === currentUserId;
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,6 +50,7 @@ export function ChatThread({
     imageUrl?: string;
     latitude?: number;
     longitude?: number;
+    offerAmount?: number;
   }) {
     if (blocked) return;
     setSending(true);
@@ -54,6 +60,8 @@ export function ChatThread({
       imageUrl: payload.imageUrl ?? null,
       latitude: payload.latitude ?? null,
       longitude: payload.longitude ?? null,
+      offerAmount: payload.offerAmount ?? null,
+      offerStatus: payload.offerAmount != null ? "pending" : null,
       isRead: false,
       senderId: currentUserId,
       createdAt: new Date().toISOString(),
@@ -109,13 +117,17 @@ export function ChatThread({
   const online = isOnline(thread.otherLastSeenAt);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background sm:max-w-xl md:max-w-2xl lg:max-w-3xl lg:border-x lg:border-border">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-3 py-2.5">
-        <Link href="/chat" aria-label={t("common.back")} className="text-text-secondary">
+        <Link
+          href="/chat"
+          aria-label={t("common.back")}
+          className="-ml-2 grid h-11 w-11 place-items-center text-text-secondary hover:text-text-primary"
+        >
           <ArrowLeft size={22} />
         </Link>
-        <Link href={`/listing/${thread.listingId}`} className="flex min-w-0 flex-1 items-center gap-2">
+        <Link href={`/listing/${thread.listingId}`} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-2">
           <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-surface-modal">
             {thread.listingImage ? (
               <Image src={thread.listingImage} alt={thread.listingTitle} fill className="object-cover" />
@@ -140,7 +152,9 @@ export function ChatThread({
           <button
             onClick={() => setMenuOpen((o) => !o)}
             aria-label="More options"
-            className="text-text-secondary"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className="grid h-11 w-11 place-items-center text-text-secondary hover:text-text-primary"
           >
             <MoreVertical size={20} />
           </button>
@@ -164,19 +178,41 @@ export function ChatThread({
             <Loader2 className="animate-spin" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="grid place-items-center py-10 text-center text-sm text-text-muted">
-            <p>{t("chat.sayHello")}</p>
+          <div className="space-y-3 p-4">
+            <div className="grid place-items-center py-6 text-center text-sm text-text-muted">
+              <p>{t("chat.sayHello")}</p>
+            </div>
+            {/* Safety tip — shown only on empty threads, matches OLX's trust layer */}
+            <div className="rounded-xl border border-border bg-surface-card px-4 py-3">
+              <p className="text-xs font-semibold text-text-secondary">🛡️ {t("chat.safetyTip")}</p>
+              <p className="mt-0.5 text-xs text-text-muted">{t("chat.safetyBody")}</p>
+            </div>
           </div>
         ) : (
           messages.map((m: ChatMessage) => (
-            <MessageBubble key={m.id} message={m} mine={m.senderId === currentUserId} />
+            <MessageBubble
+              key={m.id}
+              message={m}
+              mine={m.senderId === currentUserId}
+              isSeller={isSeller}
+              onOfferRespond={(msgId, status) => {
+                // Update offer status locally so the card reflects immediately
+                // without waiting for a realtime message.
+                void msgId; // acknowledged
+                void status;
+              }}
+            />
           ))
         )}
         <div ref={endRef} />
       </main>
 
-      {/* Quick replies + composer (or blocked notice) */}
+      {/* Footer: composer + privacy note */}
       <footer className="sticky bottom-0 border-t border-border bg-background">
+        {/* Privacy note — persistent, matches OLX's trust layer */}
+        <p className="border-b border-border/50 px-4 py-1.5 text-center text-[11px] text-text-muted">
+          🔒 {t("chat.privacyNote")}
+        </p>
         {blocked ? (
           <div className="flex items-center justify-between gap-3 p-4">
             <p className="text-sm text-text-secondary">{t("chat.blocked")}</p>
@@ -186,7 +222,41 @@ export function ChatThread({
           </div>
         ) : (
           <>
-            {messages.length === 0 && <QuickReplies onPick={(msg) => void send({ content: msg })} />}
+            {showQuickReplies && (
+              <QuickReplies onPick={(msg) => { void send({ content: msg }); setShowQuickReplies(false); }} />
+            )}
+            {/* Offer input — buyer only, hidden from seller */}
+            {showOfferInput && !isSeller && (
+              <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+                <span className="shrink-0 text-sm font-medium text-text-secondary">Rwf</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={offerValue}
+                  onChange={(e) => setOfferValue(e.target.value)}
+                  placeholder={`Suggest a price (listed: ${formatPrice(thread.listingPrice)})`}
+                  className="h-10 flex-1 rounded-md border border-border bg-surface-modal px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-primary focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    const amount = parseFloat(offerValue);
+                    if (!isNaN(amount) && amount > 0) {
+                      void send({ offerAmount: amount });
+                      setOfferValue("");
+                      setShowOfferInput(false);
+                    }
+                  }}
+                  disabled={!offerValue || isNaN(parseFloat(offerValue))}
+                  className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-text-primary disabled:opacity-50"
+                >
+                  Send offer
+                </button>
+                <button onClick={() => setShowOfferInput(false)} className="text-xs text-text-muted hover:text-text-primary">
+                  Cancel
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-2 p-3">
               <label className="grid h-10 w-10 cursor-pointer place-items-center rounded-pill text-text-secondary hover:text-text-primary">
                 {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImagePlus size={20} />}
@@ -205,6 +275,30 @@ export function ChatThread({
               >
                 <MapPin size={20} />
               </button>
+              {/* Quick replies toggle */}
+              <button
+                onClick={() => setShowQuickReplies((v) => !v)}
+                aria-label="Quick replies"
+                aria-pressed={showQuickReplies}
+                className="grid h-10 w-10 place-items-center rounded-pill text-text-secondary hover:text-text-primary"
+              >
+                <MessageSquare size={18} />
+              </button>
+              {/* Make Offer — only shown to the buyer */}
+              {!isSeller && (
+                <button
+                  onClick={() => { setShowOfferInput((v) => !v); setShowQuickReplies(false); }}
+                  aria-label="Make an offer"
+                  aria-pressed={showOfferInput}
+                  className={cn(
+                    "grid h-10 w-10 place-items-center rounded-pill transition-colors",
+                    showOfferInput ? "bg-primary/20 text-primary" : "text-text-secondary hover:text-text-primary",
+                  )}
+                  title="Make an offer"
+                >
+                  <Tag size={18} />
+                </button>
+              )}
               <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}

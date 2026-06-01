@@ -17,14 +17,47 @@ export async function GET() {
   }
 }
 
-/** POST /api/listings — create a listing (auth + Zod + sanitize + rate limit). */
+/** POST /api/listings — create or repost a listing (auth + Zod + sanitize + rate limit). */
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
-
     if (!(await checkLimit(limiters.listingCreate, user.id))) return RATE_LIMITED();
 
-    const body = await req.json();
+    const body = await req.json() as Record<string, unknown>;
+
+    // Repost: clone an expired/removed listing owned by this user.
+    if (typeof body.repostFromId === "string") {
+      const source = await prisma.listing.findFirst({
+        where: { id: body.repostFromId, userId: user.id },
+        include: { images: { orderBy: { order: "asc" } }, attributeValues: true },
+      });
+      if (!source) return fail("Listing not found or not yours", 404);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      const newListing = await prisma.listing.create({
+        data: {
+          title: source.title,
+          description: source.description,
+          price: source.price,
+          negotiable: source.negotiable,
+          condition: source.condition,
+          categoryId: source.categoryId,
+          city: source.city,
+          district: source.district,
+          neighborhood: source.neighborhood,
+          latitude: source.latitude,
+          longitude: source.longitude,
+          userId: user.id,
+          expiresAt,
+          status: "ACTIVE",
+          images: { create: source.images.map((img) => ({ url: img.url, order: img.order })) },
+          attributeValues: { create: source.attributeValues.map((av) => ({ attributeId: av.attributeId, value: av.value })) },
+        },
+        select: { id: true },
+      });
+      return ok(newListing, { status: 201 });
+    }
+
     const data = createListingSchema.parse(body);
 
     if (data.images.length > 7) return fail("Maximum 7 photos", 422);

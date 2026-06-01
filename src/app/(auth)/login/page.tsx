@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -16,7 +17,11 @@ export default function LoginPage() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const redirect = params.get("redirect") ?? "/home";
+  const rawRedirect = params.get("redirect") ?? "/home";
+  // Guard against open-redirect: only allow internal paths.
+  const redirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") && !rawRedirect.includes(":")
+    ? rawRedirect
+    : "/home";
 
   async function signInWithGoogle() {
     setLoading(true);
@@ -37,25 +42,31 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center bg-background px-6">
-      <div className="mb-10 text-center">
-        <h1 className="font-display text-5xl font-extrabold text-primary">RAY</h1>
-        <p className="mt-2 text-text-secondary">{t("splash.tagline")}</p>
-      </div>
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 lg:bg-background">
+      <div className="w-full max-w-sm rounded-2xl bg-background p-8 lg:border lg:border-border lg:bg-surface-card lg:shadow-[0_16px_48px_rgba(0,0,0,0.4)]">
+        <div className="mb-8 text-center">
+          <h1 className="font-display text-5xl font-extrabold text-primary">RAY</h1>
+          <p className="mt-2 text-text-secondary">{t("splash.tagline")}</p>
+        </div>
 
-      <div className="space-y-4">
-        <h2 className="text-center font-display text-xl font-bold">{t("auth.welcome")}</h2>
-        <p className="text-center text-sm text-text-secondary">{t("auth.subtitle")}</p>
+        <div className="space-y-4">
+          <h2 className="text-center font-display text-xl font-bold">{t("auth.welcome")}</h2>
+          <p className="text-center text-sm text-text-secondary">{t("auth.subtitle")}</p>
 
-        <Button fullWidth size="lg" loading={loading} onClick={signInWithGoogle}>
-          <GoogleIcon /> {t("auth.google")}
-        </Button>
+          <Button fullWidth size="lg" loading={loading} onClick={signInWithGoogle}>
+            <GoogleIcon /> {t("auth.google")}
+          </Button>
 
-        {error && <p className="text-center text-sm text-danger">{error}</p>}
+          {error && <p className="text-center text-sm text-danger">{error}</p>}
 
-        <p className="pt-2 text-center text-xs text-text-muted">
-          By continuing you agree to RAY&apos;s Terms &amp; Privacy Policy.
-        </p>
+          <p className="pt-2 text-center text-xs text-text-muted">
+            By continuing you agree to RAY&apos;s{" "}
+            <Link href="/privacy" className="text-primary underline-offset-2 hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
       </div>
     </main>
   );

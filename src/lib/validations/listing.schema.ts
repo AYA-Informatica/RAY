@@ -5,7 +5,7 @@ export const ConditionEnum = z.enum(["NEW", "LIKE_NEW", "GOOD", "FAIR", "USED"])
 /** Create-listing payload. Image count <= 7 enforced separately on upload. */
 export const createListingSchema = z.object({
   title: z.string().trim().min(3, "Title is too short").max(120),
-  description: z.string().trim().min(1, "Add a description").max(5000),
+  description: z.string().trim().max(5000).default(""),
   price: z.number().nonnegative("Price must be 0 or more").finite(),
   negotiable: z.boolean().default(true),
   condition: ConditionEnum,

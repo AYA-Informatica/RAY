@@ -1,29 +1,44 @@
 #!/usr/bin/env node
+// ============================================================================
+// RAY — generate-secrets.js
+// Generates cryptographically secure random strings for environment variables.
+// Usage:  node scripts/generate-secrets.js
+// ============================================================================
 
-/**
- * RAY Environment Setup Helper
- * Generates secure random strings for environment variables
- * 
- * Usage:
- *   node scripts/generate-secrets.js
- */
+const { randomBytes } = require("crypto");
 
-const crypto = require('crypto');
+/** Generate a URL-safe hex string of `bytes` random bytes. */
+function secret(bytes = 48) {
+  return randomBytes(bytes).toString("hex");
+}
 
-console.log('\n🔐 RAY Environment Secret Generator\n');
-console.log('=' .repeat(60));
+const secrets = {
+  CRON_SECRET: secret(48),       // 96-char hex  — protects /api/cron/* endpoints
+};
 
-// Generate CRON_SECRET (48 bytes = 96 hex characters)
-const cronSecret = crypto.randomBytes(48).toString('hex');
-console.log('\n📅 CRON_SECRET (for Vercel Cron jobs):');
-console.log(cronSecret);
-console.log('\n💡 This protects your /api/cron/expire-listings endpoint');
+console.log("\n🔐 RAY — Generated Secrets\n");
+console.log("Copy these into your .env and Vercel environment variables.\n");
+console.log("─".repeat(72));
 
-// Generate additional secrets if needed in the future
-const nextauthSecret = crypto.randomBytes(32).toString('hex');
-console.log('\n\n🔑 NEXTAUTH_SECRET (if you add NextAuth later):');
-console.log(nextauthSecret);
+for (const [key, value] of Object.entries(secrets)) {
+  console.log(`\n${key}`);
+  console.log(`  ${value}`);
+}
 
-console.log('\n' + '='.repeat(60));
-console.log('\n✅ Copy these values to your .env file or Vercel Dashboard\n');
-console.log('⚠️  IMPORTANT: Keep these secrets secure and never commit them!\n');
+console.log("\n─".repeat(72));
+console.log(`
+⚠️  SECURITY REMINDERS
+  • Never commit these values to Git.
+  • Add them to Vercel via: Dashboard → Project → Settings → Environment Variables
+  • Rotate them if you suspect compromise.
+  • CRON_SECRET must match what you set in Vercel Cron → Authorization header.
+
+📋 ALREADY CONFIGURED (no need to regenerate)
+  • NEXT_PUBLIC_SUPABASE_URL       → in your .env / .env.production
+  • NEXT_PUBLIC_SUPABASE_ANON_KEY  → in your .env / .env.production
+  • SUPABASE_SERVICE_ROLE_KEY      → in your .env / .env.production
+  • DATABASE_URL / DIRECT_URL      → in your .env / .env.production
+  • UPSTASH_REDIS_REST_URL/TOKEN   → in your .env / .env.production
+  • Google OAuth                   → configured inside Supabase Dashboard
+                                     (no env vars needed in this app)
+`);

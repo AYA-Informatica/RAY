@@ -19,14 +19,15 @@ export default async function FavoritesPage() {
   const listings = await getFavoriteListings(user.id);
 
   return (
-    <AppShell>
+    <AppShell width="wide">
       <FavoritesProvider initialIds={listings.map((l) => l.id)} />
-      <header className="flex items-center gap-3 border-b border-border px-4 py-4">
+      <header className="flex items-center gap-3 border-b border-border px-4 py-4 lg:hidden">
         <Link href="/home" aria-label="Back" className="text-text-secondary">
           <ArrowLeft size={22} />
         </Link>
         <h1 className="font-display text-xl font-bold">Favourites</h1>
       </header>
+      <h1 className="hidden px-4 py-4 font-display text-xl font-bold lg:block">Favourites</h1>
 
       <div className="p-4">
         {listings.length === 0 ? (

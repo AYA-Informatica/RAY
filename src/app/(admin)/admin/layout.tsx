@@ -1,17 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, ListChecks, Users, Flag, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isStaff } from "@/lib/permissions/roles";
+import { AdminNav } from "@/components/admin/AdminNav";
+import { prisma } from "@/lib/prisma";
 
 export const metadata = { title: "Admin" };
-
-const NAV = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard },
-  { href: "/admin/listings", label: "Listings", icon: ListChecks },
-  { href: "/admin/reports", label: "Reports", icon: Flag },
-  { href: "/admin/users", label: "Users", icon: Users },
-];
 
 /** Admin shell. Server-gated to staff (admin/moderator) only. */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,10 +14,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user) redirect("/login?redirect=/admin");
   if (!isStaff(user)) redirect("/home");
 
+  // Pass open-report count to the nav so the Reports tab shows a badge.
+  let openReports = 0;
+  try {
+    openReports = await prisma.report.count({ where: { resolved: false } });
+  } catch { /* fall back to 0 */ }
+
   return (
     <div className="min-h-dvh bg-background">
       <header className="border-b border-border bg-surface-card">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <Link href="/home" className="text-text-secondary" aria-label="Exit admin">
               <ArrowLeft size={20} />
@@ -35,19 +36,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {user.name ?? user.email} · {user.role}
           </span>
         </div>
-        <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 pb-2">
-          {NAV.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-modal hover:text-text-primary"
-            >
-              <Icon size={15} /> {label}
-            </Link>
-          ))}
-        </nav>
+        <AdminNav urgentReports={openReports} />
       </header>
-      <main className="mx-auto max-w-5xl p-4">{children}</main>
+      <main className="mx-auto max-w-6xl p-4">{children}</main>
     </div>
   );
 }

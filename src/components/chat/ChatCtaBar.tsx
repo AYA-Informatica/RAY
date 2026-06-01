@@ -10,7 +10,15 @@ import { Button } from "@/components/ui/Button";
  * Starts (or reuses) a conversation, then routes to the thread.
  * Auth is enforced by middleware — unauthenticated users are sent to /login.
  */
-export function ChatCtaBar({ listingId, sellerName }: { listingId: string; sellerName: string }) {
+export function ChatCtaBar({
+  listingId,
+  sellerName,
+  inline = false,
+}: {
+  listingId: string;
+  sellerName: string;
+  inline?: boolean;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -33,11 +41,19 @@ export function ChatCtaBar({ listingId, sellerName }: { listingId: string; selle
     }
   }
 
+  const button = (
+    <Button fullWidth size="lg" loading={loading} onClick={startChat}>
+      <MessageCircle size={20} /> Chat with {sellerName.split(" ")[0]}
+    </Button>
+  );
+
+  // Desktop: rendered in-flow inside the listing info column.
+  if (inline) return button;
+
+  // Mobile/tablet: sticky action bar pinned to the bottom of the viewport.
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md border-t border-border bg-background/95 p-3 backdrop-blur">
-      <Button fullWidth size="lg" loading={loading} onClick={startChat}>
-        <MessageCircle size={20} /> Chat with {sellerName.split(" ")[0]}
-      </Button>
+    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md border-t border-border bg-background/95 p-3 backdrop-blur lg:hidden">
+      {button}
     </div>
   );
 }

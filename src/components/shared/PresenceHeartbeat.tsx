@@ -1,9 +1,9 @@
-"use client";
+import { getAuthUser } from "@/lib/auth/session";
+import { PresenceHeartbeatClient } from "./PresenceHeartbeatClient";
 
-import { usePresenceHeartbeat } from "@/hooks/usePresenceHeartbeat";
-
-/** Mounts the presence heartbeat. Render once inside the app shell. */
-export function PresenceHeartbeat() {
-  usePresenceHeartbeat();
-  return null;
+/** Renders the heartbeat only when a session exists — avoids 401 noise for guests. */
+export async function PresenceHeartbeat() {
+  const user = await getAuthUser();
+  if (!user) return null;
+  return <PresenceHeartbeatClient />;
 }
