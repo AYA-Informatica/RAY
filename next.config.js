@@ -78,11 +78,11 @@ const nextConfig = {
     // - frame/object: deny (no embeds)
     const csp = [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline' https://vercel.live`,   // Next.js requires unsafe-inline for inline scripts
-      `style-src 'self' 'unsafe-inline'`,    // Tailwind inlines styles
-      `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com`,
-      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live`,
-      `font-src 'self' https://fonts.gstatic.com`,
+      `script-src 'self' 'unsafe-inline' https://vercel.live`,
+      `style-src 'self' 'unsafe-inline' https://vercel.live`,
+      `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://vercel.live https://vercel.com`,
+      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com`,
+      `font-src 'self' https://fonts.gstatic.com https://vercel.live https://assets.vercel.com`,
       `frame-src https://vercel.live`,
       `object-src 'none'`,
       `base-uri 'self'`,
