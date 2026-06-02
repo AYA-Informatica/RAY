@@ -29,9 +29,9 @@ export function I18nProvider({
     // announce content in the correct language without waiting for SSR.
     if (typeof document !== "undefined") {
       document.documentElement.lang = l;
+      // 1-year cookie; read by the server layout for SSR on next load.
+      document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
     }
-    // 1-year cookie; read by the server layout for SSR on next load.
-    document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
   }, []);
 
   const t = useCallback((key: string) => translate(locale, key), [locale]);
