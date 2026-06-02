@@ -83,7 +83,7 @@ const nextConfig = {
       `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com`,
       `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live`,
       `font-src 'self' https://fonts.gstatic.com`,
-      `frame-src 'none'`,
+      `frame-src https://vercel.live`,
       `object-src 'none'`,
       `base-uri 'self'`,
       `form-action 'self'`,
