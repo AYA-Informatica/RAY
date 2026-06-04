@@ -65,8 +65,9 @@ const nextConfig = {
   images: {
     formats: ["image/webp"],
     remotePatterns: [
-      // Supabase Storage public buckets. Replace <project-ref> after provisioning.
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
   async headers() {
@@ -78,9 +79,9 @@ const nextConfig = {
     // - frame/object: deny (no embeds)
     const csp = [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline' https://vercel.live`,
-      `style-src 'self' 'unsafe-inline' https://vercel.live`,
-      `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://vercel.live https://vercel.com`,
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live`,
+      `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live`,
+      `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://images.unsplash.com https://vercel.live https://vercel.com`,
       `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com`,
       `font-src 'self' https://fonts.gstatic.com https://vercel.live https://assets.vercel.com`,
       `frame-src https://vercel.live`,

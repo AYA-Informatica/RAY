@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { I18nProvider, parseLocale } from "@/i18n/I18nProvider";
+import { I18nProvider, parseLocale } from "@/i18n";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

@@ -47,8 +47,3 @@ export function useI18n(): I18nContextValue {
   if (!ctx) throw new Error("useI18n must be used within I18nProvider");
   return ctx;
 }
-
-/** Server helper: parse the locale cookie value safely. */
-export function parseLocale(raw: string | undefined): Locale {
-  return LOCALES.includes(raw as Locale) ? (raw as Locale) : "en";
-}
