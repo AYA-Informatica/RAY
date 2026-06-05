@@ -104,9 +104,9 @@ export function EditProfileForm({ userId, initial }: Props) {
         {/* Avatar */}
         <div className="flex flex-col items-center gap-3">
           <div className="relative h-24 w-24">
-            <div className="h-24 w-24 overflow-hidden rounded-pill bg-surface-modal ring-2 ring-border">
+            <div className="relative h-24 w-24 overflow-hidden rounded-pill bg-surface-modal ring-2 ring-border">
               {avatarUrl ? (
-                <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="96px" />
+                <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="96px" priority />
               ) : (
                 <span className="grid h-full w-full place-items-center font-display text-3xl text-text-secondary">
                   {name.charAt(0).toUpperCase() || "?"}

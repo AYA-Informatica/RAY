@@ -130,7 +130,7 @@ export function ChatThread({
         <Link href={`/listing/${thread.listingId}`} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-2">
           <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-surface-modal">
             {thread.listingImage ? (
-              <Image src={thread.listingImage} alt={thread.listingTitle} fill className="object-cover" />
+              <Image src={thread.listingImage} alt={thread.listingTitle} fill className="object-cover" sizes="40px" />
             ) : (
               <span className="grid h-full w-full place-items-center">📦</span>
             )}

@@ -20,7 +20,7 @@ export function ListingCard({ listing }: { listing: ListingCardData }) {
               src={listing.coverImage}
               alt={listing.title}
               fill
-              sizes="(max-width: 480px) 50vw, 240px"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover"
               loading="lazy"
             />
