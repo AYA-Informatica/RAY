@@ -16,9 +16,13 @@ function safeRedirect(raw: string | null): string {
 
 /** Exchanges the OAuth code for a session, then redirects back into the app. */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams, origin: requestOrigin } = new URL(request.url);
   const code = searchParams.get("code");
   const redirect = safeRedirect(searchParams.get("redirect"));
+
+  // Prefer the explicit site URL env var so post-OAuth redirects always land
+  // on the real domain, not a Vercel deployment URL.
+  const origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || requestOrigin;
 
   if (code) {
     const supabase = createClient();
