@@ -37,11 +37,16 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     // For simple status changes, just update status directly
     if (Object.keys(scalars).length === 1 && scalars.status) {
-      await prisma.listing.update({
-        where: { id: params.id },
-        data: { status: scalars.status },
-        select: { id: true },
-      });
+      try {
+        await prisma.$executeRaw`
+          UPDATE "Listing" SET "status" = ${scalars.status as string}, "updatedAt" = NOW()
+          WHERE "id" = ${params.id}
+        `;
+      } catch (rawErr) {
+        // Surface the real DB error so we can diagnose the schema mismatch.
+        const msg = rawErr instanceof Error ? rawErr.message : String(rawErr);
+        return fail(`DB error: ${msg}`, 500, "DB_ERROR");
+      }
       return ok({ id: params.id });
     }
 
