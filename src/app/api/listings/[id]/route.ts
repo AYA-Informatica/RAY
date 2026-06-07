@@ -118,13 +118,16 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
         prisma.listingImage.deleteMany({ where: { listingId: params.id } }),
         prisma.favorite.deleteMany({ where: { listingId: params.id } }),
         prisma.report.deleteMany({ where: { listingId: params.id } }),
-        prisma.listing.delete({ where: { id: params.id } }),
+        prisma.listing.delete({ where: { id: params.id }, select: { id: true } }),
       ]);
       return ok({ id: params.id, deleted: true });
     }
 
     // Soft delete - set status to REMOVED (can be reposted later)
-    await prisma.listing.update({ where: { id: params.id }, data: { status: "REMOVED" } });
+    await prisma.$executeRaw`
+      UPDATE "Listing" SET "status" = 'REMOVED', "updatedAt" = NOW()
+      WHERE "id" = ${params.id}
+    `;
     return ok({ id: params.id, removed: true });
   } catch (err) {
     return handleApiError(err);
