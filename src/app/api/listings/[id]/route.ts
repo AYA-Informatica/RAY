@@ -21,14 +21,19 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
 /** PATCH — owner-only edit (strict UUID isolation). */
 export async function PATCH(req: NextRequest, { params }: Ctx) {
+  let _step = "start";
   try {
+    _step = "requireUser";
     const user = await requireUser();
+
+    _step = "findListing";
     const existing = await prisma.listing.findFirst({
       where: { id: params.id, userId: user.id },
       select: { id: true },
     });
     if (!existing) return fail("Listing not found", 404);
 
+    _step = "parseBody";
     const body = await req.json();
     const patch = updateListingSchema.parse(body);
     const { images, attributes, ...scalars } = patch;
@@ -37,22 +42,17 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     // For simple status changes, just update status directly
     if (Object.keys(scalars).length === 1 && scalars.status) {
-      try {
-        await prisma.$executeRaw`
-          UPDATE "Listing" SET "status" = ${scalars.status as string}, "updatedAt" = NOW()
-          WHERE "id" = ${params.id}
-        `;
-      } catch (rawErr) {
-        // Surface the real DB error so we can diagnose the schema mismatch.
-        const msg = rawErr instanceof Error ? rawErr.message : String(rawErr);
-        return fail(`DB error: ${msg}`, 500, "DB_ERROR");
-      }
+      _step = "updateStatus";
+      await prisma.$executeRaw`
+        UPDATE "Listing" SET "status" = ${scalars.status as string}, "updatedAt" = NOW()
+        WHERE "id" = ${params.id}
+      `;
       return ok({ id: params.id });
     }
 
     // Update scalars, and replace images / attribute values when provided.
+    _step = "fullUpdate";
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Only sanitize text fields, not status enum
       const safeScalars: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(scalars)) {
         if (typeof value === "string" && key !== "status") {
@@ -61,13 +61,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           safeScalars[key] = value;
         }
       }
-      
       await tx.listing.update({
         where: { id: params.id },
         data: safeScalars,
         select: { id: true },
       });
-
       if (images) {
         await tx.listingImage.deleteMany({ where: { listingId: params.id } });
         if (images.length > 0) {
@@ -76,7 +74,6 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           });
         }
       }
-
       if (attributes) {
         await tx.listingAttributeValue.deleteMany({ where: { listingId: params.id } });
         if (attributes.length > 0) {
@@ -93,7 +90,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     return ok({ id: params.id });
   } catch (err) {
-    return handleApiError(err);
+    // Temporary diagnostic: surface exact step + error so we can fix the production schema.
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("Unauthorized") || msg.includes("Forbidden") || msg.includes("suspended")) {
+      return handleApiError(err);
+    }
+    return fail(`[${_step}] ${msg}`, 500, "DEBUG");
   }
 }
 
