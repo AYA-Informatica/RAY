@@ -40,6 +40,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       await prisma.listing.update({
         where: { id: params.id },
         data: { status: scalars.status },
+        select: { id: true },
       });
       return ok({ id: params.id });
     }
@@ -59,6 +60,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       await tx.listing.update({
         where: { id: params.id },
         data: safeScalars,
+        select: { id: true },
       });
 
       if (images) {

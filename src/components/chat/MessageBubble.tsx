@@ -77,6 +77,7 @@ export function MessageBubble({
           <p className="whitespace-pre-wrap text-sm">{message.content}</p>
         )}
         <div
+          suppressHydrationWarning
           className={cn(
             "mt-0.5 flex items-center justify-end gap-1 text-[10px]",
             mine ? "text-text-primary/70" : "text-text-muted",
@@ -175,7 +176,7 @@ function OfferCard({
         {status === "pending" && mine && (
           <p className="mt-1.5 text-xs text-text-muted">Waiting for seller's response…</p>
         )}
-        <div className="mt-2 text-right text-[10px] text-text-muted">{timeAgo(message.createdAt)}</div>
+        <div suppressHydrationWarning className="mt-2 text-right text-[10px] text-text-muted">{timeAgo(message.createdAt)}</div>
       </div>
     </div>
   );

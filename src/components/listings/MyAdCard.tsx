@@ -139,7 +139,7 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
           </div>
           <PriceTag amount={listing.price} size="sm" />
           <div className="mt-0.5 flex items-center gap-3 text-[11px] text-text-muted">
-            <span>{timeAgo(listing.createdAt)}</span>
+            <span suppressHydrationWarning>{timeAgo(listing.createdAt)}</span>
             <span className="flex items-center gap-0.5">
               <Eye size={11} /> {listing.views ?? 0} views
             </span>

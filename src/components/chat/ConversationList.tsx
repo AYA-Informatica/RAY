@@ -72,7 +72,7 @@ export function ConversationList({ conversations }: { conversations: Conversatio
                     <p className={`truncate font-medium ${c.unread > 0 ? "text-text-primary" : "text-text-primary"}`}>
                       {c.otherName}
                     </p>
-                    <span className="shrink-0 text-[11px] text-text-muted">{timeAgo(c.lastAt)}</span>
+                    <span className="shrink-0 text-[11px] text-text-muted" suppressHydrationWarning>{timeAgo(c.lastAt)}</span>
                   </div>
                   <p className="truncate text-xs text-text-secondary">{c.listingTitle}</p>
                   <p className={`truncate text-sm ${c.unread > 0 ? "font-medium text-text-primary" : "text-text-secondary"}`}>
