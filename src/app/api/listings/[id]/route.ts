@@ -22,31 +22,38 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 /** PATCH — owner-only edit (strict UUID isolation). */
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   let _step = "start";
+  console.log("[PATCH listing] start id=", params.id);
   try {
     _step = "requireUser";
     const user = await requireUser();
+    console.log("[PATCH listing] user ok:", user.id);
 
     _step = "findListing";
     const existing = await prisma.listing.findFirst({
       where: { id: params.id, userId: user.id },
       select: { id: true },
     });
+    console.log("[PATCH listing] findFirst result:", existing ? "found" : "NOT FOUND (404)");
     if (!existing) return fail("Listing not found", 404);
 
     _step = "parseBody";
     const body = await req.json();
+    console.log("[PATCH listing] body:", JSON.stringify(body));
     const patch = updateListingSchema.parse(body);
     const { images, attributes, ...scalars } = patch;
+    console.log("[PATCH listing] scalars keys:", Object.keys(scalars));
 
     if (images && images.length > 7) return fail("Maximum 7 photos", 422);
 
     // For simple status changes, just update status directly
     if (Object.keys(scalars).length === 1 && scalars.status) {
       _step = "updateStatus";
+      console.log("[PATCH listing] updateStatus via $executeRaw:", scalars.status);
       await prisma.$executeRaw`
         UPDATE "Listing" SET "status" = ${scalars.status as string}, "updatedAt" = NOW()
         WHERE "id" = ${params.id}
       `;
+      console.log("[PATCH listing] updateStatus OK");
       return ok({ id: params.id });
     }
 
@@ -88,10 +95,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       }
     });
 
+    console.log("[PATCH listing] fullUpdate OK");
     return ok({ id: params.id });
   } catch (err) {
-    // Temporary diagnostic: surface exact step + error so we can fix the production schema.
     const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[PATCH listing] ERROR at step=${_step}:`, msg);
     if (msg.includes("Unauthorized") || msg.includes("Forbidden") || msg.includes("suspended")) {
       return handleApiError(err);
     }
@@ -102,19 +110,23 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 /** DELETE — owner-only soft remove (status -> REMOVED).
  * Pass ?permanent=true query param to hard delete from database. */
 export async function DELETE(req: NextRequest, { params }: Ctx) {
+  console.log("[DELETE listing] start id=", params.id);
   try {
     const user = await requireUser();
+    console.log("[DELETE listing] user ok:", user.id);
     const existing = await prisma.listing.findFirst({
       where: { id: params.id, userId: user.id },
       select: { id: true },
     });
+    console.log("[DELETE listing] findFirst:", existing ? "found" : "NOT FOUND (404)");
     if (!existing) return fail("Listing not found", 404);
 
     const url = new URL(req.url);
     const permanent = url.searchParams.get("permanent") === "true";
+    console.log("[DELETE listing] permanent=", permanent);
 
     if (permanent) {
-      // Hard delete - remove from database entirely
+      console.log("[DELETE listing] hard delete start");
       await prisma.$transaction([
         prisma.listingAttributeValue.deleteMany({ where: { listingId: params.id } }),
         prisma.listingImage.deleteMany({ where: { listingId: params.id } }),
@@ -122,16 +134,20 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
         prisma.report.deleteMany({ where: { listingId: params.id } }),
         prisma.listing.delete({ where: { id: params.id }, select: { id: true } }),
       ]);
+      console.log("[DELETE listing] hard delete OK");
       return ok({ id: params.id, deleted: true });
     }
 
-    // Soft delete - set status to REMOVED (can be reposted later)
+    console.log("[DELETE listing] soft delete (REMOVED) via $executeRaw");
     await prisma.$executeRaw`
       UPDATE "Listing" SET "status" = 'REMOVED', "updatedAt" = NOW()
       WHERE "id" = ${params.id}
     `;
+    console.log("[DELETE listing] soft delete OK");
     return ok({ id: params.id, removed: true });
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[DELETE listing] ERROR:", msg);
     return handleApiError(err);
   }
 }

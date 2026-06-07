@@ -19,14 +19,18 @@ export async function GET() {
 
 /** POST /api/listings — create or repost a listing (auth + Zod + sanitize + rate limit). */
 export async function POST(req: NextRequest) {
+  console.log("[POST listings] start");
   try {
     const user = await requireUser();
+    console.log("[POST listings] user ok:", user.id);
     if (!(await checkLimit(limiters.listingCreate, user.id))) return RATE_LIMITED();
 
     const body = await req.json() as Record<string, unknown>;
+    console.log("[POST listings] body keys:", Object.keys(body));
 
     // Repost: clone an expired/removed listing owned by this user.
     if (typeof body.repostFromId === "string") {
+      console.log("[POST listings] repost from:", body.repostFromId);
       const source = await prisma.listing.findFirst({
         where: { id: body.repostFromId, userId: user.id },
         include: { images: { orderBy: { order: "asc" } }, attributeValues: true },
@@ -97,8 +101,11 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
 
+    console.log("[POST listings] created id=", listing.id);
     return ok(listing, { status: 201 });
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[POST listings] ERROR:", msg);
     return handleApiError(err);
   }
 }
