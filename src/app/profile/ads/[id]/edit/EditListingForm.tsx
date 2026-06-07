@@ -122,7 +122,7 @@ export function EditListingForm({
         }),
       });
       if (res.status === 401) {
-        router.push("/login?redirect=/profile/ads");
+        router.replace("/login?redirect=/profile/ads");
         return;
       }
       if (!res.ok) {
@@ -145,7 +145,7 @@ export function EditListingForm({
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background lg:max-w-2xl">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-4 py-3">
-        <button onClick={() => router.back()} aria-label={t("common.back")} className="text-text-secondary">
+        <button onClick={() => router.replace("/profile/ads")} aria-label={t("common.back")} className="text-text-secondary">
           <ArrowLeft size={22} />
         </button>
         <h1 className="font-display text-lg font-bold">{t("myAds.editAd")}</h1>

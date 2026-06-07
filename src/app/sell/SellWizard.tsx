@@ -150,7 +150,7 @@ export function SellWizard({
 
   async function submit() {
     if (!userId) {
-      router.push("/login?redirect=/sell");
+      router.replace("/login?redirect=/sell");
       return;
     }
     setSubmitting(true);
@@ -178,7 +178,7 @@ export function SellWizard({
         }),
       });
       if (res.status === 401) {
-        router.push("/login?redirect=/sell");
+        router.replace("/login?redirect=/sell");
         return;
       }
       if (!res.ok) {

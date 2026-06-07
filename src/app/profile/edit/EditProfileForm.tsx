@@ -91,7 +91,7 @@ export function EditProfileForm({ userId, initial }: Props) {
     <>
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-4 py-3 lg:top-16">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.replace("/profile")}
           aria-label="Back"
           className="-ml-1 grid h-11 w-11 place-items-center text-text-secondary hover:text-text-primary lg:hidden"
         >
