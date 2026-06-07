@@ -1,18 +1,22 @@
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 import { ok, handleApiError } from "@/lib/utils/api";
 
 /**
  * POST /api/presence — heartbeat. Updates the caller's lastSeenAt.
  * Called periodically by the app while active so other users can see
  * "online" / "last seen". Cheap, single-row update.
- * Non-critical - always returns success even if update fails.
+ * Uses getCurrentUser (not requireUser) so guests and expired sessions
+ * get a silent 200 instead of a 401 — presence is non-critical.
  */
 export async function POST() {
   try {
-    const user = await requireUser();
+    const user = await getCurrentUser();
+    if (!user) {
+      // Guest or expired session — no-op, no error noise.
+      return ok({ ok: true });
+    }
     console.log("[POST presence] heartbeat uid=", user.id);
-    // Fire-and-forget update - presence is non-critical
     prisma.user.update({
       where: { id: user.id },
       data: { lastSeenAt: new Date() },
