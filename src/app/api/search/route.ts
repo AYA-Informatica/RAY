@@ -6,15 +6,22 @@ import { limiters, checkLimit } from "@/lib/ratelimit";
 
 /** GET /api/search — filtered, location-ranked search (public). */
 export async function GET(req: NextRequest) {
+  const params = Object.fromEntries(req.nextUrl.searchParams.entries());
+  console.log("[GET search] params=", JSON.stringify(params));
   try {
     const ip = req.headers.get("x-forwarded-for") ?? "anon";
-    if (!(await checkLimit(limiters.search, ip))) return RATE_LIMITED();
+    if (!(await checkLimit(limiters.search, ip))) {
+      console.warn("[GET search] rate limited ip=", ip);
+      return RATE_LIMITED();
+    }
 
-    const params = Object.fromEntries(req.nextUrl.searchParams.entries());
     const query = searchQuerySchema.parse(params);
+    console.log("[GET search] parsed query=", JSON.stringify(query));
     const result = await searchListings(query);
+    console.log("[GET search] results=", Array.isArray(result) ? result.length : result);
     return ok(result);
   } catch (err) {
+    console.error("[GET search] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);
   }
 }

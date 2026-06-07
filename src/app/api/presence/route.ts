@@ -11,13 +11,17 @@ import { ok, handleApiError } from "@/lib/utils/api";
 export async function POST() {
   try {
     const user = await requireUser();
+    console.log("[POST presence] heartbeat uid=", user.id);
     // Fire-and-forget update - presence is non-critical
     prisma.user.update({
       where: { id: user.id },
       data: { lastSeenAt: new Date() },
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error("[POST presence] lastSeenAt update failed uid=", user.id, err instanceof Error ? err.message : err);
+    });
     return ok({ ok: true });
   } catch (err) {
+    console.error("[POST presence] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);
   }
 }

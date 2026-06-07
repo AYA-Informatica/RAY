@@ -13,11 +13,16 @@ import { logger } from "@/lib/logger";
  * after a threshold of distinct reports.
  */
 export async function POST(req: NextRequest) {
+  console.log("[POST report] start");
   try {
     const user = await requireUser();
-    if (!(await checkLimit(limiters.report, user.id))) return RATE_LIMITED();
+    if (!(await checkLimit(limiters.report, user.id))) {
+      console.warn("[POST report] rate limited uid=", user.id);
+      return RATE_LIMITED();
+    }
 
     const data = createReportSchema.parse(await req.json());
+    console.log("[POST report] uid=", user.id, "reason=", data.reason, "listingId=", data.listingId ?? "none");
 
     await prisma.report.create({
       data: {
@@ -27,18 +32,22 @@ export async function POST(req: NextRequest) {
         listingId: data.listingId ?? null,
       },
     });
+    console.log("[POST report] report created OK");
 
     // Reactive auto-flag: 3+ reports flips status to FLAGGED for moderators.
     if (data.listingId) {
       const count = await prisma.report.count({ where: { listingId: data.listingId, resolved: false } });
+      console.log("[POST report] unresolved report count for listing=", count);
       if (count >= 3) {
         await prisma.listing.update({ where: { id: data.listingId }, data: { status: "FLAGGED" } });
+        console.warn("[POST report] listing auto-flagged listingId=", data.listingId, "reportCount=", count);
         logger.warn({ listingId: data.listingId, count }, "Listing auto-flagged");
       }
     }
 
     return ok({ received: true }, { status: 201 });
   } catch (err) {
+    console.error("[POST report] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);
   }
 }

@@ -7,6 +7,7 @@ import type { ConversationPreview } from "@/components/chat/ConversationList";
 
 /** GET /api/chat/conversations — the current user's inbox. */
 export async function GET() {
+  console.log("[GET conversations] start");
   try {
     const user = await requireUser();
     const convos = await prisma.conversation.findMany({
@@ -19,6 +20,7 @@ export async function GET() {
         messages: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
+    console.log("[GET conversations] found", convos.length, "conversations for uid=", user.id);
 
     const previews: ConversationPreview[] = await Promise.all(
       convos.map(async (c) => {
@@ -40,24 +42,34 @@ export async function GET() {
       }),
     );
 
+    console.log("[GET conversations] returning", previews.length, "previews");
     return ok(previews);
   } catch (err) {
+    console.error("[GET conversations] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);
   }
 }
 
 /** POST /api/chat/conversations — start or reuse a thread for a listing. */
 export async function POST(req: NextRequest) {
+  console.log("[POST conversations] start");
   try {
     const user = await requireUser();
     const { listingId } = startConversationSchema.parse(await req.json());
+    console.log("[POST conversations] uid=", user.id, "listingId=", listingId);
 
     const listing = await prisma.listing.findUnique({
       where: { id: listingId },
       select: { id: true, userId: true },
     });
-    if (!listing) return fail("Listing not found", 404);
-    if (listing.userId === user.id) return fail("You can't chat on your own listing", 400);
+    if (!listing) {
+      console.warn("[POST conversations] listing not found:", listingId);
+      return fail("Listing not found", 404);
+    }
+    if (listing.userId === user.id) {
+      console.warn("[POST conversations] user tried to chat on own listing");
+      return fail("You can't chat on your own listing", 400);
+    }
 
     const convo = await prisma.conversation.upsert({
       where: { listingId_buyerId: { listingId, buyerId: user.id } },
@@ -66,8 +78,10 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
 
+    console.log("[POST conversations] upsert OK convoId=", convo.id);
     return ok(convo, { status: 201 });
   } catch (err) {
+    console.error("[POST conversations] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);
   }
 }

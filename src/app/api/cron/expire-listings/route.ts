@@ -17,12 +17,14 @@ import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  console.log("[CRON expire-listings] triggered at", new Date().toISOString());
   try {
     const secret = process.env.CRON_SECRET;
     // If a secret is configured, require it. (In dev with no secret, allow.)
     if (secret) {
       const auth = req.headers.get("authorization");
       if (auth !== `Bearer ${secret}`) {
+        console.warn("[CRON expire-listings] rejected unauthorized request");
         logger.warn("Rejected unauthorized cron request to expire-listings");
         return fail("Unauthorized", 401);
       }
@@ -33,9 +35,11 @@ export async function GET(req: NextRequest) {
       data: { status: "EXPIRED" },
     });
 
+    console.log("[CRON expire-listings] expired", result.count, "listings");
     logger.info({ expired: result.count }, "Listing expiry sweep complete");
     return ok({ expired: result.count, ranAt: new Date().toISOString() });
   } catch (err) {
+    console.error("[CRON expire-listings] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);
   }
 }
