@@ -1,6 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { ListingCardData, ListingDetailData, Paginated } from "@/types";
-import { DEMO_LISTINGS } from "./fixtures";
 import { distanceKm as haversine } from "@/lib/utils/format";
 import type { SearchQuery } from "@/lib/validations/search.schema";
 import { getSellerResponseTime } from "./chat";
@@ -41,15 +41,10 @@ function toCard(l: RawListing, origin?: { lat: number; lng: number }): ListingCa
   };
 }
 
-/** Home feed — newest active listings. Falls back to demo data pre-DB. */
+/** Home feed — newest active listings. */
 export async function getRecentListings(limit = 12): Promise<ListingCardData[]> {
-  try {
-    const rows = await queryListings({}, limit, 0);
-    if (rows.length) return rows.map((r) => toCard(r));
-    return DEMO_LISTINGS.slice(0, limit);
-  } catch {
-    return DEMO_LISTINGS.slice(0, limit);
-  }
+  const rows = await queryListings({}, limit, 0);
+  return rows.map((r) => toCard(r));
 }
 
 /** Full search with filters + location-aware ranking. */
@@ -67,8 +62,6 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   if (q.neighborhood) where.neighborhood = q.neighborhood;
   if (q.condition) where.condition = q.condition;
   if (q.brand) {
-    // Brand lives on the dynamic CategoryAttribute system (key === "brand"),
-    // so filter via the attributeValues join. Case-insensitive equality.
     where.attributeValues = {
       some: {
         attribute: { is: { key: "brand" } },
@@ -84,37 +77,21 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   }
 
   const skip = (q.page - 1) * q.pageSize;
-  try {
-    const [rows, total] = await Promise.all([
-      queryListings(where, q.pageSize, skip),
-      prisma.listing.count({ where: { status: "ACTIVE", ...where } }),
-    ]);
-    const origin = q.lat != null && q.lng != null ? { lat: q.lat, lng: q.lng } : undefined;
-    let items = rows.map((r) => toCard(r, origin));
+  const [rows, total] = await Promise.all([
+    queryListings(where, q.pageSize, skip),
+    prisma.listing.count({ where: { status: "ACTIVE", ...where } }),
+  ]);
+  const origin = q.lat != null && q.lng != null ? { lat: q.lat, lng: q.lng } : undefined;
+  let items = rows.map((r) => toCard(r, origin));
 
-    // Distance filter + closest-first ranking (RAY's hyperlocal weapon).
-    if (origin && q.radius && q.radius > 0) {
-      items = items.filter((i) => i.distanceKm != null && i.distanceKm <= q.radius!);
-    }
-    if (origin) {
-      items.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
-    }
-
-    return { items, page: q.page, pageSize: q.pageSize, total, hasMore: skip + rows.length < total };
-  } catch {
-    const filtered = DEMO_LISTINGS.filter(
-      (l) =>
-        (!q.q || l.title.toLowerCase().includes(q.q.toLowerCase())) &&
-        (!q.category || l.category.slug === q.category),
-    );
-    return {
-      items: filtered,
-      page: 1,
-      pageSize: q.pageSize,
-      total: filtered.length,
-      hasMore: false,
-    };
+  if (origin && q.radius && q.radius > 0) {
+    items = items.filter((i) => i.distanceKm != null && i.distanceKm <= q.radius!);
   }
+  if (origin) {
+    items.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+  }
+
+  return { items, page: q.page, pageSize: q.pageSize, total, hasMore: skip + rows.length < total };
 }
 
 /** Single listing for the detail page. Increments view count. */
@@ -135,56 +112,50 @@ export async function getListing(id: string): Promise<ListingDetailData | null> 
       getSellerResponseTime(l.userId),
     ]);
     return { ...l, user: { ...l.user, listingsCount, responseTimeMins } };
-  } catch {
-    return null;
+  } catch (err) {
+    // P2025 = record not found — valid 404, not a bug
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") return null;
+    console.error("[getListing] DB error id=", id, err instanceof Error ? err.message : err);
+    throw err;
   }
 }
 
 /** Listings owned by a user (active, sold, expired, flagged), for the My Ads management screen.
  * Excludes REMOVED listings by default (user deleted them). */
 export async function getUserListings(userId: string, includeRemoved = false): Promise<ListingCardData[]> {
-  try {
-    const where: { userId: string; status?: { not: "REMOVED" } } = { userId };
-    if (!includeRemoved) {
-      where.status = { not: "REMOVED" };
-    }
-    
-    const rows = await prisma.listing.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: { category: true, images: { orderBy: { order: "asc" }, take: 1 } },
-    });
-    return rows.map((r) => ({
-      id: r.id,
-      title: r.title,
-      price: r.price,
-      negotiable: r.negotiable,
-      city: r.city,
-      district: r.district,
-      neighborhood: r.neighborhood,
-      createdAt: r.createdAt,
-      status: r.status,
-      views: r.views,
-      coverImage: r.images[0]?.url ?? null,
-      category: { slug: r.category.slug, name: r.category.name, icon: r.category.icon ?? "📦" },
-    }));
-  } catch {
-    return [];
+  const where: { userId: string; status?: { not: "REMOVED" } } = { userId };
+  if (!includeRemoved) {
+    where.status = { not: "REMOVED" };
   }
+  const rows = await prisma.listing.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    include: { category: true, images: { orderBy: { order: "asc" }, take: 1 } },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    price: r.price,
+    negotiable: r.negotiable,
+    city: r.city,
+    district: r.district,
+    neighborhood: r.neighborhood,
+    createdAt: r.createdAt,
+    status: r.status,
+    views: r.views,
+    coverImage: r.images[0]?.url ?? null,
+    category: { slug: r.category.slug, name: r.category.name, icon: r.category.icon ?? "📦" },
+  }));
 }
 
 /** A single listing owned by the user, for editing (returns null if not owner). */
 export async function getOwnedListing(id: string, userId: string) {
-  try {
-    return await prisma.listing.findFirst({
-      where: { id, userId },
-      include: {
-        category: { include: { attributes: { orderBy: { order: "asc" } } } },
-        images: { orderBy: { order: "asc" } },
-        attributeValues: { include: { attribute: true } },
-      },
-    });
-  } catch {
-    return null;
-  }
+  return prisma.listing.findFirst({
+    where: { id, userId },
+    include: {
+      category: { include: { attributes: { orderBy: { order: "asc" } } } },
+      images: { orderBy: { order: "asc" } },
+      attributeValues: { include: { attribute: true } },
+    },
+  });
 }

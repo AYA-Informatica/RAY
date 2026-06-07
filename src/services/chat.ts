@@ -3,40 +3,36 @@ import type { ConversationPreview } from "@/components/chat/ConversationList";
 
 /** Build the inbox preview list for a user. */
 export async function getInbox(userId: string): Promise<ConversationPreview[]> {
-  try {
-    const convos = await prisma.conversation.findMany({
-      where: { OR: [{ buyerId: userId }, { sellerId: userId }] },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        listing: { include: { images: { take: 1, orderBy: { order: "asc" } } } },
-        buyer: { select: { id: true, name: true, avatarUrl: true } },
-        seller: { select: { id: true, name: true, avatarUrl: true } },
-        messages: { orderBy: { createdAt: "desc" }, take: 1 },
-      },
-    });
+  const convos = await prisma.conversation.findMany({
+    where: { OR: [{ buyerId: userId }, { sellerId: userId }] },
+    orderBy: { updatedAt: "desc" },
+    include: {
+      listing: { include: { images: { take: 1, orderBy: { order: "asc" } } } },
+      buyer: { select: { id: true, name: true, avatarUrl: true } },
+      seller: { select: { id: true, name: true, avatarUrl: true } },
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
 
-    return Promise.all(
-      convos.map(async (c) => {
-        const other = c.buyerId === userId ? c.seller : c.buyer;
-        const unread = await prisma.message.count({
-          where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
-        });
-        const last = c.messages[0];
-        return {
-          id: c.id,
-          listingTitle: c.listing.title,
-          listingImage: c.listing.images[0]?.url ?? null,
-          otherName: other.name ?? "RAY user",
-          otherAvatar: other.avatarUrl,
-          lastMessage: last?.content ?? (last?.imageUrl ? "📷 Photo" : null),
-          lastAt: last?.createdAt ?? c.updatedAt,
-          unread,
-        };
-      }),
-    );
-  } catch {
-    return [];
-  }
+  return Promise.all(
+    convos.map(async (c) => {
+      const other = c.buyerId === userId ? c.seller : c.buyer;
+      const unread = await prisma.message.count({
+        where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
+      });
+      const last = c.messages[0];
+      return {
+        id: c.id,
+        listingTitle: c.listing.title,
+        listingImage: c.listing.images[0]?.url ?? null,
+        otherName: other.name ?? "RAY user",
+        otherAvatar: other.avatarUrl,
+        lastMessage: last?.content ?? (last?.imageUrl ? "📷 Photo" : null),
+        lastAt: last?.createdAt ?? c.updatedAt,
+        unread,
+      };
+    }),
+  );
 }
 
 export interface ThreadHeader {
@@ -57,10 +53,52 @@ export interface ThreadHeader {
  * Thread header + access check. Returns null if the conversation doesn't exist
  * or the user is not a participant (used to 404/redirect).
  */
+export async function getThread(
+  conversationId: string,
+  userId: string,
+): Promise<ThreadHeader | null> {
+  const c = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      listing: { include: { images: { take: 1, orderBy: { order: "asc" } } } },
+      buyer: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
+      seller: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
+    },
+  });
+  if (!c) return null;
+  if (c.buyerId !== userId && c.sellerId !== userId) return null;
+  const other = c.buyerId === userId ? c.seller : c.buyer;
+
+  const block = await prisma.block.findFirst({
+    where: {
+      OR: [
+        { blockerId: userId, blockedId: other.id },
+        { blockerId: other.id, blockedId: userId },
+      ],
+    },
+    select: { id: true },
+  });
+
+  return {
+    conversationId: c.id,
+    listingId: c.listingId,
+    listingTitle: c.listing.title,
+    listingImage: c.listing.images[0]?.url ?? null,
+    listingPrice: c.listing.price,
+    sellerId: c.sellerId,
+    otherId: other.id,
+    otherName: other.name ?? "RAY user",
+    otherAvatar: other.avatarUrl,
+    otherLastSeenAt:
+      other.lastSeenAt instanceof Date ? other.lastSeenAt.toISOString() : String(other.lastSeenAt),
+    isBlocked: Boolean(block),
+  };
+}
+
 /**
  * Median first-reply time (minutes) for a seller over the last 30 days.
- * Computed from: first buyer message in a conversation → first seller reply after it.
  * Returns undefined when there is no reply data yet.
+ * Non-critical metric — errors are logged but do not crash the detail page.
  */
 export async function getSellerResponseTime(sellerId: string): Promise<number | undefined> {
   try {
@@ -100,57 +138,11 @@ export async function getSellerResponseTime(sellerId: string): Promise<number | 
     if (intervals.length === 0) return undefined;
     intervals.sort((a, b) => a - b);
     const mid = Math.floor(intervals.length / 2);
-    // Non-null assertions are safe: indices are within bounds by construction.
     return intervals.length % 2 === 0
       ? Math.round((intervals[mid - 1]! + intervals[mid]!) / 2)
       : intervals[mid]!;
-  } catch {
+  } catch (err) {
+    console.error("[getSellerResponseTime] error sellerId=", sellerId, err instanceof Error ? err.message : err);
     return undefined;
-  }
-}
-
-export async function getThread(
-  conversationId: string,
-  userId: string,
-): Promise<ThreadHeader | null> {
-  try {
-    const c = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: {
-        listing: { include: { images: { take: 1, orderBy: { order: "asc" } } } },
-        buyer: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
-        seller: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
-      },
-    });
-    if (!c) return null;
-    if (c.buyerId !== userId && c.sellerId !== userId) return null;
-    const other = c.buyerId === userId ? c.seller : c.buyer;
-
-    const block = await prisma.block.findFirst({
-      where: {
-        OR: [
-          { blockerId: userId, blockedId: other.id },
-          { blockerId: other.id, blockedId: userId },
-        ],
-      },
-      select: { id: true },
-    });
-
-    return {
-      conversationId: c.id,
-      listingId: c.listingId,
-      listingTitle: c.listing.title,
-      listingImage: c.listing.images[0]?.url ?? null,
-      listingPrice: c.listing.price,
-      sellerId: c.sellerId,
-      otherId: other.id,
-      otherName: other.name ?? "RAY user",
-      otherAvatar: other.avatarUrl,
-      otherLastSeenAt:
-        other.lastSeenAt instanceof Date ? other.lastSeenAt.toISOString() : String(other.lastSeenAt),
-      isBlocked: Boolean(block),
-    };
-  } catch {
-    return null;
   }
 }
