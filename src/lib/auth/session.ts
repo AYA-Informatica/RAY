@@ -1,9 +1,12 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 
-/** Returns the Supabase auth user or null. Never throws. */
-export async function getAuthUser() {
+/** Returns the Supabase auth user or null. Never throws.
+ *  Memoized per-request so multiple server components on the same page
+ *  share one Supabase round-trip. */
+export const getAuthUser = cache(async () => {
   const supabase = createClient();
   const {
     data: { user },
@@ -12,7 +15,7 @@ export async function getAuthUser() {
   if (error) console.error("[session] getAuthUser error:", error.message);
   console.log("[session] getAuthUser:", user ? `uid=${user.id}` : "null");
   return user;
-}
+});
 
 /** Returns the full public.User row, or null if unauthenticated.
  *  If the DB row is missing (trigger failed or first sign-in race), creates it
