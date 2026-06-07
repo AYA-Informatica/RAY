@@ -45,6 +45,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Already authenticated — kick them out of /login back to where they wanted to go.
+  if (pathname === "/login" && user) {
+    const url = request.nextUrl.clone();
+    const raw = request.nextUrl.searchParams.get("redirect") ?? "/home";
+    const safe =
+      raw.startsWith("/") && !raw.startsWith("//") && !raw.includes(":") && raw !== "/login"
+        ? raw
+        : "/home";
+    url.pathname = safe;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
 
   if (needsAuth && !user) {

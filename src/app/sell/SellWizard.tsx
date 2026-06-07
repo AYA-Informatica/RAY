@@ -117,7 +117,7 @@ export function SellWizard({
       // Mirror the skip when navigating backwards.
       if (target === 3 && skipSpecs) setStep(2);
       else setStep(target);
-    } else router.back();
+    } else router.replace("/home");
   }
 
   async function handleFiles(files: FileList | null) {
