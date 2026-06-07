@@ -62,6 +62,11 @@ const nextConfig = {
   // This prevents the FontStylesheetGatheringPlugin from trying to fetch and inline
   // Google Fonts CSS, which fails in restricted-network build environments.
   optimizeFonts: false,
+  // Improve Fast Refresh stability
+  onDemandEntries: {
+    maxInactiveAge: 60 * 1000,
+    pagesBufferLength: 5,
+  },
   images: {
     formats: ["image/webp"],
     remotePatterns: [

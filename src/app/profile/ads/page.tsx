@@ -8,6 +8,10 @@ import { getUserListings } from "@/services/listings";
 
 export const metadata = { title: "My Ads" };
 
+// Force dynamic rendering - disable static optimization and caching
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /** Seller's own listings with management actions. Auth required. */
 export default async function MyAdsPage() {
   const user = await getCurrentUser();

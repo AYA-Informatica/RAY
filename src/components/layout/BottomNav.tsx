@@ -37,7 +37,11 @@ export function BottomNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
                 className="flex flex-col items-center gap-0.5 px-2 text-text-primary"
                 aria-current={active ? "page" : undefined}
               >
-                <span className={cn("relative flex items-center justify-center", center && "rounded-pill ring-2 ring-text-primary p-0.5")}>
+                <span className={cn(
+                  "relative flex items-center justify-center transition-colors",
+                  center && "rounded-pill ring-2 ring-text-primary p-0.5",
+                  active && !center && "rounded-full bg-white/25 px-2.5 py-1",
+                )}>
                   <Icon size={center ? 24 : 22} strokeWidth={active ? 2.6 : 2} />
                   {badge > 0 && (
                     <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-pill bg-danger px-1 text-[9px] font-bold text-white">

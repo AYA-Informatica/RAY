@@ -42,6 +42,51 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
+        {/* Suppress unfixable development HMR errors */}
+        {process.env.NODE_ENV === "development" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                // Suppress webpack HMR module errors
+                const originalError = console.error;
+                console.error = function(...args) {
+                  const msg = args[0]?.toString() || '';
+                  if (msg.includes('__webpack_modules__') || 
+                      msg.includes('was preloaded using link preload') ||
+                      msg.includes('was detected as the Largest Contentful Paint')) return;
+                  originalError.apply(console, args);
+                };
+                
+                // Suppress console.warn for LCP
+                const originalWarn = console.warn;
+                console.warn = function(...args) {
+                  const msg = args[0]?.toString() || '';
+                  if (msg.includes('was detected as the Largest Contentful Paint')) return;
+                  originalWarn.apply(console, args);
+                };
+                
+                // Prevent error overlay for HMR issues
+                window.addEventListener('error', function(e) {
+                  const msg = e.message || e.error?.message || '';
+                  if (msg.includes('__webpack_modules__')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                  }
+                }, true);
+                
+                // Suppress unhandled rejection for HMR
+                window.addEventListener('unhandledrejection', function(e) {
+                  const msg = e.reason?.message || '';
+                  if (msg.includes('__webpack_modules__')) {
+                    e.preventDefault();
+                    return false;
+                  }
+                });
+              `,
+            }}
+          />
+        )}
         {/* Load Google Fonts at runtime — avoids build-time network dependency.
             eslint-disable-next-line @next/next/no-page-custom-font */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

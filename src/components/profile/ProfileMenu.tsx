@@ -45,7 +45,7 @@ export function ProfileMenu({ name, email, avatarUrl, activeAds, totalViews, fav
             <p className="font-display text-lg font-bold">{name}</p>
             <p className="text-sm opacity-90">{email}</p>
             <Link href="/profile/edit" className="mt-0.5 inline-block text-xs text-text-primary/70 underline-offset-2 hover:underline">
-              Edit profile
+              {t("profileEdit.editLink")}
             </Link>
           </div>
         </div>

@@ -37,6 +37,14 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // Returning visitors who hit "/" go straight to /home — skips the splash entirely.
+  if (pathname === "/" && request.cookies.get("ray_visited")?.value === "1") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/home";
+    return NextResponse.redirect(url);
+  }
+
   const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
 
   if (needsAuth && !user) {

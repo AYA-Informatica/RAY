@@ -24,15 +24,7 @@ interface SellCategory {
   icon: string;
 }
 
-const CONDITIONS = [
-  { value: "NEW", label: "New" },
-  { value: "LIKE_NEW", label: "Like new" },
-  { value: "GOOD", label: "Good" },
-  { value: "FAIR", label: "Fair" },
-  { value: "USED", label: "Used" },
-];
-
-const STEPS = ["Category", "Photos", "Details", "Specs", "Location", "Review"] as const;
+const STEP_COUNT = 6;
 
 /**
  * 6-step posting flow (Build Prompt + Product Experience):
@@ -49,6 +41,24 @@ export function SellWizard({
   const router = useRouter();
   const { draft, step, set, setStep, reset } = useSellDraft();
   const { t } = useI18n();
+
+  const STEP_LABELS = [
+    t("sell.stepCategory"),
+    t("sell.stepPhotos"),
+    t("sell.stepDetails"),
+    t("sell.stepSpecs"),
+    t("sell.stepLocation"),
+    t("sell.stepReview"),
+  ];
+
+  const CONDITIONS = [
+    { value: "NEW", label: t("condition.NEW") },
+    { value: "LIKE_NEW", label: t("condition.LIKE_NEW") },
+    { value: "GOOD", label: t("condition.GOOD") },
+    { value: "FAIR", label: t("condition.FAIR") },
+    { value: "USED", label: t("condition.USED") },
+  ];
+
   const [schema, setSchema] = useState<CategoryWithAttributes | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -93,7 +103,7 @@ export function SellWizard({
   function next() {
     setError(null);
     setDraftNotice(false);
-    if (step < STEPS.length - 1) {
+    if (step < STEP_COUNT - 1) {
       const target = step + 1;
       // Skip Specs step (index 3) forward when no required attributes exist.
       if (target === 3 && skipSpecs) setStep(4);
@@ -119,7 +129,7 @@ export function SellWizard({
       const urls = await uploadImages(Array.from(files).slice(0, remaining), "listings", userId);
       set({ images: [...draft.images, ...urls].slice(0, 7) });
     } catch {
-      setError("Upload failed. Check your connection and try again.");
+      setError(t("sell.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -254,17 +264,17 @@ export function SellWizard({
           >
             <ArrowLeft size={22} />
           </button>
-          <h1 className="font-display text-lg font-bold">{STEPS[step]}</h1>
+          <h1 className="font-display text-lg font-bold">{STEP_LABELS[step]}</h1>
           <span
             className="ml-auto text-sm text-text-muted"
             aria-live="polite"
             aria-atomic="true"
           >
-            {step + 1}/{STEPS.length}
+            {step + 1}/{STEP_COUNT}
           </span>
         </div>
         <div className="mt-3 flex gap-1">
-          {STEPS.map((_, i) => (
+          {STEP_LABELS.map((_, i) => (
             <div
               key={i}
               className={cn("h-1 flex-1 rounded-pill", i <= step ? "bg-primary" : "bg-surface-card")}
@@ -373,10 +383,11 @@ export function SellWizard({
                 label={t("sell.descriptionLabel")}
                 placeholder="Describe your item — what's included, why you're selling…"
                 value={draft.description}
+                maxLength={500}
                 onChange={(e) => set({ description: e.target.value })}
               />
-              <p className="text-right text-xs text-text-muted">
-                {draft.description.length} / 500 chars recommended
+              <p className={cn("text-right text-xs", draft.description.length > 450 ? "text-warning" : "text-text-muted")}>
+                {draft.description.length} / 500
               </p>
             </div>
           </div>
@@ -439,7 +450,7 @@ export function SellWizard({
         {step === 4 && (
           <div className="space-y-4">
             <Button variant="secondary" fullWidth onClick={detectLocation}>
-              <MapPin size={18} /> {draft.latitude ? "Location detected ✓" : "Use my current location"}
+              <MapPin size={18} /> {draft.latitude ? t("sell.locationDetected") : t("sell.useLocation")}
             </Button>
             <Select
               label={t("sell.city")}
@@ -482,11 +493,11 @@ export function SellWizard({
                 <div className="flex flex-wrap gap-2">
                   {draft.condition && (
                     <span className="rounded-pill bg-surface-modal px-2 py-0.5 text-xs text-text-secondary">
-                      {draft.condition.replace("_", " ")}
+                      {t(`condition.${draft.condition}`)}
                     </span>
                   )}
                   {draft.negotiable && (
-                    <span className="rounded-pill bg-success/15 px-2 py-0.5 text-xs text-success">Negotiable</span>
+                    <span className="rounded-pill bg-success/15 px-2 py-0.5 text-xs text-success">{t("common.negotiable")}</span>
                   )}
                   {draft.images.length > 0 && (
                     <span className="rounded-pill bg-surface-modal px-2 py-0.5 text-xs text-text-secondary">
@@ -524,7 +535,7 @@ export function SellWizard({
 
       {/* Footer CTA */}
       <footer className="sticky bottom-0 space-y-2 border-t border-border bg-background p-4">
-        {!gate.ok && step < STEPS.length - 1 && (
+        {!gate.ok && step < STEP_COUNT - 1 && (
           <p
             role="status"
             aria-live="polite"
@@ -533,7 +544,7 @@ export function SellWizard({
             {gate.reason}
           </p>
         )}
-        {step < STEPS.length - 1 ? (
+        {step < STEP_COUNT - 1 ? (
           <Button fullWidth size="lg" disabled={!canNext} onClick={next}>
             {t("common.continue")}
           </Button>

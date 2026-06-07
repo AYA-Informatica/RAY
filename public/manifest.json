@@ -2,7 +2,7 @@
   "name": "RAY — Buy & Sell Anything Near You",
   "short_name": "RAY",
   "description": "The hyperlocal marketplace for East Africa.",
-  "start_url": "/",
+  "start_url": "/home",
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#111111",

@@ -11,6 +11,7 @@ import { getCategories } from "@/services/categories";
 import { getRecentListings } from "@/services/listings";
 import { getFavoriteIds } from "@/services/favorites";
 import { getCurrentUser } from "@/lib/auth/session";
+import { serverT } from "@/i18n/server";
 
 const PAGE_SIZE = 15;
 
@@ -35,16 +36,20 @@ export async function HomeContent() {
 
       {/* Browse Categories */}
       <section className="px-4 pt-5 sm:px-6 lg:pt-8">
-        <h2 className="mb-3 font-display text-lg font-bold lg:text-xl">Browse Categories</h2>
-        <div className="grid grid-cols-4 gap-y-5 sm:grid-cols-6 lg:grid-cols-8">
+        <h2 className="mb-3 font-display text-lg font-bold lg:text-xl">{serverT("home.browseCategories")}</h2>
+        <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
           {categories.map((c) => (
             <Link
               key={c.id}
               href={`/search?category=${c.slug}`}
-              className="flex flex-col items-center gap-1 rounded-md py-2 transition-colors hover:bg-surface-card"
+              className="flex flex-col items-center gap-1.5 rounded-xl p-1 transition-colors hover:bg-surface-card/60 active:scale-95"
             >
-              <span className="text-3xl">{c.icon}</span>
-              <span className="text-xs font-medium text-text-primary">{c.name}</span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-card text-2xl">
+                {c.icon}
+              </span>
+              <span className="text-center text-[10px] font-medium leading-tight text-text-secondary">
+                {c.name}
+              </span>
             </Link>
           ))}
         </div>
@@ -56,36 +61,36 @@ export async function HomeContent() {
       {/* Recent Listings */}
       <section className="space-y-3 px-4 pb-4 pt-6 sm:px-6">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold lg:text-xl">Recent Listings</h2>
+          <h2 className="font-display text-lg font-bold lg:text-xl">{serverT("home.recentListings")}</h2>
           <Link href="/search" className="text-sm text-primary hover:underline">
-            See all
+            {serverT("home.seeAll")}
           </Link>
         </div>
 
         {recent.length === 0 ? (
           <Card className="flex flex-col items-center gap-2 p-8 text-center">
             <Rocket className="text-text-secondary" />
-            <p className="text-sm text-text-secondary">No listings yet — be the first to post.</p>
+            <p className="text-sm text-text-secondary">{serverT("home.noListings")}</p>
             <Link href="/sell">
-              <Button size="sm">Post an ad</Button>
+              <Button size="sm">{serverT("home.postAd")}</Button>
             </Link>
           </Card>
         ) : (
           <>
             <div className="space-y-3 sm:hidden">
-              {recent.map((l) => (
-                <ListingRow key={l.id} listing={l} />
+              {recent.map((l, idx) => (
+                <ListingRow key={l.id} listing={l} priority={idx === 0} />
               ))}
             </div>
             <div className="hidden grid-cols-3 gap-4 sm:grid lg:grid-cols-4 xl:grid-cols-5">
-              {recent.map((l) => (
-                <ListingCard key={l.id} listing={l} />
+              {recent.map((l, idx) => (
+                <ListingCard key={l.id} listing={l} priority={idx === 0} />
               ))}
             </div>
             {recent.length === PAGE_SIZE && (
               <div className="pt-2 text-center">
                 <Link href="/search">
-                  <Button variant="secondary" size="sm">See all listings</Button>
+                  <Button variant="secondary" size="sm">{serverT("home.seeAll")}</Button>
                 </Link>
               </div>
             )}

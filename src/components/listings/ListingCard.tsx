@@ -9,10 +9,14 @@ import { timeAgo, formatDistance } from "@/lib/utils/format";
 import type { ListingCardData } from "@/types";
 
 /** Grid card used on Home (search results) and the search page. */
-export function ListingCard({ listing }: { listing: ListingCardData }) {
+export function ListingCard({ listing, priority, index = 0 }: { listing: ListingCardData; priority?: boolean; index?: number }) {
   const isRental = listing.category.slug === "rentals";
   return (
-    <Link href={`/listing/${listing.id}`} className="block animate-fade-in-up">
+    <Link
+      href={`/listing/${listing.id}`}
+      className="block animate-fade-in-up"
+      style={{ animationDelay: `${Math.min(index * 40, 320)}ms` }}
+    >
       <Card className="overflow-hidden">
         <div className="relative aspect-[4/3] bg-surface-modal">
           {listing.coverImage ? (
@@ -22,7 +26,8 @@ export function ListingCard({ listing }: { listing: ListingCardData }) {
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover"
-              loading="lazy"
+              priority={priority}
+              loading={priority ? undefined : "lazy"}
             />
           ) : (
             <div className="grid h-full w-full place-items-center text-3xl">
@@ -58,14 +63,22 @@ export function ListingCard({ listing }: { listing: ListingCardData }) {
 }
 
 /** Wide horizontal card used in the "Recent Listings" home rail. */
-export function ListingRow({ listing }: { listing: ListingCardData }) {
+export function ListingRow({ listing, priority }: { listing: ListingCardData; priority?: boolean }) {
   const isRental = listing.category.slug === "rentals";
   return (
     <Link href={`/listing/${listing.id}`} className="block">
       <Card className="flex items-stretch overflow-hidden">
         <div className="relative aspect-square w-28 shrink-0 bg-surface-modal">
           {listing.coverImage ? (
-            <Image src={listing.coverImage} alt={listing.title} fill className="object-cover" sizes="112px" loading="lazy" />
+            <Image
+              src={listing.coverImage}
+              alt={listing.title}
+              fill
+              className="object-cover"
+              sizes="112px"
+              priority={priority}
+              loading={priority ? undefined : "lazy"}
+            />
           ) : (
             <div className="grid h-full w-full place-items-center text-2xl">{listing.category.icon}</div>
           )}

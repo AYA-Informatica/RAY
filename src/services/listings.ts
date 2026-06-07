@@ -3,6 +3,7 @@ import type { ListingCardData, ListingDetailData, Paginated } from "@/types";
 import { DEMO_LISTINGS } from "./fixtures";
 import { distanceKm as haversine } from "@/lib/utils/format";
 import type { SearchQuery } from "@/lib/validations/search.schema";
+import { getSellerResponseTime } from "./chat";
 
 type RawListing = Awaited<ReturnType<typeof queryListings>>[number];
 
@@ -129,20 +130,27 @@ export async function getListing(id: string): Promise<ListingDetailData | null> 
         attributeValues: { include: { attribute: true } },
       },
     });
-    const listingsCount = await prisma.listing.count({
-      where: { userId: l.userId, status: "ACTIVE" },
-    });
-    return { ...l, user: { ...l.user, listingsCount } };
+    const [listingsCount, responseTimeMins] = await Promise.all([
+      prisma.listing.count({ where: { userId: l.userId, status: "ACTIVE" } }),
+      getSellerResponseTime(l.userId),
+    ]);
+    return { ...l, user: { ...l.user, listingsCount, responseTimeMins } };
   } catch {
     return null;
   }
 }
 
-/** Listings owned by a user (all statuses), for the My Ads management screen. */
-export async function getUserListings(userId: string): Promise<ListingCardData[]> {
+/** Listings owned by a user (active, sold, expired, flagged), for the My Ads management screen.
+ * Excludes REMOVED listings by default (user deleted them). */
+export async function getUserListings(userId: string, includeRemoved = false): Promise<ListingCardData[]> {
   try {
+    const where: { userId: string; status?: { not: "REMOVED" } } = { userId };
+    if (!includeRemoved) {
+      where.status = { not: "REMOVED" };
+    }
+    
     const rows = await prisma.listing.findMany({
-      where: { userId },
+      where,
       orderBy: { createdAt: "desc" },
       include: { category: true, images: { orderBy: { order: "asc" }, take: 1 } },
     });

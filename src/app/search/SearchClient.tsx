@@ -204,7 +204,7 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
               onClick={() => { setFilters(EMPTY_FILTERS); setCategory("all"); }}
               className="rounded-pill px-3 py-1 text-xs text-text-muted hover:text-danger"
             >
-              Clear all
+              {t("search.clear")}
             </button>
           </div>
         )}
@@ -252,8 +252,8 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
         ) : (
           <>
             <p className="py-3 text-sm font-medium text-text-primary">
-              {result.total} {result.total === 1 ? "result" : "results"}
-              {query && <span className="font-normal text-text-secondary"> for "{query}"</span>}
+              {result.total} {t("search.results")}
+              {query && <span className="font-normal text-text-secondary"> {t("search.for")} &ldquo;{query}&rdquo;</span>}
             </p>
             <ListingGrid listings={result.items} />
           </>

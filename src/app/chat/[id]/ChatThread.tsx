@@ -117,13 +117,14 @@ export function ChatThread({
   const online = isOnline(thread.otherLastSeenAt);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background sm:max-w-xl md:max-w-2xl lg:max-w-3xl lg:border-x lg:border-border">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background sm:max-w-xl md:max-w-2xl lg:mx-0 lg:h-full lg:max-w-none lg:border-x-0">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-3 py-2.5">
+        {/* Back arrow — mobile only; desktop sidebar provides navigation */}
         <Link
           href="/chat"
           aria-label={t("common.back")}
-          className="-ml-2 grid h-11 w-11 place-items-center text-text-secondary hover:text-text-primary"
+          className="-ml-2 grid h-11 w-11 place-items-center text-text-secondary hover:text-text-primary lg:hidden"
         >
           <ArrowLeft size={22} />
         </Link>
@@ -234,7 +235,7 @@ export function ChatThread({
                   inputMode="numeric"
                   value={offerValue}
                   onChange={(e) => setOfferValue(e.target.value)}
-                  placeholder={`Suggest a price (listed: ${formatPrice(thread.listingPrice)})`}
+                  placeholder={`${t("offer.placeholder")} (${formatPrice(thread.listingPrice)})`}
                   className="h-10 flex-1 rounded-md border border-border bg-surface-modal px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-primary focus:outline-none"
                   autoFocus
                 />
@@ -250,10 +251,10 @@ export function ChatThread({
                   disabled={!offerValue || isNaN(parseFloat(offerValue))}
                   className="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-text-primary disabled:opacity-50"
                 >
-                  Send offer
+                  {t("offer.sendOffer")}
                 </button>
                 <button onClick={() => setShowOfferInput(false)} className="text-xs text-text-muted hover:text-text-primary">
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             )}

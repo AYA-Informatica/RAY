@@ -8,8 +8,8 @@ const GRID = "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:g
 export function ListingGrid({ listings }: { listings: ListingCardData[] }) {
   return (
     <div className={GRID}>
-      {listings.map((l) => (
-        <ListingCard key={l.id} listing={l} />
+      {listings.map((l, i) => (
+        <ListingCard key={l.id} listing={l} index={i} />
       ))}
     </div>
   );

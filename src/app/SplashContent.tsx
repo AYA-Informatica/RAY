@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useI18n } from "@/i18n/I18nProvider";
 
@@ -31,14 +30,19 @@ export function SplashContent() {
       // Returning visitor — skip the splash immediately.
       router.replace("/home");
     } else {
-      // First visit — show it.
+      // First visit — show splash and warm up /home in the background.
       setVisible(true);
+      router.prefetch("/home");
     }
   }, [router]);
 
   function handleGetStarted() {
     localStorage.setItem(VISITED_KEY, "1");
-    // Navigation handled by the <Link> href — this just persists the flag first.
+    document.cookie = "ray_visited=1; path=/; max-age=31536000; SameSite=Lax";
+    // Dismiss the overlay instantly — HomeContent is already rendered below.
+    setVisible(false);
+    // Update the address bar to /home without a server round-trip.
+    window.history.replaceState({}, "", "/home");
   }
 
   // Render nothing until we've confirmed first-visit status (avoids flash).
@@ -70,8 +74,7 @@ export function SplashContent() {
         </div>
 
         {/* CTA */}
-        <Link
-          href="/home"
+        <button
           onClick={handleGetStarted}
           className="flex w-full max-w-xs items-center justify-center gap-2 rounded-pill
                      bg-text-primary/95 px-6 py-4
@@ -79,15 +82,15 @@ export function SplashContent() {
                      shadow-cta transition-transform active:scale-95 hover:bg-text-primary"
         >
           {t("splash.getStarted")} <ArrowRight size={20} />
-        </Link>
+        </button>
       </div>
 
       {/* Desktop: clicking the scrim outside the card also enters */}
-      <Link
-        href="/home"
+      <div
         onClick={handleGetStarted}
         className="absolute inset-0 -z-10 hidden lg:block"
         aria-label="Enter RAY"
+        role="button"
         tabIndex={-1}
       />
     </div>

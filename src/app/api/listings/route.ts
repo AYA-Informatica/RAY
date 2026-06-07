@@ -32,6 +32,12 @@ export async function POST(req: NextRequest) {
         include: { images: { orderBy: { order: "asc" } }, attributeValues: true },
       });
       if (!source) return fail("Listing not found or not yours", 404);
+      
+      // Prevent reposting already active listings
+      if (source.status === "ACTIVE") {
+        return fail("This listing is already active", 400);
+      }
+      
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
       const newListing = await prisma.listing.create({

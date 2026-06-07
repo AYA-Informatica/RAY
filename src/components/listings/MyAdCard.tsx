@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -23,24 +23,47 @@ const STATUS_KEY: Record<string, string> = {
 export function MyAdCard({ listing }: { listing: ListingCardData }) {
   const router = useRouter();
   const { t } = useI18n();
+  const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(listing.status);
+  const [isDeleted, setIsDeleted] = useState(false);
+  const [isReposting, setIsReposting] = useState(false);
 
   async function setListingStatus(next: "ACTIVE" | "SOLD") {
-    setBusy(true);
+    // Optimistic update
+    const prevStatus = status;
     setStatus(next);
+    setBusy(true);
+    
     try {
-      await fetch(`/api/listings/${listing.id}`, {
+      const res = await fetch(`/api/listings/${listing.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: next }),
       });
-      router.refresh();
-    } catch { setStatus(listing.status); }
-    finally { setBusy(false); }
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || "Failed to update status");
+      }
+      
+      // Refresh server data
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch (error) {
+      // Revert on error
+      setStatus(prevStatus);
+      const message = error instanceof Error ? error.message : "Failed to update listing";
+      alert(message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function repost() {
+    if (busy || isReposting) return; // Prevent double-click
+    setIsReposting(true);
     setBusy(true);
     try {
       const res = await fetch("/api/listings", {
@@ -48,22 +71,54 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ repostFromId: listing.id }),
       });
-      if (res.ok) {
-        const { data } = (await res.json()) as { data: { id: string } };
-        router.push(`/listing/${data.id}`);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error?.message || "Failed to repost listing");
+        setIsReposting(false);
+        setBusy(false);
+        return;
       }
-    } catch { /* no-op */ }
-    finally { setBusy(false); }
+      
+      const { data } = (await res.json()) as { data: { id: string } };
+      // Navigate to new listing - keep busy state to prevent further clicks
+      router.push(`/listing/${data.id}`);
+    } catch {
+      setIsReposting(false);
+      setBusy(false);
+      alert("Failed to repost listing. Please try again.");
+    }
   }
 
   async function remove() {
     if (!window.confirm(t("myAds.deleteConfirm"))) return;
     setBusy(true);
+    
     try {
-      await fetch(`/api/listings/${listing.id}`, { method: "DELETE" });
-      router.refresh();
-    } finally { setBusy(false); }
+      // Permanent delete - removes from database entirely
+      const res = await fetch(`/api/listings/${listing.id}?permanent=true`, { 
+        method: "DELETE" 
+      });
+      
+      if (!res.ok) throw new Error("Failed to delete");
+      
+      // Optimistic removal
+      setIsDeleted(true);
+      
+      // Refresh server data
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setBusy(false);
+      alert("Failed to delete listing. Please try again.");
+    }
   }
+
+  // Hide if deleted
+  if (isDeleted) return null;
+
+  const isLoading = busy || isPending;
 
   return (
     <Card className="overflow-hidden">
@@ -96,11 +151,11 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
         {status === "EXPIRED" || status === "REMOVED" ? (
           <button
             onClick={repost}
-            disabled={busy}
-            className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-50"
+            disabled={isLoading || isReposting}
+            className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {busy ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            Repost
+            {isLoading || isReposting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            {isReposting ? "Reposting..." : "Repost"}
           </button>
         ) : (
           <>
@@ -113,28 +168,30 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
             {status === "SOLD" ? (
               <button
                 onClick={() => setListingStatus("ACTIVE")}
-                disabled={busy}
+                disabled={isLoading}
                 className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-success hover:bg-surface-modal disabled:opacity-50"
               >
-                <RotateCcw size={14} /> {t("myAds.markActive")}
+                {isLoading ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                {t("myAds.markActive")}
               </button>
             ) : (
               <button
                 onClick={() => setListingStatus("SOLD")}
-                disabled={busy}
+                disabled={isLoading}
                 className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-text-secondary hover:bg-surface-modal disabled:opacity-50"
               >
-                <CheckCircle2 size={14} /> {t("myAds.markSold")}
+                {isLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                {t("myAds.markSold")}
               </button>
             )}
           </>
         )}
         <button
           onClick={remove}
-          disabled={busy}
+          disabled={isLoading}
           className="ml-auto flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-danger hover:bg-danger/10 disabled:opacity-50"
         >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+          {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
           {t("common.delete")}
         </button>
       </div>

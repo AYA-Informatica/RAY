@@ -10,10 +10,15 @@ import { RecordView } from "@/components/listings/RecordView";
 import { Badge } from "@/components/ui/Badge";
 import { ChatCtaBar } from "@/components/chat/ChatCtaBar";
 import { getListing } from "@/services/listings";
-import { formatPrice, timeAgo, conditionLabel } from "@/lib/utils/format";
+import { formatPrice, timeAgo } from "@/lib/utils/format";
+import { serverT } from "@/i18n/server";
 import { MapPin, Eye } from "lucide-react";
 
 type Params = { params: { id: string } };
+
+// Disable static rendering for listing details to show real-time status
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 /** Per-listing SEO metadata + Open Graph (Build Prompt SEO requirements). */
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -78,8 +83,8 @@ export default async function ListingDetailPage({ params }: Params) {
 
               {/* Row 1 — qualifiers */}
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Badge tone="muted">{conditionLabel(listing.condition)}</Badge>
-                {listing.negotiable && <Badge tone="success">Negotiable</Badge>}
+                <Badge tone="muted">{serverT(`condition.${listing.condition}`)}</Badge>
+                {listing.negotiable && <Badge tone="success">{serverT("common.negotiable")}</Badge>}
               </div>
 
               {/* Row 2 — location · views · time (de-emphasized) */}
@@ -90,7 +95,7 @@ export default async function ListingDetailPage({ params }: Params) {
                   {listing.district}, {listing.city}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Eye size={12} /> {listing.views} views
+                  <Eye size={12} /> {listing.views} {serverT("listing.views")}
                 </span>
                 <span>· {timeAgo(listing.createdAt)}</span>
               </div>
@@ -99,7 +104,7 @@ export default async function ListingDetailPage({ params }: Params) {
             {/* Dynamic category attributes */}
             {listing.attributeValues.length > 0 && (
               <section>
-                <h2 className="mb-2 font-display font-bold">Details</h2>
+                <h2 className="mb-2 font-display font-bold">{serverT("listing.details")}</h2>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border border-border bg-surface-card p-3">
                   {listing.attributeValues.map((av) =>
                     av.attribute ? (
@@ -115,7 +120,7 @@ export default async function ListingDetailPage({ params }: Params) {
 
             {/* Description */}
             <section>
-              <h2 className="mb-2 font-display font-bold">Description</h2>
+              <h2 className="mb-2 font-display font-bold">{serverT("listing.description")}</h2>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
                 {listing.description}
               </p>
@@ -128,7 +133,7 @@ export default async function ListingDetailPage({ params }: Params) {
 
             {/* Safety note + report */}
             <div className="flex items-center justify-between rounded-md bg-surface-card/50 px-3 py-2">
-              <p className="text-xs text-text-muted">Meet in a public place. Never pay before seeing the item.</p>
+              <p className="text-xs text-text-muted">{serverT("listing.safetyNote")}</p>
               <ReportButton listingId={listing.id} />
             </div>
 

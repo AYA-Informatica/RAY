@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search } from "lucide-react";
 import { timeAgo } from "@/lib/utils/format";
+import { useI18n } from "@/i18n/I18nProvider";
 
 export interface ConversationPreview {
   id: string;
@@ -20,6 +21,7 @@ export interface ConversationPreview {
 /** Inbox conversation list with client-side search. */
 export function ConversationList({ conversations }: { conversations: ConversationPreview[] }) {
   const [query, setQuery] = useState("");
+  const { t } = useI18n();
 
   const filtered = conversations.filter((c) => {
     const q = query.toLowerCase();
@@ -41,8 +43,8 @@ export function ConversationList({ conversations }: { conversations: Conversatio
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search messages…"
-              aria-label="Search conversations"
+              placeholder={t("search.placeholder")}
+              aria-label={t("chat.title")}
               className="h-9 w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
             />
           </div>
@@ -52,7 +54,7 @@ export function ConversationList({ conversations }: { conversations: Conversatio
       <ul className="divide-y divide-border">
         {filtered.length === 0 ? (
           <li className="px-4 py-8 text-center text-sm text-text-secondary">
-            No conversations match "{query}"
+            {t("search.noResults")} &ldquo;{query}&rdquo;
           </li>
         ) : (
           filtered.map((c) => (
@@ -74,7 +76,7 @@ export function ConversationList({ conversations }: { conversations: Conversatio
                   </div>
                   <p className="truncate text-xs text-text-secondary">{c.listingTitle}</p>
                   <p className={`truncate text-sm ${c.unread > 0 ? "font-medium text-text-primary" : "text-text-secondary"}`}>
-                    {c.lastMessage ?? "Start the conversation"}
+                    {c.lastMessage ?? t("chat.sayHello")}
                   </p>
                 </div>
                 {c.unread > 0 && (
