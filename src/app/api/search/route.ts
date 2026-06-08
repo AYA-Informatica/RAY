@@ -4,6 +4,8 @@ import { searchListings } from "@/services/listings";
 import { ok, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
 
+export const dynamic = "force-dynamic";
+
 /** GET /api/search — filtered, location-ranked search (public). */
 export async function GET(req: NextRequest) {
   const params = Object.fromEntries(req.nextUrl.searchParams.entries());

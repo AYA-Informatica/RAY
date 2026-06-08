@@ -5,6 +5,8 @@ import { updateProfileSchema } from "@/lib/validations/profile.schema";
 import { sanitizeObject } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 
+export const dynamic = "force-dynamic";
+
 type Ctx = { params: { id: string } };
 
 /** GET /api/users/:id — public profile + active listing count. */

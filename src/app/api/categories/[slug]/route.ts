@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { getCategoryWithAttributes } from "@/services/categories";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 
+export const dynamic = "force-dynamic";
+
 type Ctx = { params: { slug: string } };
 
 /** GET /api/categories/:slug — category + dynamic attribute schema (public). */

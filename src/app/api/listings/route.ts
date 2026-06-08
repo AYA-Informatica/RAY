@@ -7,6 +7,8 @@ import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
 import { getRecentListings } from "@/services/listings";
 
+export const dynamic = "force-dynamic";
+
 /** GET /api/listings — recent active listings (public). */
 export async function GET() {
   try {

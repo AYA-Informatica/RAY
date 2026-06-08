@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { ok, handleApiError } from "@/lib/utils/api";
 
+export const dynamic = "force-dynamic";
+
 type Ctx = { params: { listingId: string } };
 
 /** POST /api/favorites/:listingId — add (idempotent). */

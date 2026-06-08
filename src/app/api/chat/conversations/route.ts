@@ -5,6 +5,8 @@ import { startConversationSchema } from "@/lib/validations/message.schema";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 import type { ConversationPreview } from "@/components/chat/ConversationList";
 
+export const dynamic = "force-dynamic";
+
 /** GET /api/chat/conversations — the current user's inbox. */
 export async function GET() {
   console.log("[GET conversations] start");

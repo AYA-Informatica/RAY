@@ -7,6 +7,8 @@ import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 import { getListing } from "@/services/listings";
 
+export const dynamic = "force-dynamic";
+
 type Ctx = { params: { id: string } };
 
 export async function GET(_req: NextRequest, { params }: Ctx) {

@@ -6,6 +6,8 @@ import { ok, fail, handleApiError } from "@/lib/utils/api";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("removeListing"), listingId: z.string().min(1) }),
   z.object({ action: z.literal("restoreListing"), listingId: z.string().min(1) }),

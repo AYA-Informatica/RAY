@@ -3,6 +3,8 @@ import { requireStaff } from "@/lib/permissions/roles";
 import { getManagedUsers } from "@/services/admin";
 import { ok, handleApiError } from "@/lib/utils/api";
 
+export const dynamic = "force-dynamic";
+
 /** GET /api/admin/users — staff only. */
 export async function GET() {
   try {

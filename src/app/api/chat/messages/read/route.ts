@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/chat/messages/read — marks all incoming messages in a conversation
  * as read. Called by useRealtimeMessages when a new message arrives while the

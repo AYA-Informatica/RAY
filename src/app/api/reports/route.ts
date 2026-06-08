@@ -7,6 +7,8 @@ import { ok, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
 import { logger } from "@/lib/logger";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/reports — file a report. Per spec: increases moderation visibility
  * but does NOT auto-remove the listing. Auto-flag heuristic bumps status only

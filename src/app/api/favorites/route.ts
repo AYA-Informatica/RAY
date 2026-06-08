@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ok, handleApiError } from "@/lib/utils/api";
 
+export const dynamic = "force-dynamic";
+
 /** GET /api/favorites — the current user's favorited listing IDs (for hydration). */
 export async function GET() {
   console.log("[GET favorites] start");

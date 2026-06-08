@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ok, handleApiError } from "@/lib/utils/api";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/presence — heartbeat. Updates the caller's lastSeenAt.
  * Called periodically by the app while active so other users can see

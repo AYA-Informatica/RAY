@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 
+export const dynamic = "force-dynamic";
+
 type Ctx = { params: { userId: string } };
 
 /** GET /api/blocks/:userId — is the current user blocking :userId? */

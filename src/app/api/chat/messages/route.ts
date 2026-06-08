@@ -6,6 +6,8 @@ import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
 
+export const dynamic = "force-dynamic";
+
 /** Verifies the user is a participant in the conversation. */
 async function assertParticipant(conversationId: string, userId: string) {
   const convo = await prisma.conversation.findUnique({
