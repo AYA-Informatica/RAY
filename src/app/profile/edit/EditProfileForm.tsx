@@ -106,7 +106,7 @@ export function EditProfileForm({ userId, initial }: Props) {
           <div className="relative h-24 w-24">
             <div className="relative h-24 w-24 overflow-hidden rounded-pill bg-surface-modal ring-2 ring-border">
               {avatarUrl ? (
-                <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="96px" priority />
+                <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="96px" />
               ) : (
                 <span className="grid h-full w-full place-items-center font-display text-3xl text-text-secondary">
                   {name.charAt(0).toUpperCase() || "?"}

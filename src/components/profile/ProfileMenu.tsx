@@ -34,7 +34,7 @@ export function ProfileMenu({ name, email, avatarUrl, activeAds, totalViews, fav
         <div className="mt-4 flex items-center gap-3">
           <Link href="/profile/edit" className="relative h-16 w-16 overflow-hidden rounded-pill bg-surface-modal ring-2 ring-text-primary/40">
             {avatarUrl ? (
-              <Image src={avatarUrl} alt={name} fill className="object-cover" sizes="64px" priority />
+              <Image src={avatarUrl} alt={name} fill className="object-cover" sizes="64px" />
             ) : (
               <span className="grid h-full w-full place-items-center font-display text-2xl text-text-primary">
                 {name.charAt(0).toUpperCase()}
