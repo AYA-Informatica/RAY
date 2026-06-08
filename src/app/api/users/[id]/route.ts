@@ -44,15 +44,29 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     const patch = updateProfileSchema.parse(await req.json());
     console.log("[PATCH user] patch keys=", Object.keys(patch));
+
+    // Sanitize only plain-text fields. avatarUrl is a URL validated by Zod —
+    // running it through DOMPurify/JSDOM is unnecessary and can throw in
+    // serverless environments where JSDOM initialises lazily.
+    const { avatarUrl, ...textFields } = patch;
+    const data = {
+      ...sanitizeObject(textFields as Record<string, unknown>),
+      ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+    };
+
     const updated = await prisma.user.update({
       where: { id: user.id },
-      data: sanitizeObject(patch as Record<string, unknown>),
+      data,
       select: { id: true, name: true, bio: true, avatarUrl: true, city: true, district: true },
     });
     console.log("[PATCH user] updated OK uid=", updated.id);
     return ok(updated);
   } catch (err) {
-    console.error("[PATCH user] ERROR:", err instanceof Error ? err.message : err);
+    console.error("[PATCH user] ERROR:", {
+      name: err instanceof Error ? err.name : typeof err,
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack?.split("\n").slice(0, 6).join("\n") : undefined,
+    });
     return handleApiError(err);
   }
 }
