@@ -18,32 +18,36 @@ export const getAuthUser = cache(async () => {
 });
 
 /** Returns the full public.User row, or null if unauthenticated.
- *  If the DB row is missing (trigger failed or first sign-in race), creates it
- *  from Google OAuth metadata so the app never gets into a redirect loop. */
-export async function getCurrentUser(): Promise<User | null> {
+ *  Memoized per-request — multiple server components on the same page share
+ *  one DB lookup. Uses findUnique for the common case (user exists) and only
+ *  falls back to upsert when the row is missing (trigger race / first sign-in). */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const authUser = await getAuthUser();
   if (!authUser) return null;
   console.log("[session] getCurrentUser: looking up prisma User for", authUser.id);
   try {
+    const existing = await prisma.user.findUnique({ where: { id: authUser.id } });
+    if (existing) {
+      console.log("[session] getCurrentUser: uid=", existing.id, "email=", existing.email);
+      return existing;
+    }
+    // Row missing — create it from OAuth metadata (trigger race or missing trigger).
     const meta = authUser.user_metadata ?? {};
-    const user = await prisma.user.upsert({
-      where: { id: authUser.id },
-      // Never overwrite an existing profile — only fill in on creation.
-      update: {},
-      create: {
+    const user = await prisma.user.create({
+      data: {
         id: authUser.id,
         email: authUser.email ?? `${authUser.id}@ray.invalid`,
         name: (meta.full_name ?? meta.name ?? null) as string | null,
         avatarUrl: (meta.avatar_url ?? meta.picture ?? null) as string | null,
       },
     });
-    console.log("[session] getCurrentUser: uid=", user.id, "email=", user.email);
+    console.log("[session] getCurrentUser: created uid=", user.id);
     return user;
   } catch (err) {
     console.error("[session] getCurrentUser prisma error:", err instanceof Error ? err.message : err);
     throw err;
   }
-}
+});
 
 /** Throws "Unauthorized" if no session — use to guard protected API routes. */
 export async function requireUser(): Promise<User> {
