@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
+import { Analytics } from "@vercel/analytics/next";
 import { I18nProvider, parseLocale } from "@/i18n";
 import "./globals.css";
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-dvh bg-background">
         <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+        <Analytics />
       </body>
     </html>
   );
