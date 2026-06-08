@@ -39,7 +39,7 @@ export async function AppShell({
   const unread = authUser ? await getUnreadCount(authUser.id) : 0;
 
   return (
-    <div className="min-h-dvh bg-background pb-24 lg:pb-12">
+    <div className="min-h-dvh bg-background pb-24 mouse-lg:pb-12">
       {/* Skip to content — keyboard accessibility */}
       <a
         href="#main-content"

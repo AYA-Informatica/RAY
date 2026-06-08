@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 /**
  * RAY Tailwind configuration.
@@ -90,7 +91,14 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // mouse-lg: fires only on real mouse/trackpad devices at 1024px+.
+    // pointer:coarse (touch screens) never satisfies this, so "Desktop site"
+    // mode on phones and tablets keeps the mobile layout.
+    plugin(({ addVariant }) => {
+      addVariant("mouse-lg", "@media (pointer: fine) and (hover: hover) and (min-width: 1024px)");
+    }),
+  ],
 };
 
 export default config;

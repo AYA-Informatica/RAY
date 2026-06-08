@@ -25,7 +25,7 @@ export function BottomNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
   const pathname = usePathname();
   const { t } = useI18n();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-primary lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-primary mouse-lg:hidden">
       <ul className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
         {ITEMS.map(({ href, labelKey, icon: Icon, center }) => {
           const active = pathname === href || pathname.startsWith(href + "/");

@@ -22,7 +22,7 @@ export function TopNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
   const { t } = useI18n();
 
   return (
-    <header className="sticky top-0 z-50 hidden border-b border-border bg-background/90 backdrop-blur lg:block">
+    <header className="sticky top-0 z-50 hidden border-b border-border bg-background/90 backdrop-blur mouse-lg:block">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-8">
         <Link href="/home" className="font-display text-2xl font-extrabold tracking-tight text-primary">
           RAY
