@@ -30,7 +30,7 @@
 
 ### 2. Listing Management
 
-- [ ] Create a new listing (test all 13 categories)
+- [ ] Create a new listing (test all 15 categories)
   - [ ] 📱 Phones & Accessories (Item Type, Brand, Listing Type; if Smartphone/Tablet → Storage, RAM, Battery Health; if Accessory → Compatible With)
   - [ ] 💻 Electronics (Type, Brand, Warranty; per-Type specs — Laptop: Processor/RAM/Storage/Screen Size/OS/Charger; TV: Screen Size/Resolution/Smart TV; Audio: Audio Type/Connectivity; Camera: Camera Type/Megapixels/Lens Included; Gaming: Platform/Storage/Charger; Accessory: Accessory Type)
   - [ ] 🚗 Cars (Brand, Year, Mileage, Fuel Type, Transmission, Listing Type)
@@ -44,6 +44,8 @@
   - [ ] 🧱 Construction Materials (Material Type, Brand, Quantity Available, Unit, Condition, Delivery Available)
   - [ ] ⚙️ Machinery (Machine Type, Brand, Year of Manufacture, Hours of Use, Fuel Type, Listing Type, Condition)
   - [ ] 👶 Kids (Type; if Toys/Clothing → Age Range; if Clothing → Clothing Size; if Strollers → Stroller Type)
+  - [ ] 🍳 Kitchen (Type, Brand, Condition; if Cookware/Utensils/Tableware/Storage → Material; if Cookware/Tableware/Storage → Set Size; if Appliances → Appliance Type, Power Source)
+  - [ ] 💄 Beauty & Personal Care (Type, Brand, Gender, Condition; if Skincare → Product Type, Skin Type; if Makeup → Product Type, Shade; if Haircare → Product Type, Hair Type; if Fragrances → Fragrance Type, Volume; if Tools → Tool Type; Expiry Date for consumables)
 - [ ] Upload multiple images for a listing (test up to 7 images)
 - [ ] Test dynamic category attributes for each category
 - [ ] On the Specs step, select "Other" on a SELECT attribute (e.g. Phones → Item Type)
@@ -56,8 +58,8 @@
   - [ ] "Enter location manually" — shows the City/District/Neighborhood dropdowns
   - [ ] "Detect my location" — uses GPS and shows "Location detected" on success
 - [ ] Verify a new listing's location pre-fills from your profile location on a fresh session (clear `ray_sell_draft` from localStorage first)
-- [ ] Mark a listing as sold
-- [ ] Reactivate a sold listing
+- [x] Mark a listing as sold
+- [x] Reactivate a sold listing
 - [ ] Edit an existing listing (verify "Other" free-text also works in the edit form)
 - [ ] Delete a listing
 - [ ] Verify listing expiry after 30 days (check database `expiresAt` field)

@@ -236,6 +236,54 @@ const CATEGORIES: SeedCategory[] = [
       { label: "Stroller Type", key: "stroller_type", type: "SELECT", options: ["Single", "Double", "Travel System", "Lightweight / Umbrella", "Jogging"], showIf: { key: "type", in: ["Strollers"] } },
     ],
   },
+  {
+    name: "Kitchen",
+    slug: "kitchen",
+    icon: "🍳",
+    order: 14,
+    attributes: [
+      { label: "Type", key: "type", type: "SELECT", required: true, options: ["Cookware", "Appliances", "Utensils & Tools", "Tableware & Dinnerware", "Storage & Containers", "Other"] },
+      { label: "Brand", key: "brand", type: "TEXT", placeholder: "e.g. Tefal, Hotpoint, Nakumatt" },
+      { label: "Material", key: "material", type: "SELECT", options: ["Stainless Steel", "Non-stick", "Cast Iron", "Aluminum", "Ceramic", "Glass", "Wood", "Plastic", "Silicone", "Porcelain", "Melamine", "Mixed", "Other"], showIf: { key: "type", in: ["Cookware", "Utensils & Tools", "Tableware & Dinnerware", "Storage & Containers"] } },
+      { label: "Set Size", key: "set_size", type: "SELECT", options: ["Single Piece", "Set of 2–4", "Set of 5–8", "Set of 9–12", "Set of 12+"], showIf: { key: "type", in: ["Cookware", "Tableware & Dinnerware", "Storage & Containers"] } },
+      { label: "Appliance Type", key: "appliance_type", type: "SELECT", options: ["Blender", "Microwave", "Oven", "Refrigerator", "Gas Cooker", "Electric Cooker", "Kettle", "Toaster", "Mixer", "Other"], showIf: { key: "type", in: ["Appliances"] } },
+      { label: "Power Source", key: "power_source", type: "SELECT", options: ["Electric", "Gas", "Both"], showIf: { key: "type", in: ["Appliances"] } },
+      { label: "Condition", key: "condition", type: "SELECT", required: true, options: ["New", "Like New", "Good", "Fair", "Used"] },
+    ],
+  },
+  {
+    name: "Beauty & Personal Care",
+    slug: "beauty",
+    icon: "💄",
+    order: 15,
+    attributes: [
+      { label: "Type", key: "type", type: "SELECT", required: true, options: ["Skincare", "Makeup", "Haircare", "Fragrances & Perfumes", "Tools & Accessories", "Other"] },
+      { label: "Brand", key: "brand", type: "TEXT", placeholder: "e.g. Nivea, MAC, L'Oréal" },
+      { label: "Gender", key: "gender", type: "SELECT", options: ["Men", "Women", "Unisex"] },
+
+      // Skincare
+      { label: "Product Type", key: "skincare_type", type: "SELECT", options: ["Moisturizer", "Cleanser", "Serum", "Sunscreen", "Toner", "Face Mask", "Other"], showIf: { key: "type", in: ["Skincare"] } },
+      { label: "Skin Type", key: "skin_type", type: "SELECT", options: ["All Skin Types", "Oily", "Dry", "Combination", "Sensitive"], showIf: { key: "type", in: ["Skincare"] } },
+
+      // Makeup
+      { label: "Product Type", key: "makeup_type", type: "SELECT", options: ["Foundation", "Lipstick", "Eyeshadow", "Mascara", "Concealer", "Blush", "Powder", "Other"], showIf: { key: "type", in: ["Makeup"] } },
+      { label: "Shade", key: "shade", type: "TEXT", placeholder: "e.g. Shade 220, Ruby Red", showIf: { key: "type", in: ["Makeup"] } },
+
+      // Haircare
+      { label: "Product Type", key: "haircare_type", type: "SELECT", options: ["Shampoo", "Conditioner", "Hair Oil", "Styling Product", "Hair Treatment", "Other"], showIf: { key: "type", in: ["Haircare"] } },
+      { label: "Hair Type", key: "hair_type", type: "SELECT", options: ["All Hair Types", "Curly", "Straight", "Oily", "Dry", "Color-Treated"], showIf: { key: "type", in: ["Haircare"] } },
+
+      // Fragrances & Perfumes
+      { label: "Fragrance Type", key: "fragrance_type", type: "SELECT", options: ["Perfume (EDP)", "Cologne (EDT)", "Body Mist", "Other"], showIf: { key: "type", in: ["Fragrances & Perfumes"] } },
+      { label: "Volume", key: "volume", type: "SELECT", options: ["30ml", "50ml", "75ml", "100ml", "100ml+"], showIf: { key: "type", in: ["Fragrances & Perfumes"] } },
+
+      // Tools & Accessories
+      { label: "Tool Type", key: "tool_type", type: "SELECT", options: ["Makeup Brushes", "Hair Dryer", "Straightener / Curler", "Mirror", "Tweezers / Clippers", "Other"], showIf: { key: "type", in: ["Tools & Accessories"] } },
+
+      { label: "Expiry Date", key: "expiry_date", type: "TEXT", placeholder: "e.g. 12/2026", showIf: { key: "type", in: ["Skincare", "Makeup", "Haircare", "Fragrances & Perfumes"] } },
+      { label: "Condition", key: "condition", type: "SELECT", required: true, options: ["New / Sealed", "Used — Like New", "Used"] },
+    ],
+  },
 ];
 
 async function main() {
