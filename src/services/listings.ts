@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { ListingCardData, ListingDetailData, Paginated } from "@/types";
@@ -94,8 +95,11 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   return { items, page: q.page, pageSize: q.pageSize, total, hasMore: skip + rows.length < total };
 }
 
-/** Single listing for the detail page. Increments view count. */
-export async function getListing(id: string): Promise<ListingDetailData | null> {
+/** Single listing for the detail page. Increments view count.
+ *  Memoized per-request — generateMetadata and the page component both call
+ *  this for the same id, and without caching that doubles the view-count
+ *  increment and the concurrent-query load on the connection pool. */
+export const getListing = cache(async (id: string): Promise<ListingDetailData | null> => {
   try {
     const l = await prisma.listing.update({
       where: { id },
@@ -118,7 +122,7 @@ export async function getListing(id: string): Promise<ListingDetailData | null> 
     console.error("[getListing] DB error id=", id, err instanceof Error ? err.message : err);
     throw err;
   }
-}
+});
 
 /** Listings owned by a user (active, sold, expired, flagged), for the My Ads management screen.
  * Excludes REMOVED listings by default (user deleted them). */

@@ -11,11 +11,11 @@
 - [ ] Upload profile avatar image
 - [ ] Verify profile changes persist after refresh
 - [ ] Test authentication on mobile browser
-- [ ] On `/profile/edit`, tap "Detect my location" and allow location access
-  - [ ] If you're in Kigali/Musanze/Rubavu/Huye, City/District/Neighborhood dropdowns should auto-fill and show "Location detected"
-  - [ ] If you're outside those areas, City/District/Neighborhood should switch to free-text fields pre-filled with your detected location, with a note that it's outside the listed areas
-  - [ ] "My city isn't listed" link should manually switch to free-text fields without using GPS
-  - [ ] "Choose from the list instead" link should switch back to the dropdowns
+- [x] On `/profile/edit`, tap "Detect my location" and allow location access
+  - [x] If you're in Kigali/Musanze/Rubavu/Huye, City/District/Neighborhood dropdowns should auto-fill and show "Location detected"
+  - [x] If you're outside those areas, City/District/Neighborhood should switch to free-text fields pre-filled with your detected location, with a note that it's outside the listed areas
+  - [x] "My city isn't listed" link should manually switch to free-text fields without using GPS
+  - [x] "Choose from the list instead" link should switch back to the dropdowns
 
 **Expected Behavior:**
 - Google OAuth redirect should work smoothly

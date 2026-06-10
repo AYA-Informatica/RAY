@@ -15,6 +15,7 @@ import { uploadImages } from "@/lib/storage/upload";
 import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
 import { cn } from "@/lib/utils/cn";
 import { RWANDA_CITIES } from "@/constants/locations";
+import { parseAttributeOptions, isAttributeVisible } from "@/lib/utils/categoryAttributes";
 import type { CategoryWithAttributes } from "@/types";
 
 interface SellCategory {
@@ -73,6 +74,8 @@ export function SellWizard({
     Boolean(draft.title || draft.images.length > 0 || draft.categoryId),
   );
   const [error, setError] = useState<string | null>(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [locationNote, setLocationNote] = useState<string | null>(null);
   // Custom "Other" text per attribute id, keyed only when that attribute is
   // currently in free-text mode (i.e. its dropdown is set to "Other").
   const [otherValues, setOtherValues] = useState<Record<string, string>>({});
@@ -179,9 +182,80 @@ export function SellWizard({
   }
 
   function doDetectLocation() {
+    setDetectingLocation(true);
+    setLocationNote(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => set({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      () => setError("Couldn't detect location — pick it manually."),
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+            { headers: { Accept: "application/json" } },
+          );
+          if (!res.ok) throw new Error("lookup failed");
+          const data = (await res.json()) as { address?: Record<string, string> };
+          const addr = data.address ?? {};
+          // Nominatim returns names like "City of Kigali" / "Musanze District" —
+          // strip those wrappers before comparing against RWANDA_CITIES.
+          const normalize = (raw: string) =>
+            raw.replace(/^city of\s+/i, "").replace(/\s+(district|province|sector|cell)$/i, "").trim();
+
+          const rawCity = addr.city || addr.town || addr.village || addr.county || "";
+          const detectedCity = normalize(rawCity);
+          const districtCandidates = [addr.suburb, addr.city_district, addr.county, addr.state_district]
+            .filter((v): v is string => Boolean(v))
+            .map(normalize);
+
+          const match = RWANDA_CITIES.find((c) => c.city.toLowerCase() === detectedCity.toLowerCase());
+          if (match) {
+            let districtMatch = match.districts.find((d) =>
+              districtCandidates.some((cand) => cand.toLowerCase() === d.name.toLowerCase()),
+            );
+            let neighborhoodMatch: string | undefined;
+            if (!districtMatch) {
+              for (const d of match.districts) {
+                const n = d.neighborhoods.find((nb) =>
+                  districtCandidates.some((cand) => cand.toLowerCase() === nb.toLowerCase()),
+                );
+                if (n) {
+                  districtMatch = d;
+                  neighborhoodMatch = n;
+                  break;
+                }
+              }
+            }
+            if (!districtMatch && match.districts.length === 1) districtMatch = match.districts[0];
+
+            set({
+              city: match.city,
+              district: districtMatch?.name ?? "",
+              neighborhood: neighborhoodMatch ?? "",
+              latitude,
+              longitude,
+            });
+            setLocationNote(t("sell.locationDetected"));
+          } else if (detectedCity) {
+            set({
+              city: detectedCity,
+              district: districtCandidates[0] ?? "",
+              neighborhood: "",
+              latitude,
+              longitude,
+            });
+            setLocationNote(t("profileEdit.locationOutsideArea"));
+          } else {
+            setLocationNote(t("profileEdit.locationFailed"));
+          }
+        } catch {
+          setLocationNote(t("profileEdit.locationFailed"));
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      () => {
+        setLocationNote(t("profileEdit.locationFailed"));
+        setDetectingLocation(false);
+      },
     );
   }
 
@@ -210,7 +284,12 @@ export function SellWizard({
           longitude: draft.longitude,
           images: draft.images,
           attributes: Object.entries(draft.attributes)
-            .filter(([, v]) => v !== "")
+            .filter(([id, v]) => {
+              if (v === "") return false;
+              if (!schema) return true;
+              const attr = schema.attributes.find((a) => a.id === id);
+              return !attr || isAttributeVisible(attr, schema.attributes, draft.attributes);
+            })
             .map(([attributeId, value]) => ({ attributeId, value })),
         }),
       });
@@ -222,9 +301,8 @@ export function SellWizard({
         const j = (await res.json()) as { error?: { message?: string } };
         throw new Error(j.error?.message ?? "Could not post");
       }
-      const { data } = (await res.json()) as { data: { id: string } };
       reset();
-      router.push(`/listing/${data.id}`);
+      router.push("/profile/ads?posted=1");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not post your ad.");
       setSubmitting(false);
@@ -250,18 +328,18 @@ export function SellWizard({
         return { ok: true };
       }
       case 3: {
-        const missing = (schema?.attributes ?? []).find((a) => a.required && !draft.attributes[a.id]);
+        const all = schema?.attributes ?? [];
+        const missing = all
+          .filter((a) => isAttributeVisible(a, all, draft.attributes))
+          .find((a) => a.required && !draft.attributes[a.id]);
         return missing
           ? { ok: false, reason: t("sell.gate.required").replace("{field}", missing.label) }
           : { ok: true };
       }
       case 4: {
-        if (locationMode === "profile") {
-          return hasProfileLocation ? { ok: true } : { ok: false, reason: t("sell.gate.city") };
-        }
-        if (locationMode === "gps") {
-          return draft.latitude !== undefined ? { ok: true } : { ok: false, reason: t("sell.gate.city") };
-        }
+        // Regardless of locationMode, draft.city/district hold whatever will
+        // actually be submitted (pre-filled from profile, picked manually, or
+        // resolved via GPS) — validate those directly.
         if (!draft.city) return { ok: false, reason: t("sell.gate.city") };
         if (!draft.district) return { ok: false, reason: t("sell.gate.district") };
         return { ok: true };
@@ -446,73 +524,94 @@ export function SellWizard({
             {!schema || schema.attributes.length === 0 ? (
               <p className="text-sm text-text-secondary">No extra details needed — you're almost done.</p>
             ) : (
-              schema.attributes.map((attr) => {
-                const val = draft.attributes[attr.id] ?? "";
-                const setVal = (v: string) => set({ attributes: { ...draft.attributes, [attr.id]: v } });
-                if (attr.type === "SELECT") {
-                  const opts = Array.isArray(attr.options) ? (attr.options as string[]) : [];
-                  const isOther = otherValues[attr.id] !== undefined;
-                  return (
-                    <div key={attr.id} className="space-y-2">
-                      <Select
-                        label={attr.label}
-                        required={attr.required}
-                        placeholder={`Select ${attr.label.toLowerCase()}`}
-                        options={[...opts.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
-                        value={isOther ? OTHER_VALUE : val}
-                        onChange={(e) => {
-                          if (e.target.value === OTHER_VALUE) {
-                            setOtherValues((prev) => ({ ...prev, [attr.id]: "" }));
-                            setVal("");
-                          } else {
-                            setOtherValues((prev) => {
-                              const next = { ...prev };
-                              delete next[attr.id];
-                              return next;
-                            });
-                            setVal(e.target.value);
-                          }
-                        }}
-                      />
-                      {isOther && (
-                        <Input
-                          placeholder={t("sell.otherPlaceholder")}
-                          value={otherValues[attr.id] ?? ""}
+              schema.attributes
+                .filter((attr) => isAttributeVisible(attr, schema.attributes, draft.attributes))
+                .map((attr) => {
+                  const val = draft.attributes[attr.id] ?? "";
+                  const setVal = (v: string) => {
+                    const nextAttributes = { ...draft.attributes, [attr.id]: v };
+                    // Clear values for attributes that depend on this one and
+                    // are no longer visible with the new value.
+                    for (const other of schema.attributes) {
+                      if (other.id === attr.id) continue;
+                      const { showIf } = parseAttributeOptions(other.options);
+                      if (showIf?.key === attr.key && !showIf.in.includes(v)) {
+                        delete nextAttributes[other.id];
+                        setOtherValues((prev) => {
+                          if (!(other.id in prev)) return prev;
+                          const next = { ...prev };
+                          delete next[other.id];
+                          return next;
+                        });
+                      }
+                    }
+                    set({ attributes: nextAttributes });
+                  };
+                  if (attr.type === "SELECT") {
+                    const { values: opts } = parseAttributeOptions(attr.options);
+                    const filteredOpts = opts.filter((o) => o.toLowerCase() !== "other");
+                    const isOther = otherValues[attr.id] !== undefined;
+                    return (
+                      <div key={attr.id} className="space-y-2">
+                        <Select
+                          label={attr.label}
+                          required={attr.required}
+                          placeholder={`Select ${attr.label.toLowerCase()}`}
+                          options={[...filteredOpts.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
+                          value={isOther ? OTHER_VALUE : val}
                           onChange={(e) => {
-                            setOtherValues((prev) => ({ ...prev, [attr.id]: e.target.value }));
-                            setVal(e.target.value);
+                            if (e.target.value === OTHER_VALUE) {
+                              setOtherValues((prev) => ({ ...prev, [attr.id]: "" }));
+                              setVal("");
+                            } else {
+                              setOtherValues((prev) => {
+                                const next = { ...prev };
+                                delete next[attr.id];
+                                return next;
+                              });
+                              setVal(e.target.value);
+                            }
                           }}
                         />
-                      )}
-                    </div>
-                  );
-                }
-                if (attr.type === "BOOLEAN") {
+                        {isOther && (
+                          <Input
+                            placeholder={t("sell.otherPlaceholder")}
+                            value={otherValues[attr.id] ?? ""}
+                            onChange={(e) => {
+                              setOtherValues((prev) => ({ ...prev, [attr.id]: e.target.value }));
+                              setVal(e.target.value);
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  }
+                  if (attr.type === "BOOLEAN") {
+                    return (
+                      <label key={attr.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={val === "true"}
+                          onChange={(e) => setVal(e.target.checked ? "true" : "false")}
+                          className="accent-[#E8390E]"
+                        />
+                        {attr.label}
+                      </label>
+                    );
+                  }
                   return (
-                    <label key={attr.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={val === "true"}
-                        onChange={(e) => setVal(e.target.checked ? "true" : "false")}
-                        className="accent-[#E8390E]"
-                      />
-                      {attr.label}
-                    </label>
+                    <Input
+                      key={attr.id}
+                      label={attr.label}
+                      required={attr.required}
+                      type={attr.type === "NUMBER" ? "number" : "text"}
+                      inputMode={attr.type === "NUMBER" ? "numeric" : undefined}
+                      placeholder={attr.placeholder ?? ""}
+                      value={val}
+                      onChange={(e) => setVal(e.target.value)}
+                    />
                   );
-                }
-                return (
-                  <Input
-                    key={attr.id}
-                    label={attr.label}
-                    required={attr.required}
-                    type={attr.type === "NUMBER" ? "number" : "text"}
-                    inputMode={attr.type === "NUMBER" ? "numeric" : undefined}
-                    placeholder={attr.placeholder ?? ""}
-                    value={val}
-                    onChange={(e) => setVal(e.target.value)}
-                  />
-                );
-              })
+                })
             )}
           </div>
         )}
@@ -597,10 +696,18 @@ export function SellWizard({
               )}
             >
               <p className="flex items-center gap-2 text-sm font-medium">
-                <MapPin size={16} /> {t("sell.locationDetect")}
+                {detectingLocation ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />}
+                {t("sell.locationDetect")}
               </p>
-              {locationMode === "gps" && draft.latitude !== undefined && (
-                <p className="mt-0.5 text-xs text-success">{t("sell.locationDetected")}</p>
+              {locationMode === "gps" && (
+                <>
+                  {locationNote && <p className="mt-0.5 text-xs text-success">{locationNote}</p>}
+                  {draft.city && (
+                    <p className="mt-0.5 text-xs text-text-muted">
+                      {[draft.city, draft.district].filter(Boolean).join(", ")}
+                    </p>
+                  )}
+                </>
               )}
             </button>
           </div>
@@ -636,7 +743,7 @@ export function SellWizard({
                 {Object.keys(draft.attributes).length > 0 && schema && (
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
                     {schema.attributes
-                      .filter((a) => draft.attributes[a.id])
+                      .filter((a) => draft.attributes[a.id] && isAttributeVisible(a, schema.attributes, draft.attributes))
                       .map((a) => (
                         <div key={a.id} className="flex flex-col">
                           <dt className="text-xs text-text-muted">{a.label}</dt>

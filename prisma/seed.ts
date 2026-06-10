@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
-import { PrismaClient, AttributeType } from "@prisma/client";
+import { PrismaClient, Prisma, AttributeType } from "@prisma/client";
+import type { ShowIf } from "../src/lib/utils/categoryAttributes";
 
 const prisma = new PrismaClient();
 
@@ -14,6 +15,8 @@ type SeedAttribute = {
   required?: boolean;
   placeholder?: string;
   options?: string[];
+  /** Only show this attribute when another attribute (by key) has one of these values. */
+  showIf?: ShowIf;
 };
 
 type SeedCategory = {
@@ -33,9 +36,10 @@ const CATEGORIES: SeedCategory[] = [
     attributes: [
       { label: "Item Type", key: "item_type", type: "SELECT", required: true, options: ["Smartphone", "Tablet / iPad", "Accessory — Case & Cover", "Accessory — Charger & Cable", "Accessory — Earphones & Headphones", "Accessory — Screen Protector", "Accessory — Power Bank", "Accessory — Memory Card", "Accessory — Other"] },
       { label: "Brand", key: "brand", type: "TEXT", placeholder: "e.g. Apple, Samsung, Infinix, Tecno" },
-      { label: "Storage", key: "storage", type: "SELECT", options: ["8GB", "16GB", "32GB", "64GB", "128GB", "256GB", "512GB", "1TB"] },
-      { label: "RAM", key: "ram", type: "SELECT", options: ["2GB", "3GB", "4GB", "6GB", "8GB", "12GB", "16GB"] },
-      { label: "Battery Health", key: "battery_health", type: "SELECT", options: ["100%", "90–99%", "80–89%", "70–79%", "Below 70%", "Unknown"] },
+      { label: "Storage", key: "storage", type: "SELECT", options: ["8GB", "16GB", "32GB", "64GB", "128GB", "256GB", "512GB", "1TB"], showIf: { key: "item_type", in: ["Smartphone", "Tablet / iPad"] } },
+      { label: "RAM", key: "ram", type: "SELECT", options: ["2GB", "3GB", "4GB", "6GB", "8GB", "12GB", "16GB"], showIf: { key: "item_type", in: ["Smartphone", "Tablet / iPad"] } },
+      { label: "Battery Health", key: "battery_health", type: "SELECT", options: ["100%", "90–99%", "80–89%", "70–79%", "Below 70%", "Unknown"], showIf: { key: "item_type", in: ["Smartphone", "Tablet / iPad"] } },
+      { label: "Compatible With", key: "compatible_with", type: "TEXT", placeholder: "e.g. iPhone 13, Samsung Galaxy S21", showIf: { key: "item_type", in: ["Accessory — Case & Cover", "Accessory — Charger & Cable", "Accessory — Earphones & Headphones", "Accessory — Screen Protector", "Accessory — Power Bank", "Accessory — Memory Card", "Accessory — Other"] } },
       { label: "Listing Type", key: "listing_type", type: "SELECT", required: true, options: ["For Sale", "For Rent"] },
     ],
   },
@@ -46,7 +50,38 @@ const CATEGORIES: SeedCategory[] = [
     order: 2,
     attributes: [
       { label: "Type", key: "type", type: "SELECT", required: true, options: ["Laptop", "TV", "Audio", "Camera", "Gaming", "Accessory", "Other"] },
-      { label: "Brand", key: "brand", type: "TEXT", placeholder: "e.g. Dell, Sony" },
+
+      // Laptop
+      { label: "Processor", key: "processor", type: "TEXT", placeholder: "e.g. Intel Core i5, Ryzen 5", showIf: { key: "type", in: ["Laptop"] } },
+      { label: "RAM", key: "ram", type: "SELECT", options: ["2GB", "4GB", "8GB", "16GB", "32GB", "64GB+"], showIf: { key: "type", in: ["Laptop"] } },
+      { label: "Storage", key: "storage", type: "SELECT", options: ["128GB", "256GB", "512GB", "1TB", "2TB+"], showIf: { key: "type", in: ["Laptop"] } },
+      { label: "Screen Size", key: "screen_size", type: "SELECT", options: ["11\"–12\"", "13\"–14\"", "15\"–16\"", "17\"+"], showIf: { key: "type", in: ["Laptop"] } },
+      { label: "Operating System", key: "os", type: "SELECT", options: ["Windows", "macOS", "Chrome OS", "Linux", "No OS"], showIf: { key: "type", in: ["Laptop"] } },
+      { label: "Charger Included", key: "charger_included", type: "BOOLEAN", showIf: { key: "type", in: ["Laptop", "Gaming"] } },
+
+      // TV
+      { label: "Screen Size (inches)", key: "tv_screen_size", type: "SELECT", options: ["24\"", "32\"", "40\"", "43\"", "50\"", "55\"", "65\"", "75\"+"], showIf: { key: "type", in: ["TV"] } },
+      { label: "Resolution", key: "resolution", type: "SELECT", options: ["HD", "Full HD", "4K UHD", "8K"], showIf: { key: "type", in: ["TV"] } },
+      { label: "Smart TV", key: "smart_tv", type: "BOOLEAN", showIf: { key: "type", in: ["TV"] } },
+
+      // Audio
+      { label: "Audio Type", key: "audio_type", type: "SELECT", options: ["Speaker", "Headphones", "Earbuds", "Soundbar", "Home Theater System"], showIf: { key: "type", in: ["Audio"] } },
+      { label: "Connectivity", key: "connectivity", type: "SELECT", options: ["Wired", "Bluetooth / Wireless", "Both"], showIf: { key: "type", in: ["Audio"] } },
+
+      // Camera
+      { label: "Camera Type", key: "camera_type", type: "SELECT", options: ["DSLR", "Mirrorless", "Point & Shoot", "Action Camera", "Drone"], showIf: { key: "type", in: ["Camera"] } },
+      { label: "Megapixels", key: "megapixels", type: "TEXT", placeholder: "e.g. 24MP", showIf: { key: "type", in: ["Camera"] } },
+      { label: "Lens Included", key: "lens_included", type: "BOOLEAN", showIf: { key: "type", in: ["Camera"] } },
+
+      // Gaming
+      { label: "Platform", key: "platform", type: "SELECT", options: ["PlayStation", "Xbox", "Nintendo Switch", "PC", "Other"], showIf: { key: "type", in: ["Gaming"] } },
+      { label: "Storage", key: "gaming_storage", type: "SELECT", options: ["500GB", "1TB", "2TB+"], showIf: { key: "type", in: ["Gaming"] } },
+
+      // Accessory
+      { label: "Accessory Type", key: "accessory_type", type: "SELECT", options: ["Charger", "Cable", "Case / Cover", "Mouse", "Keyboard", "Power Bank", "Memory Card", "Other"], showIf: { key: "type", in: ["Accessory"] } },
+
+      // Common to every type, including "Other"
+      { label: "Brand", key: "brand", type: "TEXT", placeholder: "e.g. Dell, Sony, Samsung" },
       { label: "Warranty", key: "warranty", type: "BOOLEAN" },
     ],
   },
@@ -73,9 +108,11 @@ const CATEGORIES: SeedCategory[] = [
       { label: "Bike Type", key: "bike_type", type: "SELECT", required: true, options: ["Bicycle", "Motorbike / Motorcycle", "Scooter / Moped", "Electric Bike (E-bike)"] },
       { label: "Brand", key: "brand", type: "TEXT", placeholder: "e.g. Honda, Yamaha, Trek, Giant" },
       { label: "Year", key: "year", type: "NUMBER", placeholder: "e.g. 2020" },
-      { label: "Engine Size", key: "engine_size", type: "SELECT", options: ["Under 125cc", "125cc", "150cc", "200cc", "250cc", "400cc", "600cc+"] },
-      { label: "Frame / Style", key: "frame_style", type: "SELECT", options: ["Mountain", "Road", "City / Hybrid", "BMX", "Kids", "Other"] },
-      { label: "Mileage", key: "mileage", type: "NUMBER", placeholder: "e.g. 12000 km" },
+      { label: "Engine Size", key: "engine_size", type: "SELECT", options: ["Under 125cc", "125cc", "150cc", "200cc", "250cc", "400cc", "600cc+"], showIf: { key: "bike_type", in: ["Motorbike / Motorcycle", "Scooter / Moped"] } },
+      { label: "Gear Count", key: "gear_count", type: "SELECT", options: ["Single Speed", "3-Speed", "7-Speed", "21-Speed", "27-Speed+"], showIf: { key: "bike_type", in: ["Bicycle"] } },
+      { label: "Battery Range", key: "battery_range", type: "SELECT", options: ["Under 20km", "20–40km", "40–60km", "60–100km", "100km+"], showIf: { key: "bike_type", in: ["Electric Bike (E-bike)"] } },
+      { label: "Frame / Style", key: "frame_style", type: "SELECT", options: ["Mountain", "Road", "City / Hybrid", "BMX", "Kids", "Other"], showIf: { key: "bike_type", in: ["Bicycle"] } },
+      { label: "Mileage", key: "mileage", type: "NUMBER", placeholder: "e.g. 12000 km", showIf: { key: "bike_type", in: ["Motorbike / Motorcycle", "Scooter / Moped", "Electric Bike (E-bike)"] } },
       { label: "Listing Type", key: "listing_type", type: "SELECT", required: true, options: ["For Sale", "For Rent — Daily", "For Rent — Weekly"] },
       { label: "Condition", key: "condition", type: "SELECT", required: true, options: ["New", "Like New", "Good", "Fair", "Used"] },
     ],
@@ -120,6 +157,11 @@ const CATEGORIES: SeedCategory[] = [
     attributes: [
       { label: "Type", key: "type", type: "SELECT", options: ["Sofa", "Bed", "Table", "Chair", "Wardrobe", "Other"] },
       { label: "Material", key: "material", type: "TEXT", placeholder: "e.g. Wood, Fabric" },
+      { label: "Bed Size", key: "bed_size", type: "SELECT", options: ["Single", "Double", "Queen", "King"], showIf: { key: "type", in: ["Bed"] } },
+      { label: "Seating Capacity", key: "seating_capacity", type: "SELECT", options: ["1 Seater", "2 Seater", "3 Seater", "Corner / L-Shape", "5+ Seater"], showIf: { key: "type", in: ["Sofa"] } },
+      { label: "Table Type", key: "table_type", type: "SELECT", options: ["Dining Table", "Coffee Table", "Office Desk", "Side Table", "Other"], showIf: { key: "type", in: ["Table"] } },
+      { label: "Number of Doors", key: "number_of_doors", type: "SELECT", options: ["1", "2", "3", "4+"], showIf: { key: "type", in: ["Wardrobe"] } },
+      { label: "Chair Type", key: "chair_type", type: "SELECT", options: ["Office", "Dining", "Armchair", "Outdoor", "Other"], showIf: { key: "type", in: ["Chair"] } },
     ],
   },
   {
@@ -129,7 +171,9 @@ const CATEGORIES: SeedCategory[] = [
     order: 8,
     attributes: [
       { label: "Category", key: "category", type: "SELECT", options: ["Men", "Women", "Kids", "Unisex"] },
-      { label: "Size", key: "size", type: "SELECT", options: ["XS", "S", "M", "L", "XL", "XXL"] },
+      { label: "Item Type", key: "item_type", type: "SELECT", options: ["Clothing", "Shoes", "Bags", "Jewelry & Watches", "Other"] },
+      { label: "Size", key: "size", type: "SELECT", options: ["XS", "S", "M", "L", "XL", "XXL"], showIf: { key: "item_type", in: ["Clothing"] } },
+      { label: "Shoe Size", key: "shoe_size", type: "SELECT", options: ["EU 36", "EU 37", "EU 38", "EU 39", "EU 40", "EU 41", "EU 42", "EU 43", "EU 44", "EU 45", "EU 46"], showIf: { key: "item_type", in: ["Shoes"] } },
     ],
   },
   {
@@ -187,6 +231,9 @@ const CATEGORIES: SeedCategory[] = [
     order: 13,
     attributes: [
       { label: "Type", key: "type", type: "SELECT", options: ["Toys", "Clothing", "Strollers", "Furniture", "Other"] },
+      { label: "Age Range", key: "age_range", type: "SELECT", options: ["0–6 months", "6–12 months", "1–2 years", "2–4 years", "4–6 years", "6–8 years", "8–12 years", "12+ years"], showIf: { key: "type", in: ["Toys", "Clothing"] } },
+      { label: "Clothing Size", key: "clothing_size", type: "SELECT", options: ["Newborn", "0–3M", "3–6M", "6–12M", "1–2Y", "2–4Y", "4–6Y", "6–8Y", "8–10Y", "10–12Y"], showIf: { key: "type", in: ["Clothing"] } },
+      { label: "Stroller Type", key: "stroller_type", type: "SELECT", options: ["Single", "Double", "Travel System", "Lightweight / Umbrella", "Jogging"], showIf: { key: "type", in: ["Strollers"] } },
     ],
   },
 ];
@@ -215,6 +262,9 @@ async function main() {
 
     for (let i = 0; i < c.attributes.length; i++) {
       const a = c.attributes[i]!;
+      const options = a.showIf
+        ? { ...(a.options ? { values: a.options } : {}), showIf: a.showIf }
+        : (a.options ?? null);
       await prisma.categoryAttribute.upsert({
         where: { categoryId_key: { categoryId: category.id, key: a.key } },
         update: {
@@ -222,7 +272,7 @@ async function main() {
           type: a.type,
           required: a.required ?? false,
           placeholder: a.placeholder ?? null,
-          options: a.options ?? undefined,
+          options: options ?? Prisma.JsonNull,
           order: i,
         },
         create: {
@@ -232,7 +282,7 @@ async function main() {
           type: a.type,
           required: a.required ?? false,
           placeholder: a.placeholder ?? null,
-          options: a.options ?? undefined,
+          options: options ?? Prisma.JsonNull,
           order: i,
         },
       });

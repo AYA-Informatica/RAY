@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import type { ListingImage, CategoryAttribute, ListingAttributeValue } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getOwnedListing } from "@/services/listings";
+import { parseAttributeOptions } from "@/lib/utils/categoryAttributes";
 import { EditListingForm } from "./EditListingForm";
 
 export const metadata = { title: "Edit ad" };
@@ -30,19 +31,23 @@ export default async function EditListingPage({ params }: Params) {
     images: listing.images.map((i: ListingImage) => i.url),
     categoryName: listing.category.name,
     categoryIcon: listing.category.icon ?? "📦",
-    attributes: (listing.category.attributes ?? []).map((a: CategoryAttribute) => ({
-      id: a.id,
-      label: a.label,
-      key: a.key,
-      type: a.type,
-      required: a.required,
-      placeholder: a.placeholder ?? "",
-      options: Array.isArray(a.options) ? (a.options as string[]) : [],
-      value:
-        (listing.attributeValues ?? []).find(
-          (av: ListingAttributeValue) => av.attributeId === a.id,
-        )?.value ?? "",
-    })),
+    attributes: (listing.category.attributes ?? []).map((a: CategoryAttribute) => {
+      const { values, showIf } = parseAttributeOptions(a.options);
+      return {
+        id: a.id,
+        label: a.label,
+        key: a.key,
+        type: a.type,
+        required: a.required,
+        placeholder: a.placeholder ?? "",
+        options: values,
+        showIf,
+        value:
+          (listing.attributeValues ?? []).find(
+            (av: ListingAttributeValue) => av.attributeId === a.id,
+          )?.value ?? "",
+      };
+    }),
   };
 
   return <EditListingForm userId={user.id} initial={initial} />;

@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { uploadImages } from "@/lib/storage/upload";
 import { RWANDA_CITIES } from "@/constants/locations";
 import { useI18n } from "@/i18n/I18nProvider";
+import { isAttributeVisible, type ShowIf } from "@/lib/utils/categoryAttributes";
 import type { Condition } from "@prisma/client";
 
 interface EditAttribute {
@@ -20,6 +21,7 @@ interface EditAttribute {
   required: boolean;
   placeholder: string;
   options: string[];
+  showIf?: ShowIf;
   value: string;
 }
 
@@ -129,7 +131,11 @@ export function EditListingForm({
           neighborhood: neighborhood || undefined,
           images,
           attributes: Object.entries(attrs)
-            .filter(([, v]) => v !== "")
+            .filter(([id, v]) => {
+              if (v === "") return false;
+              const attr = initial.attributes.find((a) => a.id === id);
+              return !attr || isAttributeVisible(attr, initial.attributes, attrs);
+            })
             .map(([attributeId, value]) => ({ attributeId, value })),
         }),
       });
@@ -237,18 +243,40 @@ export function EditListingForm({
         />
 
         {/* Dynamic attributes */}
-        {initial.attributes.map((attr) => {
+        {initial.attributes
+          .filter((attr) => isAttributeVisible(attr, initial.attributes, attrs))
+          .map((attr) => {
           const val = attrs[attr.id] ?? "";
-          const setVal = (v: string) => setAttrs((prev) => ({ ...prev, [attr.id]: v }));
+          const setVal = (v: string) => {
+            setAttrs((prev) => {
+              const next = { ...prev, [attr.id]: v };
+              // Clear values for attributes that depend on this one and are
+              // no longer visible with the new value.
+              for (const other of initial.attributes) {
+                if (other.id === attr.id || !other.showIf) continue;
+                if (other.showIf.key === attr.key && !other.showIf.in.includes(v)) {
+                  delete next[other.id];
+                  setOtherValues((prevOther) => {
+                    if (!(other.id in prevOther)) return prevOther;
+                    const nextOther = { ...prevOther };
+                    delete nextOther[other.id];
+                    return nextOther;
+                  });
+                }
+              }
+              return next;
+            });
+          };
           if (attr.type === "SELECT") {
             const isOther = otherValues[attr.id] !== undefined;
+            const filteredOpts = attr.options.filter((o) => o.toLowerCase() !== "other");
             return (
               <div key={attr.id} className="space-y-2">
                 <Select
                   label={attr.label}
                   required={attr.required}
                   placeholder={`Select ${attr.label.toLowerCase()}`}
-                  options={[...attr.options.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
+                  options={[...filteredOpts.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
                   value={isOther ? OTHER_VALUE : val}
                   onChange={(e) => {
                     if (e.target.value === OTHER_VALUE) {
