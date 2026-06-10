@@ -155,7 +155,7 @@ const CATEGORIES: SeedCategory[] = [
     icon: "🛋️",
     order: 7,
     attributes: [
-      { label: "Type", key: "type", type: "SELECT", options: ["Sofa", "Bed", "Table", "Chair", "Wardrobe", "Other"] },
+      { label: "Type", key: "type", type: "SELECT", required: true, options: ["Sofa", "Bed", "Table", "Chair", "Wardrobe", "Other"] },
       { label: "Material", key: "material", type: "TEXT", placeholder: "e.g. Wood, Fabric" },
       { label: "Bed Size", key: "bed_size", type: "SELECT", options: ["Single", "Double", "Queen", "King"], showIf: { key: "type", in: ["Bed"] } },
       { label: "Seating Capacity", key: "seating_capacity", type: "SELECT", options: ["1 Seater", "2 Seater", "3 Seater", "Corner / L-Shape", "5+ Seater"], showIf: { key: "type", in: ["Sofa"] } },
@@ -171,7 +171,7 @@ const CATEGORIES: SeedCategory[] = [
     order: 8,
     attributes: [
       { label: "Category", key: "category", type: "SELECT", options: ["Men", "Women", "Kids", "Unisex"] },
-      { label: "Item Type", key: "item_type", type: "SELECT", options: ["Clothing", "Shoes", "Bags", "Jewelry & Watches", "Other"] },
+      { label: "Item Type", key: "item_type", type: "SELECT", required: true, options: ["Clothing", "Shoes", "Bags", "Jewelry & Watches", "Other"] },
       { label: "Size", key: "size", type: "SELECT", options: ["XS", "S", "M", "L", "XL", "XXL"], showIf: { key: "item_type", in: ["Clothing"] } },
       { label: "Shoe Size", key: "shoe_size", type: "SELECT", options: ["EU 36", "EU 37", "EU 38", "EU 39", "EU 40", "EU 41", "EU 42", "EU 43", "EU 44", "EU 45", "EU 46"], showIf: { key: "item_type", in: ["Shoes"] } },
     ],
@@ -230,7 +230,7 @@ const CATEGORIES: SeedCategory[] = [
     icon: "👶",
     order: 13,
     attributes: [
-      { label: "Type", key: "type", type: "SELECT", options: ["Toys", "Clothing", "Strollers", "Furniture", "Other"] },
+      { label: "Type", key: "type", type: "SELECT", required: true, options: ["Toys", "Clothing", "Strollers", "Furniture", "Other"] },
       { label: "Age Range", key: "age_range", type: "SELECT", options: ["0–6 months", "6–12 months", "1–2 years", "2–4 years", "4–6 years", "6–8 years", "8–12 years", "12+ years"], showIf: { key: "type", in: ["Toys", "Clothing"] } },
       { label: "Clothing Size", key: "clothing_size", type: "SELECT", options: ["Newborn", "0–3M", "3–6M", "6–12M", "1–2Y", "2–4Y", "4–6Y", "6–8Y", "8–10Y", "10–12Y"], showIf: { key: "type", in: ["Clothing"] } },
       { label: "Stroller Type", key: "stroller_type", type: "SELECT", options: ["Single", "Double", "Travel System", "Lightweight / Umbrella", "Jogging"], showIf: { key: "type", in: ["Strollers"] } },
