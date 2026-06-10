@@ -68,14 +68,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         const newExpiresAt = new Date();
         newExpiresAt.setDate(newExpiresAt.getDate() + 30);
         await prisma.$executeRaw`
-          UPDATE "Listing" SET "status" = ${scalars.status as string}, "expiresAt" = ${newExpiresAt}, "updatedAt" = NOW()
+          UPDATE "Listing" SET "status" = ${scalars.status as string}::"ListingStatus", "expiresAt" = ${newExpiresAt}, "updatedAt" = NOW()
           WHERE "id" = ${params.id}
         `;
         console.log("[PATCH listing] updateStatus OK (expiresAt extended)");
         return ok({ id: params.id });
       }
       await prisma.$executeRaw`
-        UPDATE "Listing" SET "status" = ${scalars.status as string}, "updatedAt" = NOW()
+        UPDATE "Listing" SET "status" = ${scalars.status as string}::"ListingStatus", "updatedAt" = NOW()
         WHERE "id" = ${params.id}
       `;
       console.log("[PATCH listing] updateStatus OK");
