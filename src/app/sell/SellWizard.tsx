@@ -26,6 +26,9 @@ interface SellCategory {
 
 const STEP_COUNT = 6;
 
+/** Sentinel value for the auto-appended "Other" option on SELECT attributes. */
+const OTHER_VALUE = "__OTHER__";
+
 /**
  * 6-step posting flow (Build Prompt + Product Experience):
  * Category -> Photos -> Basic Details -> Dynamic Specs -> Location -> Review.
@@ -34,9 +37,11 @@ const STEP_COUNT = 6;
 export function SellWizard({
   userId,
   categories,
+  profileLocation,
 }: {
   userId: string | null;
   categories: SellCategory[];
+  profileLocation?: { city: string; district: string; neighborhood: string };
 }) {
   const router = useRouter();
   const { draft, step, set, setStep, reset } = useSellDraft();
@@ -68,6 +73,25 @@ export function SellWizard({
     Boolean(draft.title || draft.images.length > 0 || draft.categoryId),
   );
   const [error, setError] = useState<string | null>(null);
+  // Custom "Other" text per attribute id, keyed only when that attribute is
+  // currently in free-text mode (i.e. its dropdown is set to "Other").
+  const [otherValues, setOtherValues] = useState<Record<string, string>>({});
+  const hasProfileLocation = Boolean(profileLocation?.city);
+  const [locationMode, setLocationMode] = useState<"profile" | "manual" | "gps">(
+    hasProfileLocation ? "profile" : "manual",
+  );
+
+  // Pre-fill the draft from the user's profile location, but only for a
+  // brand-new session — never overwrite a draft the user already started.
+  useEffect(() => {
+    if (typeof window === "undefined" || !profileLocation?.city) return;
+    if (localStorage.getItem("ray_sell_draft")) return;
+    set({
+      city: profileLocation.city,
+      district: profileLocation.district,
+      neighborhood: profileLocation.neighborhood,
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedCategory = categories.find((c) => c.id === draft.categoryId);
 
@@ -79,7 +103,20 @@ export function SellWizard({
     }
     let active = true;
     void fetchSchema(selectedCategory.slug).then((s) => {
-      if (active) setSchema(s);
+      if (!active) return;
+      setSchema(s);
+      // A saved draft may hold a custom value for a SELECT attribute (typed
+      // via "Other" in a previous session) — restore free-text mode for it.
+      setOtherValues((prev) => {
+        const next = { ...prev };
+        for (const attr of s?.attributes ?? []) {
+          if (attr.type !== "SELECT") continue;
+          const val = draft.attributes[attr.id];
+          const opts = Array.isArray(attr.options) ? (attr.options as string[]) : [];
+          if (val && !opts.includes(val)) next[attr.id] = val;
+        }
+        return next;
+      });
     });
     return () => {
       active = false;
@@ -218,10 +255,17 @@ export function SellWizard({
           ? { ok: false, reason: t("sell.gate.required").replace("{field}", missing.label) }
           : { ok: true };
       }
-      case 4:
+      case 4: {
+        if (locationMode === "profile") {
+          return hasProfileLocation ? { ok: true } : { ok: false, reason: t("sell.gate.city") };
+        }
+        if (locationMode === "gps") {
+          return draft.latitude !== undefined ? { ok: true } : { ok: false, reason: t("sell.gate.city") };
+        }
         if (!draft.city) return { ok: false, reason: t("sell.gate.city") };
         if (!draft.district) return { ok: false, reason: t("sell.gate.district") };
         return { ok: true };
+      }
       default:
         return { ok: true };
     }
@@ -291,7 +335,10 @@ export function SellWizard({
             <CategorySelector
               categories={categories.map((c) => ({ slug: c.id, name: c.name, icon: c.icon }))}
               value={draft.categoryId}
-              onChange={(id) => set({ categoryId: id, attributes: {} })}
+              onChange={(id) => {
+                set({ categoryId: id, attributes: {} });
+                setOtherValues({});
+              }}
             />
           </div>
         )}
@@ -404,16 +451,40 @@ export function SellWizard({
                 const setVal = (v: string) => set({ attributes: { ...draft.attributes, [attr.id]: v } });
                 if (attr.type === "SELECT") {
                   const opts = Array.isArray(attr.options) ? (attr.options as string[]) : [];
+                  const isOther = otherValues[attr.id] !== undefined;
                   return (
-                    <Select
-                      key={attr.id}
-                      label={attr.label}
-                      required={attr.required}
-                      placeholder={`Select ${attr.label.toLowerCase()}`}
-                      options={opts.map((o) => ({ value: o, label: o }))}
-                      value={val}
-                      onChange={(e) => setVal(e.target.value)}
-                    />
+                    <div key={attr.id} className="space-y-2">
+                      <Select
+                        label={attr.label}
+                        required={attr.required}
+                        placeholder={`Select ${attr.label.toLowerCase()}`}
+                        options={[...opts.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
+                        value={isOther ? OTHER_VALUE : val}
+                        onChange={(e) => {
+                          if (e.target.value === OTHER_VALUE) {
+                            setOtherValues((prev) => ({ ...prev, [attr.id]: "" }));
+                            setVal("");
+                          } else {
+                            setOtherValues((prev) => {
+                              const next = { ...prev };
+                              delete next[attr.id];
+                              return next;
+                            });
+                            setVal(e.target.value);
+                          }
+                        }}
+                      />
+                      {isOther && (
+                        <Input
+                          placeholder={t("sell.otherPlaceholder")}
+                          value={otherValues[attr.id] ?? ""}
+                          onChange={(e) => {
+                            setOtherValues((prev) => ({ ...prev, [attr.id]: e.target.value }));
+                            setVal(e.target.value);
+                          }}
+                        />
+                      )}
+                    </div>
                   );
                 }
                 if (attr.type === "BOOLEAN") {
@@ -448,34 +519,90 @@ export function SellWizard({
 
         {/* Step 5 — Location */}
         {step === 4 && (
-          <div className="space-y-4">
-            <Button variant="secondary" fullWidth onClick={detectLocation}>
-              <MapPin size={18} /> {draft.latitude ? t("sell.locationDetected") : t("sell.useLocation")}
-            </Button>
-            <Select
-              label={t("sell.city")}
-              required
-              options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
-              value={draft.city}
-              onChange={(e) => set({ city: e.target.value, district: "", neighborhood: "" })}
-            />
-            <Select
-              label={t("sell.district")}
-              required
-              placeholder="Select district"
-              options={districts.map((d) => ({ value: d.name, label: d.name }))}
-              value={draft.district}
-              onChange={(e) => set({ district: e.target.value, neighborhood: "" })}
-            />
-            {neighborhoods.length > 0 && (
-              <Select
-                label={t("sell.neighborhood")}
-                placeholder="Select neighborhood (optional)"
-                options={neighborhoods.map((n) => ({ value: n, label: n }))}
-                value={draft.neighborhood}
-                onChange={(e) => set({ neighborhood: e.target.value })}
-              />
+          <div className="space-y-3">
+            {hasProfileLocation && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLocationMode("profile");
+                  if (profileLocation) {
+                    set({
+                      city: profileLocation.city,
+                      district: profileLocation.district,
+                      neighborhood: profileLocation.neighborhood,
+                    });
+                  }
+                }}
+                className={cn(
+                  "w-full rounded-lg border p-3 text-left transition-colors",
+                  locationMode === "profile" ? "border-primary bg-primary/10" : "border-border bg-surface-card",
+                )}
+              >
+                <p className="text-sm font-medium">{t("sell.locationUseSaved")}</p>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  {[profileLocation?.city, profileLocation?.district].filter(Boolean).join(", ")}
+                </p>
+              </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => setLocationMode("manual")}
+              className={cn(
+                "w-full rounded-lg border p-3 text-left transition-colors",
+                locationMode === "manual" ? "border-primary bg-primary/10" : "border-border bg-surface-card",
+              )}
+            >
+              <p className="text-sm font-medium">{t("sell.locationManual")}</p>
+            </button>
+
+            {locationMode === "manual" && (
+              <div className="space-y-4 pl-1">
+                <Select
+                  label={t("sell.city")}
+                  required
+                  options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
+                  value={draft.city}
+                  onChange={(e) => set({ city: e.target.value, district: "", neighborhood: "" })}
+                />
+                <Select
+                  label={t("sell.district")}
+                  required
+                  placeholder="Select district"
+                  options={districts.map((d) => ({ value: d.name, label: d.name }))}
+                  value={draft.district}
+                  onChange={(e) => set({ district: e.target.value, neighborhood: "" })}
+                />
+                {neighborhoods.length > 0 && (
+                  <Select
+                    label={t("sell.neighborhood")}
+                    placeholder="Select neighborhood (optional)"
+                    options={neighborhoods.map((n) => ({ value: n, label: n }))}
+                    value={draft.neighborhood}
+                    onChange={(e) => set({ neighborhood: e.target.value })}
+                  />
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setLocationMode("gps");
+                detectLocation();
+              }}
+              className={cn(
+                "w-full rounded-lg border p-3 text-left transition-colors",
+                locationMode === "gps" ? "border-primary bg-primary/10" : "border-border bg-surface-card",
+              )}
+            >
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <MapPin size={16} /> {t("sell.locationDetect")}
+              </p>
+              {locationMode === "gps" && draft.latitude !== undefined && (
+                <p className="mt-0.5 text-xs text-success">{t("sell.locationDetected")}</p>
+              )}
+            </button>
           </div>
         )}
 

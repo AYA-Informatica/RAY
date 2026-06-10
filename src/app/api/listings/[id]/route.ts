@@ -6,10 +6,20 @@ import { updateListingSchema } from "@/lib/validations/listing.schema";
 import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 import { getListing } from "@/services/listings";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
 type Ctx = { params: { id: string } };
+
+const LISTINGS_BUCKET = "listings";
+
+/** Extract the storage object path (e.g. "<userId>/<uuid>.webp") from a public Supabase URL. */
+function storagePathFromUrl(url: string): string | null {
+  const marker = `/object/public/${LISTINGS_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  return idx === -1 ? null : url.slice(idx + marker.length);
+}
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
@@ -33,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     _step = "findListing";
     const existing = await prisma.listing.findFirst({
       where: { id: params.id, userId: user.id },
-      select: { id: true },
+      select: { id: true, expiresAt: true },
     });
     console.log("[PATCH listing] findFirst result:", existing ? "found" : "NOT FOUND (404)");
     if (!existing) return fail("Listing not found", 404);
@@ -51,6 +61,19 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (Object.keys(scalars).length === 1 && scalars.status) {
       _step = "updateStatus";
       console.log("[PATCH listing] updateStatus via $executeRaw:", scalars.status);
+      // Reactivating a listing whose 30-day window already lapsed (e.g. it sat
+      // SOLD past its expiry) needs a fresh expiresAt, otherwise the next cron
+      // sweep immediately flips it back to EXPIRED.
+      if (scalars.status === "ACTIVE" && existing.expiresAt < new Date()) {
+        const newExpiresAt = new Date();
+        newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+        await prisma.$executeRaw`
+          UPDATE "Listing" SET "status" = ${scalars.status as string}, "expiresAt" = ${newExpiresAt}, "updatedAt" = NOW()
+          WHERE "id" = ${params.id}
+        `;
+        console.log("[PATCH listing] updateStatus OK (expiresAt extended)");
+        return ok({ id: params.id });
+      }
       await prisma.$executeRaw`
         UPDATE "Listing" SET "status" = ${scalars.status as string}, "updatedAt" = NOW()
         WHERE "id" = ${params.id}
@@ -118,7 +141,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     console.log("[DELETE listing] user ok:", user.id);
     const existing = await prisma.listing.findFirst({
       where: { id: params.id, userId: user.id },
-      select: { id: true },
+      select: { id: true, images: { select: { url: true } } },
     });
     console.log("[DELETE listing] findFirst:", existing ? "found" : "NOT FOUND (404)");
     if (!existing) return fail("Listing not found", 404);
@@ -137,6 +160,20 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
         prisma.listing.delete({ where: { id: params.id }, select: { id: true } }),
       ]);
       console.log("[DELETE listing] hard delete OK");
+
+      // Best-effort cleanup of the listing's images in Supabase Storage —
+      // the DB rows are already gone, so a failure here just leaves orphaned
+      // objects rather than blocking the delete.
+      const paths = existing.images.map((img) => storagePathFromUrl(img.url)).filter((p): p is string => p !== null);
+      if (paths.length > 0) {
+        const { error: storageError } = await createAdminClient().storage.from(LISTINGS_BUCKET).remove(paths);
+        if (storageError) {
+          console.error("[DELETE listing] storage cleanup failed:", storageError.message);
+        } else {
+          console.log("[DELETE listing] storage cleanup OK:", paths.length, "files");
+        }
+      }
+
       return ok({ id: params.id, deleted: true });
     }
 

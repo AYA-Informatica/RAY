@@ -47,6 +47,9 @@ const CONDITIONS = [
   { value: "USED", label: "Used" },
 ];
 
+/** Sentinel value for the auto-appended "Other" option on SELECT attributes. */
+const OTHER_VALUE = "__OTHER__";
+
 /** Single-page edit form for an existing listing. Submits via PATCH. */
 export function EditListingForm({
   userId,
@@ -69,6 +72,15 @@ export function EditListingForm({
   const [images, setImages] = useState<string[]>(initial.images);
   const [attrs, setAttrs] = useState<Record<string, string>>(
     Object.fromEntries(initial.attributes.map((a) => [a.id, a.value])),
+  );
+  // Custom "Other" text per attribute id, keyed only when that attribute is
+  // currently in free-text mode (i.e. its dropdown is set to "Other").
+  const [otherValues, setOtherValues] = useState<Record<string, string>>(
+    Object.fromEntries(
+      initial.attributes
+        .filter((a) => a.type === "SELECT" && a.value && !a.options.includes(a.value))
+        .map((a) => [a.id, a.value]),
+    ),
   );
 
   const [uploading, setUploading] = useState(false);
@@ -229,16 +241,40 @@ export function EditListingForm({
           const val = attrs[attr.id] ?? "";
           const setVal = (v: string) => setAttrs((prev) => ({ ...prev, [attr.id]: v }));
           if (attr.type === "SELECT") {
+            const isOther = otherValues[attr.id] !== undefined;
             return (
-              <Select
-                key={attr.id}
-                label={attr.label}
-                required={attr.required}
-                placeholder={`Select ${attr.label.toLowerCase()}`}
-                options={attr.options.map((o) => ({ value: o, label: o }))}
-                value={val}
-                onChange={(e) => setVal(e.target.value)}
-              />
+              <div key={attr.id} className="space-y-2">
+                <Select
+                  label={attr.label}
+                  required={attr.required}
+                  placeholder={`Select ${attr.label.toLowerCase()}`}
+                  options={[...attr.options.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
+                  value={isOther ? OTHER_VALUE : val}
+                  onChange={(e) => {
+                    if (e.target.value === OTHER_VALUE) {
+                      setOtherValues((prev) => ({ ...prev, [attr.id]: "" }));
+                      setVal("");
+                    } else {
+                      setOtherValues((prev) => {
+                        const next = { ...prev };
+                        delete next[attr.id];
+                        return next;
+                      });
+                      setVal(e.target.value);
+                    }
+                  }}
+                />
+                {isOther && (
+                  <Input
+                    placeholder={t("sell.otherPlaceholder")}
+                    value={otherValues[attr.id] ?? ""}
+                    onChange={(e) => {
+                      setOtherValues((prev) => ({ ...prev, [attr.id]: e.target.value }));
+                      setVal(e.target.value);
+                    }}
+                  />
+                )}
+              </div>
             );
           }
           if (attr.type === "BOOLEAN") {

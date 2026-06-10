@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ArrowLeft, Camera, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Camera, Check, Loader2, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/Button";
 import { uploadImage } from "@/lib/storage/upload";
 import { RWANDA_CITIES } from "@/constants/locations";
 import { useI18n } from "@/i18n/I18nProvider";
+import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
+
+const isKnownCity = (name: string) => RWANDA_CITIES.some((c) => c.city.toLowerCase() === name.toLowerCase());
 
 interface Props {
   userId: string;
@@ -41,8 +44,66 @@ export function EditProfileForm({ userId, initial }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Free-text location mode for users outside the listed cities/districts.
+  const [customLocation, setCustomLocation] = useState(() => Boolean(initial.city) && !isKnownCity(initial.city));
+  const [detecting, setDetecting] = useState(false);
+  const [locationNote, setLocationNote] = useState<string | null>(null);
+  const [permissionPrompt, setPermissionPrompt] = useState<"location" | null>(null);
+
   const districts = RWANDA_CITIES.find((c) => c.city === city)?.districts ?? [];
   const neighborhoods = districts.find((d) => d.name === district)?.neighborhoods ?? [];
+
+  function detectLocation() {
+    if (!navigator.geolocation) return;
+    setPermissionPrompt("location");
+  }
+
+  function doDetectLocation() {
+    setDetecting(true);
+    setLocationNote(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+            { headers: { Accept: "application/json" } },
+          );
+          if (!res.ok) throw new Error("lookup failed");
+          const data = (await res.json()) as { address?: Record<string, string> };
+          const addr = data.address ?? {};
+          const detectedCity = addr.city || addr.town || addr.village || addr.county || "";
+          const detectedDistrict = addr.county || addr.state_district || addr.suburb || "";
+
+          const match = RWANDA_CITIES.find((c) => c.city.toLowerCase() === detectedCity.toLowerCase());
+          if (match) {
+            const districtMatch = match.districts.find((d) => d.name.toLowerCase() === detectedDistrict.toLowerCase());
+            setCustomLocation(false);
+            setCity(match.city);
+            setDistrict(districtMatch?.name ?? "");
+            setNeighborhood("");
+            setLocationNote(t("profileEdit.locationDetected"));
+          } else if (detectedCity) {
+            setCustomLocation(true);
+            setCity(detectedCity);
+            setDistrict(detectedDistrict);
+            setNeighborhood("");
+            setLocationNote(t("profileEdit.locationOutsideArea"));
+          } else {
+            setLocationNote(t("profileEdit.locationFailed"));
+          }
+        } catch {
+          setLocationNote(t("profileEdit.locationFailed"));
+        } finally {
+          setDetecting(false);
+        }
+      },
+      () => {
+        setLocationNote(t("profileEdit.locationFailed"));
+        setDetecting(false);
+      },
+    );
+  }
 
   async function handleAvatar(file: File | undefined) {
     if (!file) return;
@@ -89,6 +150,17 @@ export function EditProfileForm({ userId, initial }: Props) {
 
   return (
     <>
+      {permissionPrompt && (
+        <PermissionPrompt
+          type={permissionPrompt}
+          onAllow={() => {
+            setPermissionPrompt(null);
+            doDetectLocation();
+          }}
+          onDismiss={() => setPermissionPrompt(null)}
+        />
+      )}
+
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-4 py-3 lg:top-16">
         <button
           onClick={() => router.replace("/profile")}
@@ -146,31 +218,84 @@ export function EditProfileForm({ userId, initial }: Props) {
         </div>
 
         {/* Location — used to personalise the home feed */}
-        <Select
-          label={t("profileEdit.city")}
-          placeholder={t("filter.anyCity")}
-          value={city}
-          onChange={(e) => { setCity(e.target.value); setDistrict(""); setNeighborhood(""); }}
-          options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
-        />
-        {districts.length > 0 && (
-          <Select
-            label={t("profileEdit.district")}
-            placeholder={t("filter.anyDistrict")}
-            value={district}
-            onChange={(e) => { setDistrict(e.target.value); setNeighborhood(""); }}
-            options={districts.map((d) => ({ value: d.name, label: d.name }))}
-          />
-        )}
-        {neighborhoods.length > 0 && (
-          <Select
-            label={t("profileEdit.neighborhood")}
-            placeholder={t("filter.anyNeighborhood")}
-            value={neighborhood}
-            onChange={(e) => setNeighborhood(e.target.value)}
-            options={neighborhoods.map((n) => ({ value: n, label: n }))}
-          />
-        )}
+        <div className="space-y-3">
+          <Button variant="secondary" fullWidth onClick={detectLocation} disabled={detecting}>
+            {detecting ? <Loader2 size={18} className="animate-spin" /> : <MapPin size={18} />}
+            {t("profileEdit.detectLocation")}
+          </Button>
+          {locationNote && <p className="text-xs text-text-secondary">{locationNote}</p>}
+
+          {customLocation ? (
+            <>
+              <Input
+                label={t("profileEdit.city")}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder={t("profileEdit.city")}
+              />
+              <Input
+                label={t("profileEdit.district")}
+                value={district}
+                onChange={(e) => setDistrict(e.target.value)}
+                placeholder={t("profileEdit.district")}
+              />
+              <Input
+                label={t("profileEdit.neighborhood")}
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
+                placeholder={t("profileEdit.neighborhood")}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomLocation(false);
+                  setCity("");
+                  setDistrict("");
+                  setNeighborhood("");
+                  setLocationNote(null);
+                }}
+                className="text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary"
+              >
+                {t("profileEdit.useListedCity")}
+              </button>
+            </>
+          ) : (
+            <>
+              <Select
+                label={t("profileEdit.city")}
+                placeholder={t("filter.anyCity")}
+                value={city}
+                onChange={(e) => { setCity(e.target.value); setDistrict(""); setNeighborhood(""); }}
+                options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
+              />
+              {districts.length > 0 && (
+                <Select
+                  label={t("profileEdit.district")}
+                  placeholder={t("filter.anyDistrict")}
+                  value={district}
+                  onChange={(e) => { setDistrict(e.target.value); setNeighborhood(""); }}
+                  options={districts.map((d) => ({ value: d.name, label: d.name }))}
+                />
+              )}
+              {neighborhoods.length > 0 && (
+                <Select
+                  label={t("profileEdit.neighborhood")}
+                  placeholder={t("filter.anyNeighborhood")}
+                  value={neighborhood}
+                  onChange={(e) => setNeighborhood(e.target.value)}
+                  options={neighborhoods.map((n) => ({ value: n, label: n }))}
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => setCustomLocation(true)}
+                className="text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary"
+              >
+                {t("profileEdit.cityNotListed")}
+              </button>
+            </>
+          )}
+        </div>
 
         {error && <p className="text-sm text-danger">{error}</p>}
       </div>

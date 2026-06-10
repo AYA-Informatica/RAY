@@ -11,6 +11,11 @@
 - [ ] Upload profile avatar image
 - [ ] Verify profile changes persist after refresh
 - [ ] Test authentication on mobile browser
+- [ ] On `/profile/edit`, tap "Detect my location" and allow location access
+  - [ ] If you're in Kigali/Musanze/Rubavu/Huye, City/District/Neighborhood dropdowns should auto-fill and show "Location detected"
+  - [ ] If you're outside those areas, City/District/Neighborhood should switch to free-text fields pre-filled with your detected location, with a note that it's outside the listed areas
+  - [ ] "My city isn't listed" link should manually switch to free-text fields without using GPS
+  - [ ] "Choose from the list instead" link should switch back to the dropdowns
 
 **Expected Behavior:**
 - Google OAuth redirect should work smoothly
@@ -18,27 +23,42 @@
 - Profile updates should save to database and reflect immediately
 - Avatar should upload to `avatars` bucket in Supabase Storage
 - Session should persist across page refreshes
+- Location detection should request permission via RAY's branded prompt before the OS dialog
+- Reverse geocoding (OpenStreetMap Nominatim) should not be blocked by CSP (`connect-src` allows `nominatim.openstreetmap.org`)
 
 ---
 
 ### 2. Listing Management
 
-- [ ] Create a new listing (test all 10 categories)
-  - [ ] 📱 Phones (Brand, Storage, RAM, Battery Health)
+- [ ] Create a new listing (test all 13 categories)
+  - [ ] 📱 Phones & Accessories (Item Type, Brand, Storage, RAM, Battery Health, Listing Type)
   - [ ] 💻 Electronics (Type, Brand, Warranty)
-  - [ ] 🚗 Cars (Brand, Year, Mileage, Fuel Type, Transmission)
-  - [ ] 🚲 Bikes (Type, Brand, Year)
-  - [ ] 🏠 Rentals (Bedrooms, Bathrooms, Furnished, Parking)
+  - [ ] 🚗 Cars (Brand, Year, Mileage, Fuel Type, Transmission, Listing Type)
+  - [ ] 🏍️ Bikes (Bike Type, Brand, Year, Engine Size, Frame/Style, Mileage, Listing Type, Condition)
+  - [ ] 🏠 Residential Rentals (Property Type, Furnished, Bathrooms, Parking, Floor Level, Water Supply, Security, Internet)
+  - [ ] 🏢 Commercial Spaces (Space Type, Floor Area, Floor Level, Lease Term, Condition, Utilities Included, Main Road Frontage, Parking)
   - [ ] 🛋️ Furniture (Type, Material)
   - [ ] 👕 Fashion (Category, Size)
   - [ ] 💼 Jobs (Job Type, Remote)
   - [ ] 🛠️ Services (Service Type)
+  - [ ] 🧱 Construction Materials (Material Type, Brand, Quantity Available, Unit, Condition, Delivery Available)
+  - [ ] ⚙️ Machinery (Machine Type, Brand, Year of Manufacture, Hours of Use, Fuel Type, Listing Type, Condition)
   - [ ] 👶 Kids (Type)
 - [ ] Upload multiple images for a listing (test up to 7 images)
 - [ ] Test dynamic category attributes for each category
+- [ ] On the Specs step, select "Other" on a SELECT attribute (e.g. Phones → Item Type)
+  - [ ] A free-text input should appear below the dropdown
+  - [ ] Leaving it empty on a required attribute should block Continue
+  - [ ] Switching the dropdown away from "Other" should hide and clear the text input
+  - [ ] The typed value (not the word "Other") should appear on the Review step and in the saved listing
+- [ ] On the Location step, verify the three options:
+  - [ ] "Use my saved location" (only shown if your profile has a city set) — pre-fills from your profile
+  - [ ] "Enter location manually" — shows the City/District/Neighborhood dropdowns
+  - [ ] "Detect my location" — uses GPS and shows "Location detected" on success
+- [ ] Verify a new listing's location pre-fills from your profile location on a fresh session (clear `ray_sell_draft` from localStorage first)
 - [ ] Mark a listing as sold
 - [ ] Reactivate a sold listing
-- [ ] Edit an existing listing
+- [ ] Edit an existing listing (verify "Other" free-text also works in the edit form)
 - [ ] Delete a listing
 - [ ] Verify listing expiry after 30 days (check database `expiresAt` field)
 - [ ] Test repost functionality (clone expired listing)
@@ -47,7 +67,7 @@
 - Wizard should complete in under 60 seconds
 - Images should be compressed to WebP format
 - Draft should save to localStorage between steps
-- Dynamic attributes should render based on selected category
+- Dynamic attributes should render based on selected category, with "Other" appended to every SELECT attribute
 - Status changes should persist immediately
 - Expired listings should have `status = 'EXPIRED'` after cron job runs
 
@@ -251,9 +271,10 @@
 - [ ] Verify image compression is working (check file size < original)
 - [ ] Verify images are in WebP format
 - [ ] Verify database queries are fast (< 200ms on listing detail page)
-- [ ] Check categories are properly seeded (10 categories with attributes)
+- [ ] Check categories are properly seeded (13 categories with attributes)
   - Run: `SELECT * FROM public."Category" ORDER BY "order";`
-  - Should return: Phones, Electronics, Cars, Bikes, Rentals, Furniture, Fashion, Jobs, Services, Kids
+  - Should return: Phones & Accessories, Electronics, Cars, Bikes, Residential Rentals, Commercial Spaces, Furniture, Fashion, Jobs, Services, Construction Materials, Machinery, Kids
+  - Slugs: phones, electronics, cars, bikes, residential-rentals, commercial-spaces, furniture, fashion, jobs, services, construction, machinery, kids
 - [ ] Verify dynamic attributes are seeded for each category
   - Run: `SELECT * FROM public."CategoryAttribute" WHERE "categoryId" = '[category-id]';`
 

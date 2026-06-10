@@ -11,6 +11,11 @@ export default async function SellPage() {
     <SellWizard
       userId={user?.id ?? null}
       categories={categories.map((c) => ({ id: c.id, slug: c.slug, name: c.name, icon: c.icon ?? "📦" }))}
+      profileLocation={{
+        city: user?.city ?? "",
+        district: user?.district ?? "",
+        neighborhood: user?.neighborhood ?? "",
+      }}
     />
   );
 }

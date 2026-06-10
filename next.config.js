@@ -87,7 +87,7 @@ const nextConfig = {
       `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live`,
       `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live`,
       `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://images.unsplash.com https://vercel.live https://vercel.com`,
-      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com`,
+      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com https://nominatim.openstreetmap.org`,
       `font-src 'self' https://fonts.gstatic.com https://vercel.live https://assets.vercel.com`,
       `frame-src https://vercel.live`,
       `object-src 'none'`,
