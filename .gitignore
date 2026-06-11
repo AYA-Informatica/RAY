@@ -8,6 +8,9 @@ out
 .env.production.local
 .vercel
 *.log
+
+# local MCP server config (may contain DB credentials)
+.mcp.json
 .DS_Store
 prisma/*.db
 

@@ -84,7 +84,7 @@
 - [x] Filter by price range — verified, `minPrice`/`maxPrice` correctly include/exclude listings
 - [x] Filter by condition (New, Like New, Good, Fair, Used) — verified, filtered count matches raw DB count
 - [x] Test distance filter (requires location permission) — `searchListings({ lat, lng, radius })` verified: haversine distance computed correctly, radius filter excludes far listings, results sorted nearest-first. UI permission prompt itself (`PermissionPrompt` + `navigator.geolocation`) not exercised by this automated check.
-- [x] Click on a listing to view details — verified `getListing(id)` resolves the listing by id (and increments view count, as designed)
+- [x] Click on a listing to view details — verified `getListing(id)` resolves the listing by id and increments view count, except when the viewer is the listing's own owner (verified against live DB: owner view leaves `views` unchanged, other/anonymous viewers increment it)
 - [x] Verify listings are sorted by relevance/distance — verified: default sort is `createdAt desc`, and when `lat`/`lng` are supplied results are re-sorted by distance ascending. Note: there is no separate keyword-"relevance" ranking — keyword search still falls back to `createdAt desc` (or distance, if location is shared). This matches current behavior; flag if a relevance ranking is actually expected.
 - [x] Test search with no results — verified, returns `items: []`, `total: 0`, `hasMore: false`, which renders `EmptyState`
 - [x] Test search debouncing (rapid typing should only trigger one search) — confirmed via code review: `SearchClient.tsx` wraps the search call in a 300ms `setTimeout` inside `useEffect`, cleared on each keystroke. Not runtime-timed by this check.
@@ -100,17 +100,19 @@
 
 ### 4. Favorites
 
-- [ ] Add a listing to favorites (heart icon)
-- [ ] View favorites page (`/favorites`)
-- [ ] Remove a listing from favorites
-- [ ] Verify favorites persist after logout/login
-- [ ] Test optimistic UI updates (heart should toggle immediately)
+- [x] Add a listing to favorites (heart icon) — verified against live DB: `POST /api/favorites/:listingId` → `prisma.favorite.upsert()` creates the row (idempotent on re-add)
+- [x] View favorites page (`/favorites`) — `getFavoriteListings(userId)` verified, returns only `ACTIVE` favorited listings as cards, ordered newest-first
+- [x] Remove a listing from favorites — verified against live DB: `DELETE /api/favorites/:listingId` → `prisma.favorite.deleteMany()` removes the row (idempotent on re-remove)
+- [x] Verify favorites persist after logout/login — confirmed: favorites are stored in the `Favorite` table keyed by `userId`, independent of session state, so they persist across logins
+- [x] Test optimistic UI updates (heart should toggle immediately) — confirmed via code (`useFavorites.toggle()` flips the local `ids` Set synchronously before the `fetch`, reverting only on error/401) and live: clicking "Save to favorites" while signed out fired the request, got `401`, and redirected to `/login?redirect=...` as designed
 
 **Expected Behavior:**
-- Heart icon should toggle red/gray instantly (optimistic update)
-- Favorites should sync to server in background
-- Unauthenticated users should be redirected to login when favoriting
-- Favorites page should display saved listings in grid
+- Heart icon should toggle red/gray instantly (optimistic update) — confirmed, `FavoriteButton` reads `has` from the store and applies `fill-primary text-primary` immediately on toggle
+- Favorites should sync to server in background — confirmed, `toggle()` calls `POST`/`DELETE /api/favorites/:listingId` after the optimistic local update
+- Unauthenticated users should be redirected to login when favoriting — verified live: anonymous click → `401` → `window.location.href = "/login?redirect=/listing/:id"`
+- Favorites page should display saved listings in grid — confirmed, `/favorites` renders `<ListingGrid listings={listings} />` from `getFavoriteListings()`
+
+> ⚠️ **Gap found**: the favorites store (`useFavorites`) is only hydrated via `<FavoritesProvider initialIds={...}>` on `/home` and `/favorites` (both call `getFavoriteIds(userId)` server-side). The `/search` page and `/listing/[id]` page render `FavoriteButton` but never mount `FavoritesProvider`, so if a user lands directly on those pages (fresh load/refresh, not via client-side nav from Home), already-favorited listings show an unfilled (gray) heart until the store is hydrated elsewhere in the same session. Consider hydrating in the root layout or on those pages too.
 
 ---
 
