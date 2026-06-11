@@ -51,6 +51,9 @@ export async function getRecentListings(limit = 12): Promise<ListingCardData[]> 
 // Pull a larger pool than we display so nearby-but-older listings have a
 // chance to outrank far-away-but-newer ones once we re-rank below.
 const RECENT_RANKING_POOL_SIZE = 200;
+// Candidate pool for location-aware search — large enough to cover all
+// listings within a bounding box for typical radius/city sizes.
+const GEO_SEARCH_POOL_SIZE = 200;
 // Recency contributes a full point at age 0 and decays to ~37% after 3 days.
 const RECENCY_HALF_LIFE_HOURS = 72;
 // Proximity contributes a full point at 0km and decays to ~37% at 20km.
@@ -154,20 +157,42 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   }
 
   const skip = (q.page - 1) * q.pageSize;
+  const origin = q.lat != null && q.lng != null ? { lat: q.lat, lng: q.lng } : undefined;
+
+  if (origin) {
+    // Location-aware search: Prisma can't express haversine distance in
+    // `where`/`orderBy`, so pull a larger candidate pool (pre-filtered to a
+    // bounding box around `origin` when a radius is set), then compute exact
+    // distance, filter, sort nearest-first, and paginate in JS. Without this,
+    // the radius filter only ever saw the newest `pageSize` rows and silently
+    // dropped/missed listings outside that window.
+    let geoWhere: Record<string, unknown> = where;
+    if (q.radius && q.radius > 0) {
+      const latDelta = q.radius / 111; // ~111km per degree latitude
+      const lngDelta = q.radius / (111 * Math.cos((origin.lat * Math.PI) / 180));
+      geoWhere = {
+        ...where,
+        latitude: { gte: origin.lat - latDelta, lte: origin.lat + latDelta },
+        longitude: { gte: origin.lng - lngDelta, lte: origin.lng + lngDelta },
+      };
+    }
+    const rows = await queryListings(geoWhere, GEO_SEARCH_POOL_SIZE, 0);
+    let items = rows.map((r) => toCard(r, origin));
+    if (q.radius && q.radius > 0) {
+      items = items.filter((i) => i.distanceKm != null && i.distanceKm <= q.radius!);
+    }
+    items.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+
+    const total = items.length;
+    const paged = items.slice(skip, skip + q.pageSize);
+    return { items: paged, page: q.page, pageSize: q.pageSize, total, hasMore: skip + paged.length < total };
+  }
+
   const [rows, total] = await Promise.all([
     queryListings(where, q.pageSize, skip),
     prisma.listing.count({ where: { status: "ACTIVE", ...where } }),
   ]);
-  const origin = q.lat != null && q.lng != null ? { lat: q.lat, lng: q.lng } : undefined;
-  let items = rows.map((r) => toCard(r, origin));
-
-  if (origin && q.radius && q.radius > 0) {
-    items = items.filter((i) => i.distanceKm != null && i.distanceKm <= q.radius!);
-  }
-  if (origin) {
-    items.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
-  }
-
+  const items = rows.map((r) => toCard(r));
   return { items, page: q.page, pageSize: q.pageSize, total, hasMore: skip + rows.length < total };
 }
 
