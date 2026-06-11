@@ -8,6 +8,8 @@ import { create } from "zustand";
  */
 interface FavoritesState {
   ids: Set<string>;
+  /** True once setInitial() has hydrated from the server. */
+  ready: boolean;
   setInitial: (ids: string[]) => void;
   toggle: (listingId: string) => Promise<void>;
   has: (listingId: string) => boolean;
@@ -15,7 +17,8 @@ interface FavoritesState {
 
 export const useFavorites = create<FavoritesState>((set, get) => ({
   ids: new Set(),
-  setInitial: (ids) => set({ ids: new Set(ids) }),
+  ready: false,
+  setInitial: (ids) => set({ ids: new Set(ids), ready: true }),
   has: (id) => get().ids.has(id),
   toggle: async (listingId) => {
     const had = get().ids.has(listingId);

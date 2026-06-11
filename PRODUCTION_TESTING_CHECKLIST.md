@@ -102,7 +102,7 @@
 
 - [x] Add a listing to favorites (heart icon) — verified against live DB: `POST /api/favorites/:listingId` → `prisma.favorite.upsert()` creates the row (idempotent on re-add)
 - [x] View favorites page (`/favorites`) — `getFavoriteListings(userId)` verified, returns only `ACTIVE` favorited listings as cards, ordered newest-first
-- [x] Remove a listing from favorites — verified against live DB: `DELETE /api/favorites/:listingId` → `prisma.favorite.deleteMany()` removes the row (idempotent on re-remove)
+- [x] Remove a listing from favorites — verified against live DB: `DELETE /api/favorites/:listingId` → `prisma.favorite.deleteMany()` removes the row (idempotent on re-remove). Live-tested on `/favorites`: unfavoriting a card now removes it from the grid immediately (added `FavoritesGrid` client component that filters by the live `useFavorites` store, falling back to "No favourites yet" when empty)
 - [x] Verify favorites persist after logout/login — confirmed: favorites are stored in the `Favorite` table keyed by `userId`, independent of session state, so they persist across logins
 - [x] Test optimistic UI updates (heart should toggle immediately) — confirmed via code (`useFavorites.toggle()` flips the local `ids` Set synchronously before the `fetch`, reverting only on error/401) and live: clicking "Save to favorites" while signed out fired the request, got `401`, and redirected to `/login?redirect=...` as designed
 
