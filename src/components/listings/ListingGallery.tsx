@@ -49,14 +49,28 @@ export function ListingGallery({ images, title }: { images: string[]; title: str
           isDragging.current = true;
           dragStartX.current = e.clientX;
           scrollStartX.current = railRef.current?.scrollLeft ?? 0;
+          // Suspend scroll-snap while dragging — otherwise the browser snaps
+          // scrollLeft back to the nearest image on every pointermove,
+          // making the drag feel stuck instead of following the cursor.
+          if (railRef.current) railRef.current.style.scrollSnapType = "none";
           railRef.current?.setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
           if (!isDragging.current || !railRef.current) return;
           railRef.current.scrollLeft = scrollStartX.current + (dragStartX.current - e.clientX);
         }}
-        onPointerUp={() => { isDragging.current = false; }}
-        onPointerCancel={() => { isDragging.current = false; }}
+        onPointerUp={() => {
+          isDragging.current = false;
+          const rail = railRef.current;
+          if (!rail) return;
+          rail.style.scrollSnapType = "";
+          const i = Math.round(rail.scrollLeft / rail.offsetWidth);
+          scrollTo(Math.min(Math.max(i, 0), images.length - 1));
+        }}
+        onPointerCancel={() => {
+          isDragging.current = false;
+          if (railRef.current) railRef.current.style.scrollSnapType = "";
+        }}
       >
         {images.map((src, i) => (
           <div

@@ -127,6 +127,10 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
       { title: { contains: q.q, mode: "insensitive" } },
       { description: { contains: q.q, mode: "insensitive" } },
       { attributeValues: { some: { value: { contains: q.q, mode: "insensitive" } } } },
+      { city: { contains: q.q, mode: "insensitive" } },
+      { district: { contains: q.q, mode: "insensitive" } },
+      { neighborhood: { contains: q.q, mode: "insensitive" } },
+      { category: { is: { name: { contains: q.q, mode: "insensitive" } } } },
     ];
   }
   if (q.category) where.category = { slug: q.category };

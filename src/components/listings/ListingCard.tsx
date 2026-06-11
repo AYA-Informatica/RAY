@@ -42,7 +42,7 @@ export function ListingCard({ listing, priority, index = 0 }: { listing: Listing
           <FavoriteButton listingId={listing.id} className="absolute right-2 top-2" />
         </div>
         <div className="space-y-1 p-3">
-          <h3 className="line-clamp-2 text-sm font-medium text-text-primary">{listing.title}</h3>
+          <h3 className="line-clamp-2 min-h-10 text-sm font-medium text-text-primary">{listing.title}</h3>
           <PriceTag amount={listing.price} size="sm" suffix={isRental ? "/mo" : undefined} />
           <div className="flex items-center justify-between gap-1 pt-1 text-[11px] text-text-secondary">
             <span className="flex min-w-0 items-center gap-0.5">
