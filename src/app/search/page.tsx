@@ -13,10 +13,7 @@ export default async function SearchPage() {
     <AppShell width="wide">
       <Suspense fallback={<div className="p-4"><ListingGridSkeleton /></div>}>
         <SearchClient
-          categories={[
-            { slug: "all", name: "All", icon: "🔎" },
-            ...categories.map((c) => ({ slug: c.slug, name: c.name, icon: c.icon ?? "📦" })),
-          ]}
+          categories={categories.map((c) => ({ slug: c.slug, name: c.name, icon: c.icon ?? "📦" }))}
         />
       </Suspense>
     </AppShell>

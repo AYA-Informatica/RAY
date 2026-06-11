@@ -1,14 +1,11 @@
 import Link from "next/link";
-import { Rocket } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { LocationHeader } from "@/components/layout/LocationHeader";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { ListingRow, ListingCard } from "@/components/listings/ListingCard";
+import { RecentListings } from "@/components/listings/RecentListings";
 import { RecentlyViewed } from "@/components/listings/RecentlyViewed";
 import { FavoritesProvider } from "@/components/shared/FavoritesProvider";
 import { getCategories } from "@/services/categories";
-import { getRecentListings } from "@/services/listings";
+import { getRankedRecentListings } from "@/services/listings";
 import { getFavoriteIds } from "@/services/favorites";
 import { getCurrentUser } from "@/lib/auth/session";
 import { serverT } from "@/i18n/server";
@@ -19,7 +16,10 @@ export async function HomeContent() {
   const user = await getCurrentUser();
   const [categories, recent, favoriteIds] = await Promise.all([
     getCategories(),
-    getRecentListings(PAGE_SIZE),
+    getRankedRecentListings(
+      { profileLocation: user ? { city: user.city, district: user.district, neighborhood: user.neighborhood } : undefined },
+      PAGE_SIZE,
+    ),
     user ? getFavoriteIds(user.id) : Promise.resolve([]),
   ]);
 
@@ -67,35 +67,7 @@ export async function HomeContent() {
           </Link>
         </div>
 
-        {recent.length === 0 ? (
-          <Card className="flex flex-col items-center gap-2 p-8 text-center">
-            <Rocket className="text-text-secondary" />
-            <p className="text-sm text-text-secondary">{serverT("home.noListings")}</p>
-            <Link href="/sell">
-              <Button size="sm">{serverT("home.postAd")}</Button>
-            </Link>
-          </Card>
-        ) : (
-          <>
-            <div className="space-y-3 sm:hidden">
-              {recent.map((l, idx) => (
-                <ListingRow key={l.id} listing={l} priority={idx === 0} />
-              ))}
-            </div>
-            <div className="hidden grid-cols-3 gap-4 sm:grid lg:grid-cols-4 xl:grid-cols-5">
-              {recent.map((l, idx) => (
-                <ListingCard key={l.id} listing={l} priority={idx === 0} />
-              ))}
-            </div>
-            {recent.length === PAGE_SIZE && (
-              <div className="pt-2 text-center">
-                <Link href="/search">
-                  <Button variant="secondary" size="sm">{serverT("home.seeAll")}</Button>
-                </Link>
-              </div>
-            )}
-          </>
-        )}
+        <RecentListings initial={recent} />
       </section>
     </AppShell>
   );

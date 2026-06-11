@@ -48,6 +48,77 @@ export async function getRecentListings(limit = 12): Promise<ListingCardData[]> 
   return rows.map((r) => toCard(r));
 }
 
+// Pull a larger pool than we display so nearby-but-older listings have a
+// chance to outrank far-away-but-newer ones once we re-rank below.
+const RECENT_RANKING_POOL_SIZE = 200;
+// Recency contributes a full point at age 0 and decays to ~37% after 3 days.
+const RECENCY_HALF_LIFE_HOURS = 72;
+// Proximity contributes a full point at 0km and decays to ~37% at 20km.
+const PROXIMITY_DECAY_KM = 20;
+// Score given when we have no location signal at all (no GPS, no profile
+// location) — keeps listings in the running on recency alone.
+const NEUTRAL_PROXIMITY_SCORE = 0.3;
+// Text-based proximity scores when ranking by the viewer's profile location
+// (city/district/neighborhood) instead of GPS coordinates.
+const PROFILE_NEIGHBORHOOD_MATCH_SCORE = 1;
+const PROFILE_DISTRICT_MATCH_SCORE = 0.7;
+const PROFILE_CITY_MATCH_SCORE = 0.4;
+const PROFILE_NO_MATCH_SCORE = 0.1;
+
+export interface ProfileLocation {
+  city?: string | null;
+  district?: string | null;
+  neighborhood?: string | null;
+}
+
+/** Coarse text-based proximity when the viewer has no GPS fix but does have a saved profile location. */
+function profileProximityScore(
+  listing: { city: string | null; district: string | null; neighborhood: string | null },
+  profile: ProfileLocation,
+): number {
+  if (profile.neighborhood && listing.neighborhood === profile.neighborhood) return PROFILE_NEIGHBORHOOD_MATCH_SCORE;
+  if (profile.district && listing.district === profile.district) return PROFILE_DISTRICT_MATCH_SCORE;
+  if (profile.city && listing.city === profile.city) return PROFILE_CITY_MATCH_SCORE;
+  return PROFILE_NO_MATCH_SCORE;
+}
+
+/**
+ * Home feed — newest active listings, re-ranked so nearby listings are
+ * pushed up without hiding anything. Every ACTIVE listing in the pool stays
+ * eligible; only the display order changes based on a blended
+ * recency/proximity score.
+ *
+ * Proximity comes from `origin` (precise GPS) when available, falling back
+ * to `profileLocation` (coarse city/district/neighborhood match), falling
+ * back to a neutral score (recency-only ordering) when neither is known.
+ */
+export async function getRankedRecentListings(
+  opts: { origin?: { lat: number; lng: number }; profileLocation?: ProfileLocation } = {},
+  limit = 12,
+): Promise<ListingCardData[]> {
+  const { origin, profileLocation } = opts;
+  const rows = await queryListings({}, RECENT_RANKING_POOL_SIZE, 0);
+  const now = Date.now();
+
+  const scored = rows.map((r) => {
+    const card = toCard(r, origin);
+    const ageHours = (now - r.createdAt.getTime()) / (1000 * 60 * 60);
+    const recencyScore = Math.exp(-ageHours / RECENCY_HALF_LIFE_HOURS);
+    let proximityScore: number;
+    if (card.distanceKm != null) {
+      proximityScore = Math.exp(-card.distanceKm / PROXIMITY_DECAY_KM);
+    } else if (profileLocation && (profileLocation.city || profileLocation.district || profileLocation.neighborhood)) {
+      proximityScore = profileProximityScore(r, profileLocation);
+    } else {
+      proximityScore = NEUTRAL_PROXIMITY_SCORE;
+    }
+    return { card, score: 0.5 * recencyScore + 0.5 * proximityScore };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((s) => s.card);
+}
+
 /** Full search with filters + location-aware ranking. */
 export async function searchListings(q: SearchQuery): Promise<Paginated<ListingCardData>> {
   const where: Record<string, unknown> = {};
@@ -55,6 +126,7 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
     where.OR = [
       { title: { contains: q.q, mode: "insensitive" } },
       { description: { contains: q.q, mode: "insensitive" } },
+      { attributeValues: { some: { value: { contains: q.q, mode: "insensitive" } } } },
     ];
   }
   if (q.category) where.category = { slug: q.category };

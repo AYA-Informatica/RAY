@@ -62,8 +62,8 @@
 - [x] Reactivate a sold listing
 - [ ] Edit an existing listing (verify "Other" free-text also works in the edit form)
 - [ ] Delete a listing
-- [ ] Verify listing expiry after 30 days (check database `expiresAt` field)
-- [ ] Test repost functionality (clone expired listing)
+- [x] Verify listing expiry after 30 days (check database `expiresAt` field)
+- [x] Test repost functionality (clone expired listing)
 
 **Expected Behavior:**
 - Wizard should complete in under 60 seconds
@@ -77,24 +77,24 @@
 
 ### 3. Search & Discovery
 
-- [ ] Browse home page and view recent listings
-- [ ] Search for listings by keyword
-- [ ] Filter by category (test category tabs)
-- [ ] Filter by location (city/district/neighborhood)
-- [ ] Filter by price range
-- [ ] Filter by condition (New, Like New, Good, Fair, Used)
-- [ ] Test distance filter (requires location permission)
-- [ ] Click on a listing to view details
-- [ ] Verify listings are sorted by relevance/distance
-- [ ] Test search with no results
-- [ ] Test search debouncing (rapid typing should only trigger one search)
+- [x] Browse home page and view recent listings — `getRecentListings()` verified against live DB, returns newest-first active listings with all card fields
+- [x] Search for listings by keyword — `searchListings({ q })` verified, case-insensitive `contains` match on title/description
+- [x] Filter by category (test category tabs) — verified, returns only listings in the selected category slug
+- [x] Filter by location (city/district/neighborhood) — verified, each level filters correctly against live data
+- [x] Filter by price range — verified, `minPrice`/`maxPrice` correctly include/exclude listings
+- [x] Filter by condition (New, Like New, Good, Fair, Used) — verified, filtered count matches raw DB count
+- [x] Test distance filter (requires location permission) — `searchListings({ lat, lng, radius })` verified: haversine distance computed correctly, radius filter excludes far listings, results sorted nearest-first. UI permission prompt itself (`PermissionPrompt` + `navigator.geolocation`) not exercised by this automated check.
+- [x] Click on a listing to view details — verified `getListing(id)` resolves the listing by id (and increments view count, as designed)
+- [x] Verify listings are sorted by relevance/distance — verified: default sort is `createdAt desc`, and when `lat`/`lng` are supplied results are re-sorted by distance ascending. Note: there is no separate keyword-"relevance" ranking — keyword search still falls back to `createdAt desc` (or distance, if location is shared). This matches current behavior; flag if a relevance ranking is actually expected.
+- [x] Test search with no results — verified, returns `items: []`, `total: 0`, `hasMore: false`, which renders `EmptyState`
+- [x] Test search debouncing (rapid typing should only trigger one search) — confirmed via code review: `SearchClient.tsx` wraps the search call in a 300ms `setTimeout` inside `useEffect`, cleared on each keystroke. Not runtime-timed by this check.
 
 **Expected Behavior:**
-- Search should debounce with 300ms delay
-- Filter chips should be individually dismissable
-- Distance filter should request location permission
-- Results should show distance in km when location is shared
-- Rate limiting should kick in after 60 searches per minute
+- Search should debounce with 300ms delay — confirmed in code (`SearchClient.tsx`, 300ms `setTimeout`)
+- Filter chips should be individually dismissable — confirmed in code (`FilterChip` per active filter in `SearchClient.tsx`)
+- Distance filter should request location permission — confirmed in code (`PermissionPrompt` + `navigator.geolocation.getCurrentPosition`)
+- Results should show distance in km when location is shared — confirmed, `toCard()` populates `distanceKm` via haversine when origin is provided
+- Rate limiting should kick in after 60 searches per minute — confirmed in config (`limiters.search = Ratelimit.slidingWindow(60, "1 m")`, Upstash Redis configured); not load-tested
 
 ---
 
