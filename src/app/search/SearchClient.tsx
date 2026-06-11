@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
 import { FilterSheet, EMPTY_FILTERS, type SearchFilters } from "@/components/search/FilterSheet";
 import { useI18n } from "@/i18n/I18nProvider";
+import { formatResultCount } from "@/lib/utils/format";
 import type { ListingCardData, Paginated } from "@/types";
 
 interface SearchCategory {
@@ -252,7 +253,7 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
         ) : (
           <>
             <p className="py-3 text-sm font-medium text-text-primary">
-              {result.total} {t("search.results")}
+              {formatResultCount(result.total)} {t("search.results")}
               {query && <span className="font-normal text-text-secondary"> {t("search.for")} &ldquo;{query}&rdquo;</span>}
             </p>
             <ListingGrid listings={result.items} />

@@ -52,6 +52,12 @@ export function formatDistance(km: number): string {
   return `${km} km away`;
 }
 
+/** Round a result count down to the nearest 10 with a "+", e.g. 33 -> "30+". Counts under 10 are shown exactly. */
+export function formatResultCount(total: number): string {
+  if (total < 10) return `${total}`;
+  return `${Math.floor(total / 10) * 10}+`;
+}
+
 const CONDITION_LABELS: Record<string, string> = {
   NEW: "New",
   LIKE_NEW: "Like new",
