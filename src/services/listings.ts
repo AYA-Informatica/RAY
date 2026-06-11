@@ -5,6 +5,7 @@ import type { ListingCardData, ListingDetailData, Paginated } from "@/types";
 import { distanceKm as haversine } from "@/lib/utils/format";
 import type { SearchQuery } from "@/lib/validations/search.schema";
 import { getSellerResponseTime } from "./chat";
+import { getAuthUser } from "@/lib/auth/session";
 
 type RawListing = Awaited<ReturnType<typeof queryListings>>[number];
 
@@ -196,22 +197,34 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   return { items, page: q.page, pageSize: q.pageSize, total, hasMore: skip + rows.length < total };
 }
 
-/** Single listing for the detail page. Increments view count.
+const listingDetailInclude = {
+  category: true,
+  images: { orderBy: { order: "asc" as const } },
+  user: true,
+  attributeValues: { include: { attribute: true } },
+};
+
+/** Single listing for the detail page. Increments view count, unless the
+ *  viewer is the listing's own owner — sellers checking their own ad
+ *  shouldn't inflate the view count they see as a buyer-interest signal.
  *  Memoized per-request — generateMetadata and the page component both call
  *  this for the same id, and without caching that doubles the view-count
  *  increment and the concurrent-query load on the connection pool. */
 export const getListing = cache(async (id: string): Promise<ListingDetailData | null> => {
   try {
-    const l = await prisma.listing.update({
-      where: { id },
-      data: { views: { increment: 1 } },
-      include: {
-        category: true,
-        images: { orderBy: { order: "asc" } },
-        user: true,
-        attributeValues: { include: { attribute: true } },
-      },
-    });
+    const authUser = await getAuthUser();
+    const owner = await prisma.listing.findUnique({ where: { id }, select: { userId: true } });
+    if (!owner) return null;
+
+    const l =
+      authUser?.id === owner.userId
+        ? await prisma.listing.findUniqueOrThrow({ where: { id }, include: listingDetailInclude })
+        : await prisma.listing.update({
+            where: { id },
+            data: { views: { increment: 1 } },
+            include: listingDetailInclude,
+          });
+
     const [listingsCount, responseTimeMins] = await Promise.all([
       prisma.listing.count({ where: { userId: l.userId, status: "ACTIVE" } }),
       getSellerResponseTime(l.userId),
