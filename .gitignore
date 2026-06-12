@@ -14,6 +14,13 @@ out
 .DS_Store
 prisma/*.db
 
+# Playwright test artifacts (snapshots in e2e/**/*-snapshots are committed as baselines)
+/test-results/
+/playwright-report/
+/blob-report/
+e2e/**/*-actual.png
+e2e/**/*-diff.png
+
 # next-pwa generated service worker
 public/sw.js
 public/sw.js.map

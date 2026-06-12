@@ -49,7 +49,7 @@ export function LoginForm() {
 
       <p className="pt-2 text-center text-xs text-text-muted">
         By continuing you agree to RAY&apos;s{" "}
-        <Link href="/privacy" className="text-primary underline-offset-2 hover:underline">
+        <Link href="/privacy" className="text-primary underline underline-offset-2">
           Privacy Policy
         </Link>
         .
