@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Search } from "lucide-react";
@@ -8,6 +8,7 @@ import { timeAgo } from "@/lib/utils/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import { Badge } from "@/components/ui/Badge";
 import { STATUS_TONE, STATUS_KEY } from "@/lib/listings/status";
+import { createClient } from "@/lib/supabase/client";
 
 export interface ConversationPreview {
   id: string;
@@ -22,10 +23,110 @@ export interface ConversationPreview {
   unread: number;
 }
 
-/** Inbox conversation list with client-side search. */
-export function ConversationList({ conversations }: { conversations: ConversationPreview[] }) {
+/** Inbox conversation list with client-side search and live updates. */
+export function ConversationList({
+  conversations: initialConversations,
+  currentUserId,
+}: {
+  conversations: ConversationPreview[];
+  currentUserId: string;
+}) {
+  const [conversations, setConversations] = useState(initialConversations);
   const [query, setQuery] = useState("");
   const { t } = useI18n();
+
+  // Live preview/unread updates: new messages bump the conversation to the top
+  // and update its preview; read receipts clear its unread badge; brand-new
+  // conversations are fetched and prepended as they arrive.
+  useEffect(() => {
+    /** Fetch and prepend a conversation that isn't in the list yet (no-op if already present). */
+    function addConversationIfMissing(conversationId: string) {
+      setConversations((prev) => {
+        if (prev.some((c) => c.id === conversationId)) return prev;
+        void fetch(`/api/chat/conversations/${conversationId}`)
+          .then((r) => r.json())
+          .then((json: { data?: ConversationPreview }) => {
+            if (!json.data) return;
+            setConversations((cur) =>
+              cur.some((c) => c.id === conversationId) ? cur : [json.data!, ...cur],
+            );
+          })
+          .catch(() => null);
+        return prev;
+      });
+    }
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`inbox:${currentUserId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Conversation" },
+        (payload) => {
+          const c = payload.new as { id: string; buyerId: string; sellerId: string };
+          if (c.buyerId !== currentUserId && c.sellerId !== currentUserId) return;
+          addConversationIfMissing(c.id);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Message" },
+        (payload) => {
+          const m = payload.new as {
+            conversationId: string;
+            content: string | null;
+            imageUrl: string | null;
+            latitude: number | null;
+            offerAmount: number | null;
+            senderId: string;
+            createdAt: string;
+          };
+          setConversations((prev) => {
+            const idx = prev.findIndex((c) => c.id === m.conversationId);
+            if (idx === -1) {
+              addConversationIfMissing(m.conversationId);
+              return prev;
+            }
+            const updated = { ...prev[idx]! };
+            updated.lastAt = m.createdAt;
+            if (m.content) {
+              updated.lastMessage = m.content;
+              updated.lastMessageType = "text";
+            } else if (m.offerAmount != null) {
+              updated.lastMessage = null;
+              updated.lastMessageType = "offer";
+            } else if (m.imageUrl) {
+              updated.lastMessage = null;
+              updated.lastMessageType = "image";
+            } else if (m.latitude != null) {
+              updated.lastMessage = null;
+              updated.lastMessageType = "location";
+            }
+            if (m.senderId !== currentUserId) {
+              updated.unread += 1;
+            }
+            const next = prev.filter((c) => c.id !== m.conversationId);
+            return [updated, ...next];
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "Message" },
+        (payload) => {
+          const m = payload.new as { conversationId: string; isRead: boolean; senderId: string };
+          if (!m.isRead || m.senderId === currentUserId) return;
+          setConversations((prev) =>
+            prev.map((c) => (c.id === m.conversationId ? { ...c, unread: 0 } : c)),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
 
   const filtered = conversations.filter((c) => {
     const q = query.toLowerCase();

@@ -35,7 +35,7 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
         Skip to content
       </a>
       <PresenceHeartbeat />
-      {authUser && <UnreadMessagesProvider initialCount={unread} />}
+      {authUser && <UnreadMessagesProvider initialCount={unread} userId={authUser.id} />}
       <TopNav unreadMessages={unread} />
 
       {/* Below the sticky TopNav (h-16 = 64px) on desktop */}
@@ -50,7 +50,7 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
             <p className="mt-0.5 text-xs text-text-muted">{serverT("chat.emptySub")}</p>
           </div>
           <div className="flex-1 overflow-y-auto">
-            <ConversationList conversations={conversations} />
+            <ConversationList conversations={conversations} currentUserId={user?.id ?? ""} />
           </div>
         </aside>
 

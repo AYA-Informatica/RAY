@@ -1,54 +1,77 @@
 import { prisma } from "@/lib/prisma";
 import type { ConversationPreview } from "@/components/chat/ConversationList";
 
+const inboxInclude = {
+  listing: { include: { images: { take: 1 as const, orderBy: { order: "asc" as const } } } },
+  buyer: { select: { id: true, name: true, avatarUrl: true } },
+  seller: { select: { id: true, name: true, avatarUrl: true } },
+  messages: { orderBy: { createdAt: "desc" as const }, take: 1 },
+};
+
+type InboxConversation = Awaited<ReturnType<typeof prisma.conversation.findFirstOrThrow<{ include: typeof inboxInclude }>>>;
+
+/** Map a conversation (with its inbox includes) to a list preview for `userId`. */
+async function toPreview(c: InboxConversation, userId: string): Promise<ConversationPreview> {
+  const other = c.buyerId === userId ? c.seller : c.buyer;
+  const unread = await prisma.message.count({
+    where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
+  });
+  const last = c.messages[0];
+  let lastMessage: string | null = null;
+  let lastMessageType: ConversationPreview["lastMessageType"] = null;
+  if (last) {
+    if (last.content) {
+      lastMessage = last.content;
+      lastMessageType = "text";
+    } else if (last.offerAmount != null) {
+      lastMessageType = "offer";
+    } else if (last.imageUrl) {
+      lastMessageType = "image";
+    } else if (last.latitude != null) {
+      lastMessageType = "location";
+    }
+  }
+  return {
+    id: c.id,
+    listingTitle: c.listing.title,
+    listingImage: c.listing.images[0]?.url ?? null,
+    listingStatus: c.listing.status,
+    otherName: other.name ?? "RAY user",
+    otherAvatar: other.avatarUrl,
+    lastMessage,
+    lastMessageType,
+    lastAt: last?.createdAt ?? c.updatedAt,
+    unread,
+  };
+}
+
 /** Build the inbox preview list for a user. */
 export async function getInbox(userId: string): Promise<ConversationPreview[]> {
   const convos = await prisma.conversation.findMany({
     where: { OR: [{ buyerId: userId }, { sellerId: userId }] },
     orderBy: { updatedAt: "desc" },
-    include: {
-      listing: { include: { images: { take: 1, orderBy: { order: "asc" } } } },
-      buyer: { select: { id: true, name: true, avatarUrl: true } },
-      seller: { select: { id: true, name: true, avatarUrl: true } },
-      messages: { orderBy: { createdAt: "desc" }, take: 1 },
-    },
+    include: inboxInclude,
   });
 
-  return Promise.all(
-    convos.map(async (c) => {
-      const other = c.buyerId === userId ? c.seller : c.buyer;
-      const unread = await prisma.message.count({
-        where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
-      });
-      const last = c.messages[0];
-      let lastMessage: string | null = null;
-      let lastMessageType: ConversationPreview["lastMessageType"] = null;
-      if (last) {
-        if (last.content) {
-          lastMessage = last.content;
-          lastMessageType = "text";
-        } else if (last.offerAmount != null) {
-          lastMessageType = "offer";
-        } else if (last.imageUrl) {
-          lastMessageType = "image";
-        } else if (last.latitude != null) {
-          lastMessageType = "location";
-        }
-      }
-      return {
-        id: c.id,
-        listingTitle: c.listing.title,
-        listingImage: c.listing.images[0]?.url ?? null,
-        listingStatus: c.listing.status,
-        otherName: other.name ?? "RAY user",
-        otherAvatar: other.avatarUrl,
-        lastMessage,
-        lastMessageType,
-        lastAt: last?.createdAt ?? c.updatedAt,
-        unread,
-      };
-    }),
-  );
+  return Promise.all(convos.map((c) => toPreview(c, userId)));
+}
+
+/**
+ * Build a single inbox preview for a conversation — used to fill in a row
+ * that appears via Realtime (a brand-new conversation) without a full refetch.
+ * Returns null if the conversation doesn't exist or `userId` isn't a participant.
+ */
+export async function getConversationPreview(
+  conversationId: string,
+  userId: string,
+): Promise<ConversationPreview | null> {
+  const c = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: inboxInclude,
+  });
+  if (!c) return null;
+  if (c.buyerId !== userId && c.sellerId !== userId) return null;
+  return toPreview(c, userId);
 }
 
 export interface ThreadHeader {

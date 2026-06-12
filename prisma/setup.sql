@@ -159,3 +159,18 @@ create policy "Listing owners delete attribute values"
 -- CategoryAttribute: only admins (service role) may write categories/attributes.
 -- No explicit policy needed — unmatched INSERT/UPDATE/DELETE are denied by default when RLS is ON.
 -- The service role bypasses RLS entirely, so seeding via the API works correctly.
+
+-- ----------------------------------------------------------------------------
+-- 3. Realtime: broadcast INSERT/UPDATE on Message, User, and Conversation
+-- Without this, postgres_changes subscriptions in the chat UI receive nothing
+-- (new messages, read receipts, presence updates, and brand-new conversations
+-- require a full refresh).
+-- REPLICA IDENTITY FULL ensures UPDATE payloads include the full row (needed
+-- for payload.new.isRead and payload.new.lastSeenAt).
+-- ----------------------------------------------------------------------------
+alter publication supabase_realtime add table public."Message";
+alter publication supabase_realtime add table public."User";
+alter publication supabase_realtime add table public."Conversation";
+
+alter table public."Message" replica identity full;
+alter table public."User" replica identity full;

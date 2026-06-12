@@ -30,7 +30,7 @@ export default async function ChatInboxPage() {
             description={serverT("chat.emptySub")}
           />
         ) : (
-          <ConversationList conversations={conversations} />
+          <ConversationList conversations={conversations} currentUserId={user.id} />
         )}
       </div>
 

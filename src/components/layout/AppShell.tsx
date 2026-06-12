@@ -35,7 +35,7 @@ export async function AppShell({
         Skip to content
       </a>
       <PresenceHeartbeat />
-      {authUser && <UnreadMessagesProvider initialCount={unread} />}
+      {authUser && <UnreadMessagesProvider initialCount={unread} userId={authUser.id} />}
       <TopNav unreadMessages={unread} />
       <main id="main-content" className={cn("mx-auto w-full", width === "wide" ? "max-w-6xl" : "max-w-2xl")}>
         {children}
