@@ -21,13 +21,29 @@ export async function getInbox(userId: string): Promise<ConversationPreview[]> {
         where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
       });
       const last = c.messages[0];
+      let lastMessage: string | null = null;
+      let lastMessageType: ConversationPreview["lastMessageType"] = null;
+      if (last) {
+        if (last.content) {
+          lastMessage = last.content;
+          lastMessageType = "text";
+        } else if (last.offerAmount != null) {
+          lastMessageType = "offer";
+        } else if (last.imageUrl) {
+          lastMessageType = "image";
+        } else if (last.latitude != null) {
+          lastMessageType = "location";
+        }
+      }
       return {
         id: c.id,
         listingTitle: c.listing.title,
         listingImage: c.listing.images[0]?.url ?? null,
+        listingStatus: c.listing.status,
         otherName: other.name ?? "RAY user",
         otherAvatar: other.avatarUrl,
-        lastMessage: last?.content ?? (last?.imageUrl ? "📷 Photo" : null),
+        lastMessage,
+        lastMessageType,
         lastAt: last?.createdAt ?? c.updatedAt,
         unread,
       };

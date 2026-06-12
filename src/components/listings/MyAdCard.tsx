@@ -10,15 +10,8 @@ import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "./PriceTag";
 import { useI18n } from "@/i18n/I18nProvider";
 import { timeAgo } from "@/lib/utils/format";
+import { STATUS_TONE, STATUS_KEY } from "@/lib/listings/status";
 import type { ListingCardData } from "@/types";
-
-const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "muted" | "navy"> = {
-  ACTIVE: "success", SOLD: "navy", EXPIRED: "muted", REMOVED: "danger", FLAGGED: "warning",
-};
-const STATUS_KEY: Record<string, string> = {
-  ACTIVE: "myAds.status.active", SOLD: "myAds.status.sold",
-  EXPIRED: "myAds.status.expired", REMOVED: "myAds.status.removed", FLAGGED: "myAds.status.flagged",
-};
 
 export function MyAdCard({ listing }: { listing: ListingCardData }) {
   const router = useRouter();

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { startConversationSchema } from "@/lib/validations/message.schema";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
-import type { ConversationPreview } from "@/components/chat/ConversationList";
+import { getInbox } from "@/services/chat";
 
 export const dynamic = "force-dynamic";
 
@@ -12,38 +12,7 @@ export async function GET() {
   console.log("[GET conversations] start");
   try {
     const user = await requireUser();
-    const convos = await prisma.conversation.findMany({
-      where: { OR: [{ buyerId: user.id }, { sellerId: user.id }] },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        listing: { include: { images: { take: 1, orderBy: { order: "asc" } } } },
-        buyer: { select: { id: true, name: true, avatarUrl: true } },
-        seller: { select: { id: true, name: true, avatarUrl: true } },
-        messages: { orderBy: { createdAt: "desc" }, take: 1 },
-      },
-    });
-    console.log("[GET conversations] found", convos.length, "conversations for uid=", user.id);
-
-    const previews: ConversationPreview[] = await Promise.all(
-      convos.map(async (c) => {
-        const other = c.buyerId === user.id ? c.seller : c.buyer;
-        const unread = await prisma.message.count({
-          where: { conversationId: c.id, isRead: false, NOT: { senderId: user.id } },
-        });
-        const last = c.messages[0];
-        return {
-          id: c.id,
-          listingTitle: c.listing.title,
-          listingImage: c.listing.images[0]?.url ?? null,
-          otherName: other.name ?? "RAY user",
-          otherAvatar: other.avatarUrl,
-          lastMessage: last?.content ?? (last?.imageUrl ? "📷 Photo" : null),
-          lastAt: last?.createdAt ?? c.updatedAt,
-          unread,
-        };
-      }),
-    );
-
+    const previews = await getInbox(user.id);
     console.log("[GET conversations] returning", previews.length, "previews");
     return ok(previews);
   } catch (err) {
