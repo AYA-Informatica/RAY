@@ -139,7 +139,7 @@ export function ChatThread({
   const online = isOnline(otherLastSeenAt);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background sm:max-w-xl md:max-w-2xl lg:mx-0 lg:h-full lg:max-w-none lg:border-x-0">
+    <div className="mx-auto flex h-dvh w-full max-w-md flex-col bg-background sm:max-w-xl md:max-w-2xl lg:mx-0 lg:h-full lg:max-w-none lg:border-x-0">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-3 py-2.5">
         {/* Back arrow — mobile only; desktop sidebar provides navigation */}
@@ -277,8 +277,8 @@ export function ChatThread({
                 </button>
               </div>
             )}
-            <div className="flex items-center gap-2 p-3">
-              <label className="grid h-10 w-10 cursor-pointer place-items-center rounded-pill text-text-secondary hover:text-text-primary">
+            <div className="flex items-center gap-1 p-2 sm:gap-2 sm:p-3">
+              <label className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-pill text-text-secondary hover:text-text-primary sm:h-10 sm:w-10">
                 {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImagePlus size={20} />}
                 <input
                   type="file"
@@ -291,7 +291,7 @@ export function ChatThread({
               <button
                 onClick={shareLocation}
                 aria-label="Share location"
-                className="grid h-10 w-10 place-items-center rounded-pill text-text-secondary hover:text-text-primary"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-pill text-text-secondary hover:text-text-primary sm:h-10 sm:w-10"
               >
                 <MapPin size={20} />
               </button>
@@ -300,7 +300,7 @@ export function ChatThread({
                 onClick={() => setShowQuickReplies((v) => !v)}
                 aria-label="Quick replies"
                 aria-pressed={showQuickReplies}
-                className="grid h-10 w-10 place-items-center rounded-pill text-text-secondary hover:text-text-primary"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-pill text-text-secondary hover:text-text-primary sm:h-10 sm:w-10"
               >
                 <MessageSquare size={18} />
               </button>
@@ -311,7 +311,7 @@ export function ChatThread({
                   aria-label="Make an offer"
                   aria-pressed={showOfferInput}
                   className={cn(
-                    "grid h-10 w-10 place-items-center rounded-pill transition-colors",
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-pill transition-colors sm:h-10 sm:w-10",
                     showOfferInput ? "bg-primary/20 text-primary" : "text-text-secondary hover:text-text-primary",
                   )}
                   title="Make an offer"
@@ -329,13 +329,13 @@ export function ChatThread({
                   }
                 }}
                 placeholder={t("chat.typeMessage")}
-                className="h-11 flex-1 rounded-pill border border-border bg-surface-modal px-4 text-text-primary placeholder:text-text-muted focus:border-primary focus:outline-none"
+                className="h-10 min-w-0 flex-1 rounded-pill border border-border bg-surface-modal px-3 text-text-primary placeholder:text-text-muted focus:border-primary focus:outline-none sm:h-11 sm:px-4"
               />
               <button
                 onClick={() => void sendText()}
                 disabled={sending || !text.trim()}
                 aria-label="Send"
-                className="grid h-11 w-11 place-items-center rounded-pill bg-primary text-text-primary disabled:opacity-50"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-pill bg-primary text-text-primary disabled:opacity-50 sm:h-11 sm:w-11"
               >
                 <Send size={18} />
               </button>

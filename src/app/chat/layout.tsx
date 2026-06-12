@@ -1,5 +1,5 @@
-import { BottomNav } from "@/components/layout/BottomNav";
 import { TopNav } from "@/components/layout/TopNav";
+import { ChatMobileFrame } from "./ChatMobileFrame";
 import { PresenceHeartbeat } from "@/components/shared/PresenceHeartbeat";
 import { UnreadMessagesProvider } from "@/components/shared/UnreadMessagesProvider";
 import { ConversationList } from "@/components/chat/ConversationList";
@@ -27,7 +27,7 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
   const conversations = user ? await getInbox(user.id) : [];
 
   return (
-    <div className="min-h-dvh bg-background pb-24 lg:pb-0">
+    <ChatMobileFrame unreadMessages={unread}>
       <a
         href="#chat-main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-text-primary"
@@ -59,8 +59,6 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
           {children}
         </div>
       </div>
-
-      <BottomNav unreadMessages={unread} />
-    </div>
+    </ChatMobileFrame>
   );
 }
