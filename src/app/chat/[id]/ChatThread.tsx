@@ -139,7 +139,7 @@ export function ChatThread({
   const online = isOnline(otherLastSeenAt);
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-md flex-col bg-background sm:max-w-xl md:max-w-2xl lg:mx-0 lg:h-full lg:max-w-none lg:border-x-0">
+    <div className="fixed inset-0 z-40 mx-auto flex h-dvh w-full max-w-md flex-col bg-background sm:max-w-xl md:max-w-2xl lg:static lg:inset-auto lg:z-auto lg:mx-0 lg:h-full lg:w-auto lg:max-w-none lg:border-x-0">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-3 py-2.5">
         {/* Back arrow — mobile only; desktop sidebar provides navigation */}
