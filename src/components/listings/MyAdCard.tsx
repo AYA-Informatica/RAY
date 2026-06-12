@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,6 @@ const STATUS_KEY: Record<string, string> = {
 export function MyAdCard({ listing }: { listing: ListingCardData }) {
   const router = useRouter();
   const { t } = useI18n();
-  const [isPending, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(listing.status);
   const [isDeleted, setIsDeleted] = useState(false);
@@ -46,11 +45,6 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error?.message || "Failed to update status");
       }
-      
-      // Refresh server data
-      startTransition(() => {
-        router.refresh();
-      });
     } catch (error) {
       // Revert on error
       setStatus(prevStatus);
@@ -101,14 +95,9 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
       });
       
       if (!res.ok) throw new Error("Failed to delete");
-      
+
       // Optimistic removal
       setIsDeleted(true);
-      
-      // Refresh server data
-      startTransition(() => {
-        router.refresh();
-      });
     } catch {
       setBusy(false);
       alert("Failed to delete listing. Please try again.");
@@ -118,7 +107,7 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
   // Hide if deleted
   if (isDeleted) return null;
 
-  const isLoading = busy || isPending;
+  const isLoading = busy;
 
   return (
     <Card className="overflow-hidden">

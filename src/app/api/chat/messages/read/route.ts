@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,8 @@ export async function POST(req: NextRequest) {
       data: { isRead: true },
     });
     console.log("[POST messages/read] marked", result.count, "messages read");
-    return ok({ done: true });
+    const unreadCount = await getUnreadCount(user.id);
+    return ok({ done: true, unreadCount });
   } catch (err) {
     console.error("[POST messages/read] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);

@@ -147,11 +147,8 @@ export function EditListingForm({
         const j = (await res.json()) as { error?: { message?: string } };
         throw new Error(j.error?.message ?? "Could not save");
       }
-      // Force router to refetch /profile/ads data
       router.push("/profile/ads");
       router.refresh();
-      // Small delay to ensure navigation completes
-      setTimeout(() => router.refresh(), 100);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save changes.");
       setSaving(false);

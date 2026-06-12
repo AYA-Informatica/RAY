@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth/session";
+import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { ok, handleApiError } from "@/lib/utils/api";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ export async function POST() {
     }).catch((err) => {
       console.error("[POST presence] lastSeenAt update failed uid=", authUser.id, err instanceof Error ? err.message : err);
     });
-    return ok({ ok: true });
+    const unreadCount = await getUnreadCount(authUser.id);
+    return ok({ ok: true, unreadCount });
   } catch (err) {
     console.error("[POST presence] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);

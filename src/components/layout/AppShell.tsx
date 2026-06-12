@@ -1,23 +1,10 @@
 import { BottomNav } from "./BottomNav";
 import { TopNav } from "./TopNav";
 import { PresenceHeartbeat } from "@/components/shared/PresenceHeartbeat";
+import { UnreadMessagesProvider } from "@/components/shared/UnreadMessagesProvider";
 import { cn } from "@/lib/utils/cn";
 import { getAuthUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
-
-async function getUnreadCount(userId: string): Promise<number> {
-  try {
-    return await prisma.message.count({
-      where: {
-        isRead: false,
-        NOT: { senderId: userId },
-        conversation: { OR: [{ buyerId: userId }, { sellerId: userId }] },
-      },
-    });
-  } catch {
-    return 0;
-  }
-}
+import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 
 /**
  * Responsive marketplace shell.
@@ -48,10 +35,11 @@ export async function AppShell({
         Skip to content
       </a>
       <PresenceHeartbeat />
+      {authUser && <UnreadMessagesProvider initialCount={unread} />}
       <TopNav unreadMessages={unread} />
-      <div id="main-content" className={cn("mx-auto w-full", width === "wide" ? "max-w-6xl" : "max-w-2xl")}>
+      <main id="main-content" className={cn("mx-auto w-full", width === "wide" ? "max-w-6xl" : "max-w-2xl")}>
         {children}
-      </div>
+      </main>
       <BottomNav unreadMessages={unread} />
     </div>
   );

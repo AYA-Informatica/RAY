@@ -9,6 +9,7 @@ import { QuickReplies } from "@/components/chat/QuickReplies";
 import { PriceTag } from "@/components/listings/PriceTag";
 import { useRealtimeMessages } from "@/hooks/useRealtimeMessages";
 import { usePresenceHeartbeat } from "@/hooks/usePresenceHeartbeat";
+import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/storage/upload";
 import { cn } from "@/lib/utils/cn";
 import { isOnline, presenceLabel, formatPrice } from "@/lib/utils/format";
@@ -29,7 +30,7 @@ export function ChatThread({
 }) {
   usePresenceHeartbeat();
   const { t } = useI18n();
-  const { messages, loading, appendOptimistic } = useRealtimeMessages(thread.conversationId);
+  const { messages, loading, appendOptimistic, updateMessage } = useRealtimeMessages(thread.conversationId);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -39,11 +40,32 @@ export function ChatThread({
   const [showOfferInput, setShowOfferInput] = useState(false);
   const [offerValue, setOfferValue] = useState("");
   const isSeller = thread.sellerId === currentUserId;
+  const [otherLastSeenAt, setOtherLastSeenAt] = useState(thread.otherLastSeenAt);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  // Live presence: reflect the other user's online/last-seen status as it changes.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`presence:${thread.otherId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "User", filter: `id=eq.${thread.otherId}` },
+        (payload) => {
+          const u = payload.new as { lastSeenAt: string };
+          setOtherLastSeenAt(u.lastSeenAt);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [thread.otherId]);
 
   async function send(payload: {
     content?: string;
@@ -114,7 +136,7 @@ export function ChatThread({
     }
   }
 
-  const online = isOnline(thread.otherLastSeenAt);
+  const online = isOnline(otherLastSeenAt);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background sm:max-w-xl md:max-w-2xl lg:mx-0 lg:h-full lg:max-w-none lg:border-x-0">
@@ -142,7 +164,7 @@ export function ChatThread({
           <div className="min-w-0">
             <p className="truncate font-medium text-text-primary">{thread.otherName}</p>
             <p className={`truncate text-xs ${online ? "text-success" : "text-text-secondary"}`}>
-              {online ? t("chat.online") : presenceLabel(thread.otherLastSeenAt)}
+              {online ? t("chat.online") : presenceLabel(otherLastSeenAt)}
             </p>
           </div>
         </Link>
@@ -197,10 +219,7 @@ export function ChatThread({
               mine={m.senderId === currentUserId}
               isSeller={isSeller}
               onOfferRespond={(msgId, status) => {
-                // Update offer status locally so the card reflects immediately
-                // without waiting for a realtime message.
-                void msgId; // acknowledged
-                void status;
+                updateMessage(msgId, { offerStatus: status });
               }}
             />
           ))

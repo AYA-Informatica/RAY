@@ -30,6 +30,8 @@ export async function HomeContent() {
     <AppShell width="wide">
       <FavoritesProvider initialIds={favoriteIds} />
 
+      <h1 className="sr-only">{serverT("nav.home")}</h1>
+
       <div className="lg:hidden">
         <LocationHeader location={locationLabel} />
       </div>

@@ -128,6 +128,7 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <h1 className="sr-only">{t("nav.search")}</h1>
       {showLocationPrompt && (
         <PermissionPrompt
           type="location"

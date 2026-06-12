@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ChatMessage } from "@/components/chat/MessageBubble";
+import { useUnreadMessages } from "@/store/useUnreadMessages";
 
 /**
  * Subscribes to new messages in a conversation via Supabase Realtime.
@@ -17,6 +18,10 @@ export function useRealtimeMessages(conversationId: string) {
       const res = await fetch(`/api/chat/messages?conversationId=${conversationId}`);
       const json = (await res.json()) as { data?: ChatMessage[] };
       setMessages(json.data ?? []);
+      const unreadHeader = res.headers.get("X-Unread-Count");
+      if (unreadHeader !== null) {
+        useUnreadMessages.getState().setCount(Number(unreadHeader));
+      }
     } finally {
       setLoading(false);
     }
@@ -40,7 +45,22 @@ export function useRealtimeMessages(conversationId: string) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ conversationId }),
-          }).catch(() => null);
+          })
+            .then((r) => r.json())
+            .then((json: { data?: { unreadCount?: number } }) => {
+              if (typeof json.data?.unreadCount === "number") {
+                useUnreadMessages.getState().setCount(json.data.unreadCount);
+              }
+            })
+            .catch(() => null);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "Message", filter: `conversationId=eq.${conversationId}` },
+        (payload) => {
+          const m = payload.new as ChatMessage;
+          setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, ...m } : x)));
         },
       )
       .subscribe();
@@ -55,5 +75,10 @@ export function useRealtimeMessages(conversationId: string) {
     setMessages((prev) => [...prev, m]);
   }, []);
 
-  return { messages, loading, appendOptimistic, reload: load };
+  /** Patch fields on an existing message (e.g. offer status updates). */
+  const updateMessage = useCallback((id: string, patch: Partial<ChatMessage>) => {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  }, []);
+
+  return { messages, loading, appendOptimistic, updateMessage, reload: load };
 }

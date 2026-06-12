@@ -1,26 +1,13 @@
 import { BottomNav } from "@/components/layout/BottomNav";
 import { TopNav } from "@/components/layout/TopNav";
 import { PresenceHeartbeat } from "@/components/shared/PresenceHeartbeat";
+import { UnreadMessagesProvider } from "@/components/shared/UnreadMessagesProvider";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { getAuthUser } from "@/lib/auth/session";
 import { getCurrentUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
+import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { getInbox } from "@/services/chat";
 import { serverT } from "@/i18n/server";
-
-async function getUnreadCount(userId: string): Promise<number> {
-  try {
-    return await prisma.message.count({
-      where: {
-        isRead: false,
-        NOT: { senderId: userId },
-        conversation: { OR: [{ buyerId: userId }, { sellerId: userId }] },
-      },
-    });
-  } catch {
-    return 0;
-  }
-}
 
 /**
  * Chat shell — replaces the generic AppShell for the /chat route tree.
@@ -48,6 +35,7 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
         Skip to content
       </a>
       <PresenceHeartbeat />
+      {authUser && <UnreadMessagesProvider initialCount={unread} />}
       <TopNav unreadMessages={unread} />
 
       {/* Below the sticky TopNav (h-16 = 64px) on desktop */}

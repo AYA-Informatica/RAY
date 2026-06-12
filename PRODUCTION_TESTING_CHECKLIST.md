@@ -118,20 +118,20 @@
 
 ### 5. Chat & Messaging
 
-- [ ] Send a message to a seller from listing page
-- [ ] Receive and reply to messages
-- [ ] Send an image in chat
-- [ ] Share location in chat
-- [ ] Use quick replies ("Is this available?", "Last price?", etc.)
-- [ ] Test read receipts (checkmark icons)
-- [ ] Make a price offer (buyer)
-- [ ] Accept/decline a price offer (seller)
-- [ ] Verify offer status updates (pending/accepted/declined)
-- [ ] Block a user
-- [ ] Unblock a user
-- [ ] Verify blocked users can't send messages
-- [ ] Test realtime message delivery (messages appear instantly)
-- [ ] Test presence indicator (online dot + "last seen")
+- [x] Send a message to a seller from listing page — live-tested: clicked "Chat with Youugi" on the Rose Perfume listing → `POST /api/chat/conversations` upserted a conversation and redirected to `/chat/cmqa7ta980001vby3lmlfrw4u`
+- [x] Receive and reply to messages — live-tested sending/replying (typed message appears in the thread instantly via optimistic update). Receiving as the other party wasn't live-tested (would need a second account); rendering uses the same `MessageBubble` path, code-verified
+- [x] Send an image in chat — live-tested: uploaded `icon-512.png` via the image picker → rendered as "Shared photo" in the thread (uploads to the `chat-images` bucket via `uploadImage()`)
+- [x] Share location in chat — live-tested twice (once with default headless geolocation, once with a CDP-set coordinate) → both rendered as "Shared location" links to `https://maps.google.com/?q=<lat>,<lng>`
+- [x] Use quick replies ("Is this available?", "Last price?", etc.) — live-tested: "Quick replies" button revealed all 5 canned replies; clicking "Last price?" sent it as a message
+- [~] Test read receipts (checkmark icons) — partially verified: sent messages render a single checkmark (unread). Couldn't observe the switch to the double checkmark (read) live since that requires the seller's account to open the thread; `isRead` flip via `POST /api/chat/messages/read` is code-verified
+- [x] Make a price offer (buyer) — live-tested: "Make an offer" → entered `15000` → "Send offer" → offer card rendered "Your offer — Rwf 15,000 — Waiting for seller's response…". Also confirmed live that the "Make an offer" control is hidden entirely on a conversation where the current user is the seller (iphone 16 Pro / Manush thread)
+- [ ] Accept/decline a price offer (seller) — not live-tested (requires logging in as the seller "Youugi ohh"). Code-verified: `PATCH /api/chat/messages` checks the responder is the conversation's seller and the offer is `pending` before setting `offerStatus`
+- [~] Verify offer status updates (pending/accepted/declined) — `pending` state live-verified (offer card + "Waiting for seller's response…"); `accepted`/`declined` color-coded card states in `MessageBubble` are code-verified only
+- [x] Block a user — live-tested: "More options" → "Block user" → composer replaced with "You blocked this user. Unblock to continue." + Unblock button
+- [x] Unblock a user — live-tested: "Unblock" restored the normal composer (text input, share location, quick replies, offer)
+- [~] Verify blocked users can't send messages — UI-verified for the blocking user (composer disabled while blocked). Server-side bidirectional enforcement (`isBlockedBetween()` in `POST /api/chat/messages`, checked both directions) is code-verified; not live-tested from the blocked counterpart's account
+- [ ] Test realtime message delivery (messages appear instantly) — not live-tested (needs two concurrent sessions). Code-verified: `useRealtimeMessages` subscribes to Supabase `postgres_changes` INSERT on `Message` filtered by `conversationId`
+- [x] Test presence indicator (online dot + "last seen") — live-verified: listing and chat headers show "Last seen X ago" (e.g. "Last seen 1 day ago" for Youugi, "Last seen 8 hours ago" for Manush), driven by `User.lastSeenAt`
 
 **Expected Behavior:**
 - Messages should appear in realtime via Supabase Realtime
@@ -141,6 +141,10 @@
 - Block should prevent message sending in both directions
 - Presence heartbeat should update every 90 seconds
 - Offer cards should show Accept/Decline buttons to seller only
+
+> ⚠️ **Discrepancy found**: `usePresenceHeartbeat.ts` pings `POST /api/presence` every **60 seconds**, not the 90 seconds stated above. Either update this doc or the interval, whichever reflects the intended spec.
+>
+> ⚠️ **Gap found**: `shareLocation()` in `ChatThread.tsx` calls `navigator.geolocation.getCurrentPosition(success)` with no error callback. If the user denies the location permission (or it's unavailable), clicking "Share location" silently does nothing — no error message or fallback UI.
 
 ---
 

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, Search, PlusCircle, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useI18n } from "@/i18n/I18nProvider";
+import { useUnreadMessages } from "@/store/useUnreadMessages";
 
 type NavItem = {
   href: string;
@@ -24,12 +25,14 @@ const ITEMS: readonly NavItem[] = [
 export function BottomNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const liveUnread = useUnreadMessages((s) => s.count);
+  const unread = liveUnread ?? unreadMessages;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-primary mouse-lg:hidden">
       <ul className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
         {ITEMS.map(({ href, labelKey, icon: Icon, center }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
-          const badge = href === "/chat" && unreadMessages > 0 ? unreadMessages : 0;
+          const badge = href === "/chat" && unread > 0 ? unread : 0;
           return (
             <li key={href}>
               <Link

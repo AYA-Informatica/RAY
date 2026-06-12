@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, Search, MessageCircle, User, Plus, Heart } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useI18n } from "@/i18n/I18nProvider";
+import { useUnreadMessages } from "@/store/useUnreadMessages";
 
 /**
  * Desktop / laptop top navigation. Hidden below `lg`, where the mobile
@@ -20,6 +21,8 @@ const LINKS = [
 export function TopNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
   const pathname = usePathname();
   const { t } = useI18n();
+  const liveUnread = useUnreadMessages((s) => s.count);
+  const unread = liveUnread ?? unreadMessages;
 
   return (
     <header className="sticky top-0 z-50 hidden border-b border-border bg-background/90 backdrop-blur mouse-lg:block">
@@ -31,7 +34,7 @@ export function TopNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
         <nav className="flex items-center gap-1">
           {LINKS.map(({ href, labelKey, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
-            const badge = href === "/chat" && unreadMessages > 0 ? unreadMessages : 0;
+            const badge = href === "/chat" && unread > 0 ? unread : 0;
             return (
               <Link
                 key={href}

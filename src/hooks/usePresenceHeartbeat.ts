@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useUnreadMessages } from "@/store/useUnreadMessages";
 
 /**
  * Pings /api/presence on mount and every 60s while the tab is visible,
@@ -21,6 +22,11 @@ export function usePresenceHeartbeat() {
           active = false;
           clearInterval(timer);
           document.removeEventListener("visibilitychange", handleVisibility);
+          return;
+        }
+        const json = (await res.json()) as { data?: { unreadCount?: number } };
+        if (typeof json.data?.unreadCount === "number") {
+          useUnreadMessages.getState().setCount(json.data.unreadCount);
         }
       } catch {
         // Network error — fine, just skip this beat.
