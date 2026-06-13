@@ -14,7 +14,8 @@ export type InboxRealtimeEvent =
       senderId: string;
       createdAt: string;
     }
-  | { type: "message_read"; conversationId: string; senderId: string; isRead: boolean };
+  | { type: "message_read"; conversationId: string; senderId: string; isRead: boolean }
+  | { type: "listing_status"; listingId: string; status: string; expiresAt: string };
 
 /**
  * Shared inbox realtime event bus. A single Supabase subscription

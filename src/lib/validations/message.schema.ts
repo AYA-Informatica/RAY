@@ -23,5 +23,9 @@ export const respondOfferSchema = z.object({
   status: z.enum(["accepted", "declined"]),
 });
 
+export const hideConversationsSchema = z.object({
+  conversationIds: z.array(z.string().min(1)).min(1).max(50),
+});
+
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 export type RespondOfferInput = z.infer<typeof respondOfferSchema>;

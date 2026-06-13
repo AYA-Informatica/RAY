@@ -12,6 +12,7 @@ import { useInboxRealtime } from "@/store/useInboxRealtime";
 
 export interface ConversationPreview {
   id: string;
+  listingId: string;
   listingTitle: string;
   listingImage: string | null;
   listingStatus: string;
@@ -33,6 +34,8 @@ export function ConversationList({
 }) {
   const [conversations, setConversations] = useState(initialConversations);
   const [query, setQuery] = useState("");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const { t } = useI18n();
   const lastEvent = useInboxRealtime((s) => s.lastEvent);
   const seq = useInboxRealtime((s) => s.seq);
@@ -107,6 +110,14 @@ export function ConversationList({
         );
         break;
       }
+      case "listing_status": {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.listingId === lastEvent.listingId ? { ...c, listingStatus: lastEvent.status } : c,
+          ),
+        );
+        break;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seq]);
@@ -120,6 +131,38 @@ export function ConversationList({
       (c.lastMessage ?? "").toLowerCase().includes(q)
     );
   });
+
+  function toggleSelectMode() {
+    setSelectMode((prev) => !prev);
+    setSelected(new Set());
+  }
+
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleDeleteSelected() {
+    if (selected.size === 0) return;
+    if (!window.confirm(t("chat.deleteConfirm"))) return;
+    const ids = Array.from(selected);
+    setConversations((prev) => prev.filter((c) => !selected.has(c.id)));
+    setSelected(new Set());
+    setSelectMode(false);
+    try {
+      await fetch("/api/chat/conversations/hide", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationIds: ids }),
+      });
+    } catch {
+      // best-effort — conversation stays hidden locally even if the request fails
+    }
+  }
 
   /** Human-readable preview of the last message, covering every message type. */
   function previewText(c: ConversationPreview): string {
@@ -138,20 +181,29 @@ export function ConversationList({
   }
 
   return (
-    <div>
-      {/* Search bar — only shown when there are multiple conversations */}
-      {conversations.length > 3 && (
-        <div className="border-b border-border px-4 py-2">
-          <div className="flex items-center gap-2 rounded-md border border-border bg-surface-modal px-3">
-            <Search size={15} className="shrink-0 text-text-muted" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("search.placeholder")}
-              aria-label={t("chat.title")}
-              className="h-9 w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
-            />
-          </div>
+    <div className={selectMode && selected.size > 0 ? "pb-16" : undefined}>
+      {/* Search bar + select toggle — only shown when there are conversations */}
+      {conversations.length > 0 && (
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+          {conversations.length > 3 && (
+            <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-surface-modal px-3">
+              <Search size={15} className="shrink-0 text-text-muted" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("search.placeholder")}
+                aria-label={t("chat.title")}
+                className="h-9 w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={toggleSelectMode}
+            className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-modal"
+          >
+            {selectMode ? t("chat.cancel") : t("chat.select")}
+          </button>
         </div>
       )}
 
@@ -173,48 +225,85 @@ export function ConversationList({
             ]
               .filter(Boolean)
               .join(", ");
-            return (
-              <li key={c.id}>
-                <Link
-                  href={`/chat/${c.id}`}
-                  aria-label={ariaLabel}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface-card"
-                >
-                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-surface-modal">
-                    {c.listingImage ? (
-                      <Image src={c.listingImage} alt="" fill className="object-cover" sizes="48px" />
-                    ) : (
-                      <span className="grid h-full w-full place-items-center" aria-hidden="true">📦</span>
+            const rowContent = (
+              <>
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-surface-modal">
+                  {c.listingImage ? (
+                    <Image src={c.listingImage} alt="" fill className="object-cover" sizes="48px" />
+                  ) : (
+                    <span className="grid h-full w-full place-items-center" aria-hidden="true">📦</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate font-medium text-text-primary">{c.otherName}</p>
+                    <span className="shrink-0 text-[11px] text-text-muted" suppressHydrationWarning>{timeAgo(c.lastAt)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-xs text-text-secondary">{c.listingTitle}</p>
+                    {notActive && (
+                      <Badge tone={STATUS_TONE[c.listingStatus] ?? "muted"} className="shrink-0 px-1.5 py-0 text-[10px]">
+                        {t(STATUS_KEY[c.listingStatus] ?? c.listingStatus)}
+                      </Badge>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate font-medium text-text-primary">{c.otherName}</p>
-                      <span className="shrink-0 text-[11px] text-text-muted" suppressHydrationWarning>{timeAgo(c.lastAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <p className="truncate text-xs text-text-secondary">{c.listingTitle}</p>
-                      {notActive && (
-                        <Badge tone={STATUS_TONE[c.listingStatus] ?? "muted"} className="shrink-0 px-1.5 py-0 text-[10px]">
-                          {t(STATUS_KEY[c.listingStatus] ?? c.listingStatus)}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className={`truncate text-sm ${c.unread > 0 ? "font-medium text-text-primary" : "text-text-secondary"}`}>
-                      {preview}
-                    </p>
-                  </div>
-                  {c.unread > 0 && (
-                    <span className="grid h-5 min-w-5 place-items-center rounded-pill bg-primary px-1.5 text-[11px] font-bold text-text-primary" aria-hidden="true">
-                      {c.unread}
-                    </span>
-                  )}
-                </Link>
+                  <p className={`truncate text-sm ${c.unread > 0 ? "font-medium text-text-primary" : "text-text-secondary"}`}>
+                    {preview}
+                  </p>
+                </div>
+                {c.unread > 0 && (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-pill bg-primary px-1.5 text-[11px] font-bold text-text-primary" aria-hidden="true">
+                    {c.unread}
+                  </span>
+                )}
+              </>
+            );
+            return (
+              <li key={c.id}>
+                {selectMode ? (
+                  <label className="flex items-center gap-3 px-4 py-3 hover:bg-surface-card">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(c.id)}
+                      onChange={() => toggleSelected(c.id)}
+                      aria-label={ariaLabel}
+                      className="size-4 shrink-0 accent-primary"
+                    />
+                    {rowContent}
+                  </label>
+                ) : (
+                  <Link
+                    href={`/chat/${c.id}`}
+                    aria-label={ariaLabel}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-card"
+                  >
+                    {rowContent}
+                  </Link>
+                )}
               </li>
             );
           })
         )}
       </ul>
+
+      {selectMode && selected.size > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border bg-surface-card px-4 py-3">
+          <button
+            type="button"
+            onClick={toggleSelectMode}
+            className="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-modal"
+          >
+            {t("chat.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleDeleteSelected}
+            className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            {t("chat.deleteSelected")} ({selected.size})
+          </button>
+        </div>
+      )}
     </div>
   );
 }

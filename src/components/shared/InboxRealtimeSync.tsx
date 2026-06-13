@@ -56,6 +56,9 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
           if (data.table === "Message") {
             const m = data.record as { conversationId: string; isRead: boolean; senderId: string };
             emit({ type: "message_read", conversationId: m.conversationId, senderId: m.senderId, isRead: m.isRead });
+          } else if (data.table === "Listing") {
+            const l = data.record as { id: string; status: string; expiresAt: string };
+            emit({ type: "listing_status", listingId: l.id, status: l.status, expiresAt: l.expiresAt });
           }
         })
         .subscribe();

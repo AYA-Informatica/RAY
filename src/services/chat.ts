@@ -33,6 +33,7 @@ async function toPreview(c: InboxConversation, userId: string): Promise<Conversa
   }
   return {
     id: c.id,
+    listingId: c.listingId,
     listingTitle: c.listing.title,
     listingImage: c.listing.images[0]?.url ?? null,
     listingStatus: c.listing.status,
@@ -45,6 +46,15 @@ async function toPreview(c: InboxConversation, userId: string): Promise<Conversa
   };
 }
 
+/** A conversation is hidden for `userId` if they hid it and no newer message has arrived since. */
+function isHiddenFor(
+  c: { buyerId: string; sellerId: string; buyerHiddenAt: Date | null; sellerHiddenAt: Date | null; updatedAt: Date },
+  userId: string,
+): boolean {
+  const hiddenAt = c.buyerId === userId ? c.buyerHiddenAt : c.sellerHiddenAt;
+  return hiddenAt != null && hiddenAt >= c.updatedAt;
+}
+
 /** Build the inbox preview list for a user. */
 export async function getInbox(userId: string): Promise<ConversationPreview[]> {
   const convos = await prisma.conversation.findMany({
@@ -53,7 +63,7 @@ export async function getInbox(userId: string): Promise<ConversationPreview[]> {
     include: inboxInclude,
   });
 
-  return Promise.all(convos.map((c) => toPreview(c, userId)));
+  return Promise.all(convos.filter((c) => !isHiddenFor(c, userId)).map((c) => toPreview(c, userId)));
 }
 
 /**
@@ -71,6 +81,7 @@ export async function getConversationPreview(
   });
   if (!c) return null;
   if (c.buyerId !== userId && c.sellerId !== userId) return null;
+  if (isHiddenFor(c, userId)) return null;
   return toPreview(c, userId);
 }
 
