@@ -1,42 +1,32 @@
 "use client";
 
 import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useUnreadMessages } from "@/store/useUnreadMessages";
+import { useInboxRealtime } from "@/store/useInboxRealtime";
 
 /**
  * Hydrates the unread-messages store with the server-computed count on mount,
- * then bumps it live when a new message arrives via Supabase Realtime —
- * so the BottomNav/TopNav badge updates without a page refresh.
+ * then bumps it live when a new message arrives — so the BottomNav/TopNav
+ * badge updates without a page refresh. Live updates come from the shared
+ * broadcast subscription in InboxRealtimeSync via useInboxRealtime.
  */
 export function UnreadMessagesProvider({ initialCount, userId }: { initialCount: number; userId: string }) {
   const setCount = useUnreadMessages((s) => s.setCount);
+  const lastEvent = useInboxRealtime((s) => s.lastEvent);
+  const seq = useInboxRealtime((s) => s.seq);
 
   useEffect(() => {
     setCount(initialCount);
   }, [initialCount, setCount]);
 
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`unread:${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "Message" },
-        (payload) => {
-          const m = payload.new as { senderId: string };
-          if (m.senderId !== userId) {
-            const current = useUnreadMessages.getState().count ?? 0;
-            useUnreadMessages.getState().setCount(current + 1);
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [userId]);
+    if (!lastEvent) return;
+    if (lastEvent.type === "message_insert" && lastEvent.senderId !== userId) {
+      const current = useUnreadMessages.getState().count ?? 0;
+      useUnreadMessages.getState().setCount(current + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seq]);
 
   return null;
 }

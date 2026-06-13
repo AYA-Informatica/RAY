@@ -2,6 +2,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { ChatMobileFrame } from "./ChatMobileFrame";
 import { PresenceHeartbeat } from "@/components/shared/PresenceHeartbeat";
 import { UnreadMessagesProvider } from "@/components/shared/UnreadMessagesProvider";
+import { InboxRealtimeSync } from "@/components/shared/InboxRealtimeSync";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { getAuthUser } from "@/lib/auth/session";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -36,6 +37,7 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
       </a>
       <PresenceHeartbeat />
       {authUser && <UnreadMessagesProvider initialCount={unread} userId={authUser.id} />}
+      {authUser && <InboxRealtimeSync userId={authUser.id} />}
       <TopNav unreadMessages={unread} />
 
       {/* Below the sticky TopNav (h-16 = 64px) on desktop */}

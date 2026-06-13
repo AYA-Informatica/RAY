@@ -37,7 +37,27 @@ export function useRealtimeMessages(conversationId: string) {
         { event: "INSERT", schema: "public", table: "Message", filter: `conversationId=eq.${conversationId}` },
         (payload) => {
           const m = payload.new as ChatMessage;
-          setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+          setMessages((prev) => {
+            if (prev.some((x) => x.id === m.id)) return prev;
+            // Replace the optimistic placeholder for this send (if any) instead of
+            // appending a second bubble — matched by sender + payload since the
+            // placeholder's temp id never matches the real DB id.
+            const tempIdx = prev.findIndex(
+              (x) =>
+                x.id.startsWith("temp-") &&
+                x.senderId === m.senderId &&
+                x.content === m.content &&
+                x.imageUrl === m.imageUrl &&
+                x.offerAmount === m.offerAmount &&
+                x.latitude === m.latitude,
+            );
+            if (tempIdx !== -1) {
+              const next = [...prev];
+              next[tempIdx] = m;
+              return next;
+            }
+            return [...prev, m];
+          });
           // Mark as read immediately if we're the recipient (not the sender).
           // The GET endpoint already marks on load; this handles messages arriving
           // while we're actively in the thread.
