@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Check, CheckCheck, MapPin, Tag, ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
+import { Check, CheckCheck, MapPin, Tag, ThumbsUp, ThumbsDown, Loader2, X, Download } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { timeAgo, formatPrice } from "@/lib/utils/format";
@@ -35,6 +35,7 @@ export function MessageBubble({
   isSeller?: boolean;
   onOfferRespond?: (messageId: string, status: "accepted" | "declined") => void;
 }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const isOffer = message.offerAmount != null;
 
   if (isOffer) {
@@ -59,9 +60,14 @@ export function MessageBubble({
         )}
       >
         {message.imageUrl && (
-          <div className="relative mb-1 h-40 w-48 overflow-hidden rounded-md bg-surface-modal">
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(true)}
+            aria-label="View photo"
+            className="relative mb-1 block h-40 w-48 overflow-hidden rounded-md bg-surface-modal"
+          >
             <Image src={message.imageUrl} alt="Shared photo" fill className="object-cover" sizes="192px" />
-          </div>
+          </button>
         )}
         {message.latitude != null && message.longitude != null && (
           <a
@@ -87,6 +93,36 @@ export function MessageBubble({
           {mine && (message.isRead ? <CheckCheck size={13} /> : <Check size={13} />)}
         </div>
       </div>
+
+      {lightboxOpen && message.imageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setLightboxOpen(false)}
+            className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
+          >
+            <X size={20} />
+          </button>
+          <a
+            href={message.imageUrl}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Download photo"
+            className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
+          >
+            <Download size={20} />
+          </a>
+          <div className="relative h-full w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
+            <Image src={message.imageUrl} alt="Shared photo" fill className="object-contain" sizes="100vw" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
