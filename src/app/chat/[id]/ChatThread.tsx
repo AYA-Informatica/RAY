@@ -30,7 +30,10 @@ export function ChatThread({
 }) {
   usePresenceHeartbeat();
   const { t } = useI18n();
-  const { messages, loading, appendOptimistic, updateMessage } = useRealtimeMessages(thread.conversationId);
+  const { messages, loading, appendOptimistic, replaceMessage, updateMessage } = useRealtimeMessages(
+    thread.conversationId,
+    currentUserId,
+  );
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -76,8 +79,9 @@ export function ChatThread({
   }) {
     if (blocked) return;
     setSending(true);
+    const tempId = `temp-${Date.now()}`;
     appendOptimistic({
-      id: `temp-${Date.now()}`,
+      id: tempId,
       content: payload.content ?? null,
       imageUrl: payload.imageUrl ?? null,
       latitude: payload.latitude ?? null,
@@ -89,11 +93,13 @@ export function ChatThread({
       createdAt: new Date().toISOString(),
     });
     try {
-      await fetch("/api/chat/messages", {
+      const res = await fetch("/api/chat/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationId: thread.conversationId, ...payload }),
       });
+      const json = (await res.json()) as { data?: ChatMessage };
+      if (json.data) replaceMessage(tempId, json.data);
     } finally {
       setSending(false);
     }

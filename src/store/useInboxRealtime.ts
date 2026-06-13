@@ -6,15 +6,26 @@ export type InboxRealtimeEvent =
   | { type: "conversation_insert"; conversationId: string; buyerId: string; sellerId: string }
   | {
       type: "message_insert";
+      id: string;
       conversationId: string;
       content: string | null;
       imageUrl: string | null;
       latitude: number | null;
+      longitude: number | null;
       offerAmount: number | null;
+      offerStatus: string | null;
+      isRead: boolean;
       senderId: string;
       createdAt: string;
     }
-  | { type: "message_read"; conversationId: string; senderId: string; isRead: boolean }
+  | {
+      type: "message_read";
+      id: string;
+      conversationId: string;
+      senderId: string;
+      isRead: boolean;
+      offerStatus: string | null;
+    }
   | { type: "listing_status"; listingId: string; status: string; expiresAt: string };
 
 /**

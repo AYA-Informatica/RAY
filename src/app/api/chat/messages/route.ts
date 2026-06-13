@@ -95,6 +95,8 @@ export async function POST(req: NextRequest) {
           imageUrl: data.imageUrl ?? null,
           latitude: data.latitude ?? null,
           longitude: data.longitude ?? null,
+          offerAmount: data.offerAmount ?? null,
+          offerStatus: data.offerAmount != null ? "pending" : null,
         },
       }),
       prisma.conversation.update({
@@ -103,16 +105,6 @@ export async function POST(req: NextRequest) {
       }),
     ]);
     console.log("[POST chat/messages] message created id=", message.id);
-
-    if (data.offerAmount != null) {
-      console.log("[POST chat/messages] setting offerAmount=", data.offerAmount);
-      await prisma.$executeRaw`
-        UPDATE "Message"
-        SET "offerAmount" = ${data.offerAmount}, "offerStatus" = 'pending'
-        WHERE id = ${message.id}
-      `;
-      console.log("[POST chat/messages] offerAmount set OK");
-    }
 
     return ok(message, { status: 201 });
   } catch (err) {

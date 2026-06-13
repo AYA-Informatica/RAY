@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import type { ChatMessage } from "@/components/chat/MessageBubble";
 import { useUnreadMessages } from "@/store/useUnreadMessages";
+import { useInboxRealtime } from "@/store/useInboxRealtime";
 
 /**
- * Subscribes to new messages in a conversation via Supabase Realtime.
- * Loads the initial page over the API, then listens for INSERTs on Message.
+ * Loads the initial page of messages over the API, then listens for live
+ * updates via the shared per-user Broadcast channel (InboxRealtimeSync /
+ * useInboxRealtime) — postgres_changes on the RLS-protected Message table
+ * doesn't reliably deliver to clients (same issue the inbox sidebar had).
  */
-export function useRealtimeMessages(conversationId: string) {
+export function useRealtimeMessages(conversationId: string, currentUserId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const lastEvent = useInboxRealtime((s) => s.lastEvent);
+  const seq = useInboxRealtime((s) => s.seq);
 
   const load = useCallback(async () => {
     try {
@@ -29,38 +33,50 @@ export function useRealtimeMessages(conversationId: string) {
 
   useEffect(() => {
     void load();
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "Message", filter: `conversationId=eq.${conversationId}` },
-        (payload) => {
-          const m = payload.new as ChatMessage;
-          setMessages((prev) => {
-            if (prev.some((x) => x.id === m.id)) return prev;
-            // Replace the optimistic placeholder for this send (if any) instead of
-            // appending a second bubble — matched by sender + payload since the
-            // placeholder's temp id never matches the real DB id.
-            const tempIdx = prev.findIndex(
-              (x) =>
-                x.id.startsWith("temp-") &&
-                x.senderId === m.senderId &&
-                x.content === m.content &&
-                x.imageUrl === m.imageUrl &&
-                x.offerAmount === m.offerAmount &&
-                x.latitude === m.latitude,
-            );
-            if (tempIdx !== -1) {
-              const next = [...prev];
-              next[tempIdx] = m;
-              return next;
-            }
-            return [...prev, m];
-          });
-          // Mark as read immediately if we're the recipient (not the sender).
-          // The GET endpoint already marks on load; this handles messages arriving
-          // while we're actively in the thread.
+  }, [load]);
+
+  useEffect(() => {
+    if (!lastEvent) return;
+
+    switch (lastEvent.type) {
+      case "message_insert": {
+        const m = lastEvent;
+        if (m.conversationId !== conversationId) return;
+        setMessages((prev) => {
+          if (prev.some((x) => x.id === m.id)) return prev;
+          // Replace the optimistic placeholder for this send (if any) instead of
+          // appending a second bubble — matched by sender + payload since the
+          // placeholder's temp id never matches the real DB id.
+          const tempIdx = prev.findIndex(
+            (x) =>
+              x.id.startsWith("temp-") &&
+              x.senderId === m.senderId &&
+              x.content === m.content &&
+              x.imageUrl === m.imageUrl &&
+              x.offerAmount === m.offerAmount &&
+              x.latitude === m.latitude,
+          );
+          const real: ChatMessage = {
+            id: m.id,
+            content: m.content,
+            imageUrl: m.imageUrl,
+            latitude: m.latitude,
+            longitude: m.longitude,
+            offerAmount: m.offerAmount,
+            offerStatus: m.offerStatus,
+            isRead: m.isRead,
+            senderId: m.senderId,
+            createdAt: m.createdAt,
+          };
+          if (tempIdx !== -1) {
+            const next = [...prev];
+            next[tempIdx] = real;
+            return next;
+          }
+          return [...prev, real];
+        });
+        // Mark as read immediately if we're the recipient (not the sender).
+        if (m.senderId !== currentUserId) {
           void fetch(`/api/chat/messages/read`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -73,26 +89,30 @@ export function useRealtimeMessages(conversationId: string) {
               }
             })
             .catch(() => null);
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "Message", filter: `conversationId=eq.${conversationId}` },
-        (payload) => {
-          const m = payload.new as ChatMessage;
-          setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, ...m } : x)));
-        },
-      )
-      .subscribe();
+        }
+        break;
+      }
+      case "message_read": {
+        if (lastEvent.conversationId !== conversationId) return;
+        setMessages((prev) =>
+          prev.map((x) =>
+            x.id === lastEvent.id ? { ...x, isRead: lastEvent.isRead, offerStatus: lastEvent.offerStatus } : x,
+          ),
+        );
+        break;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seq]);
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [conversationId, load]);
-
-  /** Optimistically append a sent message (replaced when realtime echoes it). */
+  /** Optimistically append a sent message (replaced once the server confirms it). */
   const appendOptimistic = useCallback((m: ChatMessage) => {
     setMessages((prev) => [...prev, m]);
+  }, []);
+
+  /** Replace an optimistic placeholder with the confirmed server message. */
+  const replaceMessage = useCallback((tempId: string, m: ChatMessage) => {
+    setMessages((prev) => prev.map((x) => (x.id === tempId ? m : x)));
   }, []);
 
   /** Patch fields on an existing message (e.g. offer status updates). */
@@ -100,5 +120,5 @@ export function useRealtimeMessages(conversationId: string) {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }, []);
 
-  return { messages, loading, appendOptimistic, updateMessage, reload: load };
+  return { messages, loading, appendOptimistic, replaceMessage, updateMessage, reload: load };
 }

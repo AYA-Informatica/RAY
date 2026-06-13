@@ -37,11 +37,15 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
           const data = payload.payload as { table: string; record: Record<string, unknown> };
           if (data.table === "Message") {
             const m = data.record as {
+              id: string;
               conversationId: string;
               content: string | null;
               imageUrl: string | null;
               latitude: number | null;
+              longitude: number | null;
               offerAmount: number | null;
+              offerStatus: string | null;
+              isRead: boolean;
               senderId: string;
               createdAt: string;
             };
@@ -54,8 +58,21 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
         .on("broadcast", { event: "UPDATE" }, (payload) => {
           const data = payload.payload as { table: string; record: Record<string, unknown> };
           if (data.table === "Message") {
-            const m = data.record as { conversationId: string; isRead: boolean; senderId: string };
-            emit({ type: "message_read", conversationId: m.conversationId, senderId: m.senderId, isRead: m.isRead });
+            const m = data.record as {
+              id: string;
+              conversationId: string;
+              isRead: boolean;
+              senderId: string;
+              offerStatus: string | null;
+            };
+            emit({
+              type: "message_read",
+              id: m.id,
+              conversationId: m.conversationId,
+              senderId: m.senderId,
+              isRead: m.isRead,
+              offerStatus: m.offerStatus,
+            });
           } else if (data.table === "Listing") {
             const l = data.record as { id: string; status: string; expiresAt: string };
             emit({ type: "listing_status", listingId: l.id, status: l.status, expiresAt: l.expiresAt });
