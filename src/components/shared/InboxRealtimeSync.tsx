@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useInboxRealtime } from "@/store/useInboxRealtime";
+import { toUtcIso } from "@/lib/utils/format";
 
 /**
  * Single shared Supabase Realtime subscription for the inbox. Renders once
@@ -49,7 +50,7 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
               senderId: string;
               createdAt: string;
             };
-            emit({ type: "message_insert", ...m });
+            emit({ type: "message_insert", ...m, createdAt: toUtcIso(m.createdAt) });
           } else if (data.table === "Conversation") {
             const c = data.record as { id: string; buyerId: string; sellerId: string };
             emit({ type: "conversation_insert", conversationId: c.id, buyerId: c.buyerId, sellerId: c.sellerId });
@@ -75,7 +76,7 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
             });
           } else if (data.table === "Listing") {
             const l = data.record as { id: string; status: string; expiresAt: string };
-            emit({ type: "listing_status", listingId: l.id, status: l.status, expiresAt: l.expiresAt });
+            emit({ type: "listing_status", listingId: l.id, status: l.status, expiresAt: toUtcIso(l.expiresAt) });
           }
         })
         .subscribe();

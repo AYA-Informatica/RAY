@@ -3,6 +3,19 @@ export function formatPrice(amount: number): string {
   return `Rwf ${new Intl.NumberFormat("en-RW").format(Math.round(amount))}`;
 }
 
+/**
+ * Realtime payloads (Broadcast and postgres_changes) serialize `timestamp
+ * without time zone` columns without a `Z`/offset (e.g.
+ * "2026-06-13T11:51:35.913"). `new Date(...)` on a string with no timezone
+ * designator is parsed as browser-local time, not UTC — shifting the value
+ * by the browser's UTC offset. REST/Prisma responses are unaffected (Prisma
+ * serializes `Date` with a trailing `Z`). Append `Z` so realtime timestamps
+ * are parsed as UTC too.
+ */
+export function toUtcIso(ts: string): string {
+  return /[Zz]|[+-]\d\d:\d\d$/.test(ts) ? ts : `${ts}Z`;
+}
+
 /** Relative time, e.g. "2 hours ago", "3 days ago". */
 export function timeAgo(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;

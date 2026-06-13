@@ -12,7 +12,7 @@ import { usePresenceHeartbeat } from "@/hooks/usePresenceHeartbeat";
 import { createClient } from "@/lib/supabase/client";
 import { uploadImage } from "@/lib/storage/upload";
 import { cn } from "@/lib/utils/cn";
-import { isOnline, presenceLabel, formatPrice } from "@/lib/utils/format";
+import { isOnline, presenceLabel, formatPrice, toUtcIso } from "@/lib/utils/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { ThreadHeader } from "@/services/chat";
 
@@ -60,7 +60,7 @@ export function ChatThread({
         { event: "UPDATE", schema: "public", table: "User", filter: `id=eq.${thread.otherId}` },
         (payload) => {
           const u = payload.new as { lastSeenAt: string };
-          setOtherLastSeenAt(u.lastSeenAt);
+          setOtherLastSeenAt(toUtcIso(u.lastSeenAt));
         },
       )
       .subscribe();
