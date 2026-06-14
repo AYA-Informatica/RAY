@@ -30,7 +30,7 @@ export function ChatThread({
 }) {
   usePresenceHeartbeat();
   const { t } = useI18n();
-  const { messages, loading, appendOptimistic, replaceMessage, updateMessage } = useRealtimeMessages(
+  const { messages, loading, appendOptimistic, replaceMessage, removeMessage, updateMessage } = useRealtimeMessages(
     thread.conversationId,
     currentUserId,
   );
@@ -39,6 +39,7 @@ export function ChatThread({
   const [uploading, setUploading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(thread.isBlocked);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -81,6 +82,7 @@ export function ChatThread({
   }) {
     if (blocked) return;
     setSending(true);
+    setSendError(null);
     const tempId = `temp-${Date.now()}`;
     appendOptimistic({
       id: tempId,
@@ -101,7 +103,15 @@ export function ChatThread({
         body: JSON.stringify({ conversationId: thread.conversationId, ...payload }),
       });
       const json = (await res.json()) as { data?: ChatMessage };
-      if (json.data) replaceMessage(tempId, json.data);
+      if (json.data) {
+        replaceMessage(tempId, json.data);
+      } else {
+        removeMessage(tempId);
+        setSendError(t("chat.sendFailed"));
+      }
+    } catch {
+      removeMessage(tempId);
+      setSendError(t("chat.sendFailed"));
     } finally {
       setSending(false);
     }
@@ -253,9 +263,9 @@ export function ChatThread({
 
       {/* Footer: composer + privacy note */}
       <footer className="sticky bottom-0 border-t border-border bg-background">
-        {locationError && (
+        {(locationError || sendError) && (
           <p className="border-b border-border/50 px-4 py-1.5 text-center text-[11px] text-danger">
-            {locationError}
+            {locationError || sendError}
           </p>
         )}
         {/* Privacy note — persistent, matches OLX's trust layer */}

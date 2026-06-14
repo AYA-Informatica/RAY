@@ -115,10 +115,15 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
     setMessages((prev) => prev.map((x) => (x.id === tempId ? m : x)));
   }, []);
 
+  /** Drop an optimistic placeholder whose send failed. */
+  const removeMessage = useCallback((id: string) => {
+    setMessages((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   /** Patch fields on an existing message (e.g. offer status updates). */
   const updateMessage = useCallback((id: string, patch: Partial<ChatMessage>) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }, []);
 
-  return { messages, loading, appendOptimistic, replaceMessage, updateMessage, reload: load };
+  return { messages, loading, appendOptimistic, replaceMessage, removeMessage, updateMessage, reload: load };
 }

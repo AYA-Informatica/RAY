@@ -36,6 +36,7 @@ export function MessageBubble({
   onOfferRespond?: (messageId: string, status: "accepted" | "declined") => void;
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Let the mobile/browser back button close the lightbox instead of
   // navigating away from the chat. Pushes a history entry while open and
@@ -58,6 +59,27 @@ export function MessageBubble({
   function closeLightbox() {
     setLightboxOpen(false);
     if (history.state?.lightbox) history.back();
+  }
+
+  async function downloadImage(url: string) {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const ext = url.split(/[#?]/)[0]?.split(".").pop() || "jpg";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `ray-photo-${Date.now()}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(url, "_blank");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   const isOffer = message.offerAmount != null;
@@ -131,17 +153,18 @@ export function MessageBubble({
           >
             <X size={20} />
           </button>
-          <a
-            href={message.imageUrl}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void downloadImage(message.imageUrl!);
+            }}
+            disabled={downloading}
             aria-label="Download photo"
-            className="absolute left-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
+            className="absolute left-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white disabled:opacity-50"
           >
-            <Download size={20} />
-          </a>
+            {downloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+          </button>
           <div className="relative h-full w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <Image src={message.imageUrl} alt="Shared photo" fill className="object-contain" sizes="100vw" />
           </div>
