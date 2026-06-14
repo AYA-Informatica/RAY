@@ -151,60 +151,24 @@ export function ChatThread({
       return;
     }
     setLocating(true);
-
-    let settled = false;
-    let errorCount = 0;
-
-    // Belt-and-braces: some mobile browsers never call either callback if the
-    // location prompt is dismissed in certain ways. Stop the spinner either way.
-    const fallback = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      setLocating(false);
-      setLocationError(t("chat.locationUnavailable"));
-    }, 18000);
-
-    const onSuccess = (pos: GeolocationPosition) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(fallback);
-      setLocating(false);
-      void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-    };
-
-    const onError = (err: GeolocationPositionError) => {
-      if (settled) return;
-      if (err.code === err.PERMISSION_DENIED) {
-        settled = true;
-        clearTimeout(fallback);
+    // Same options used (and working) elsewhere in the app for live geolocation
+    // (RecentListings, SearchClient, EditProfileForm, SellWizard). A second
+    // concurrent getCurrentPosition call with different options was tried here
+    // but broke mobile entirely — most browsers only support one location
+    // session at a time and the second call cancels/interferes with the first.
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
         setLocating(false);
-        setLocationError(t("chat.locationDenied"));
-        return;
-      }
-      errorCount += 1;
-      if (errorCount >= 2) {
-        settled = true;
-        clearTimeout(fallback);
+        void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+      },
+      (err) => {
         setLocating(false);
-        setLocationError(t("chat.locationUnavailable"));
-      }
-    };
-
-    // Fire both a fast network/wifi lookup and a GPS lookup at once, both
-    // synchronously within this click (so neither is blocked by mobile's
-    // "must be a user gesture" check) — whichever resolves first wins. Laptops
-    // have no GPS and rely on the first; phones often need the second,
-    // especially the first time or indoors.
-    navigator.geolocation.getCurrentPosition(onSuccess, onError, {
-      enableHighAccuracy: false,
-      timeout: 12000,
-      maximumAge: 60000,
-    });
-    navigator.geolocation.getCurrentPosition(onSuccess, onError, {
-      enableHighAccuracy: true,
-      timeout: 17000,
-      maximumAge: 0,
-    });
+        setLocationError(
+          err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"),
+        );
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 },
+    );
   }
 
   async function toggleBlock() {
