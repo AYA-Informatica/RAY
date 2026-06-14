@@ -37,6 +37,7 @@ export function ChatThread({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [blocked, setBlocked] = useState(thread.isBlocked);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -125,9 +126,15 @@ export function ChatThread({
   }
 
   function shareLocation() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) =>
-      send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+    if (!navigator.geolocation || locating) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   }
 
@@ -296,10 +303,11 @@ export function ChatThread({
               </label>
               <button
                 onClick={shareLocation}
+                disabled={locating}
                 aria-label="Share location"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-pill text-text-secondary hover:text-text-primary sm:h-10 sm:w-10"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-pill text-text-secondary hover:text-text-primary disabled:opacity-50 sm:h-10 sm:w-10"
               >
-                <MapPin size={20} />
+                {locating ? <Loader2 size={20} className="animate-spin" /> : <MapPin size={20} />}
               </button>
               {/* Quick replies toggle */}
               <button
