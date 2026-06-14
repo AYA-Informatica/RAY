@@ -148,7 +148,10 @@ export function MessageBubble({
           <button
             type="button"
             aria-label="Close"
-            onClick={closeLightbox}
+            onClick={(e) => {
+              e.stopPropagation();
+              closeLightbox();
+            }}
             className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
           >
             <X size={20} />

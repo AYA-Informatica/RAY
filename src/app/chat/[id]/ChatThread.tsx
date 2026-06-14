@@ -143,13 +143,28 @@ export function ChatThread({
       setLocationError(t("chat.locationUnavailable"));
       return;
     }
+    // Geolocation is silently unavailable on insecure (non-HTTPS, non-localhost)
+    // origins on most mobile browsers — surface that immediately instead of
+    // spinning forever.
+    if (!window.isSecureContext) {
+      setLocationError(t("chat.locationInsecure"));
+      return;
+    }
     setLocating(true);
+    // Belt-and-braces: some mobile browsers never call either callback if the
+    // location prompt is dismissed in certain ways. Stop the spinner either way.
+    const fallback = setTimeout(() => {
+      setLocating(false);
+      setLocationError(t("chat.locationUnavailable"));
+    }, 12000);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        clearTimeout(fallback);
         setLocating(false);
         void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
       },
       (err) => {
+        clearTimeout(fallback);
         setLocating(false);
         setLocationError(
           err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"),
