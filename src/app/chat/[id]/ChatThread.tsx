@@ -151,31 +151,60 @@ export function ChatThread({
       return;
     }
     setLocating(true);
+
+    let settled = false;
+    let errorCount = 0;
+
     // Belt-and-braces: some mobile browsers never call either callback if the
     // location prompt is dismissed in certain ways. Stop the spinner either way.
     const fallback = setTimeout(() => {
+      if (settled) return;
+      settled = true;
       setLocating(false);
       setLocationError(t("chat.locationUnavailable"));
-    }, 16000);
-    // A single call, made synchronously in this click handler so it counts as
-    // "in response to a user gesture" on mobile. GPS (enableHighAccuracy: true)
-    // is used directly since network/wifi positioning has been unreliable on
-    // some devices (returns POSITION_UNAVAILABLE).
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    }, 18000);
+
+    const onSuccess = (pos: GeolocationPosition) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(fallback);
+      setLocating(false);
+      void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+    };
+
+    const onError = (err: GeolocationPositionError) => {
+      if (settled) return;
+      if (err.code === err.PERMISSION_DENIED) {
+        settled = true;
         clearTimeout(fallback);
         setLocating(false);
-        void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-      },
-      (err) => {
+        setLocationError(t("chat.locationDenied"));
+        return;
+      }
+      errorCount += 1;
+      if (errorCount >= 2) {
+        settled = true;
         clearTimeout(fallback);
         setLocating(false);
-        setLocationError(
-          err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"),
-        );
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
-    );
+        setLocationError(t("chat.locationUnavailable"));
+      }
+    };
+
+    // Fire both a fast network/wifi lookup and a GPS lookup at once, both
+    // synchronously within this click (so neither is blocked by mobile's
+    // "must be a user gesture" check) — whichever resolves first wins. Laptops
+    // have no GPS and rely on the first; phones often need the second,
+    // especially the first time or indoors.
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+      enableHighAccuracy: false,
+      timeout: 12000,
+      maximumAge: 60000,
+    });
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+      enableHighAccuracy: true,
+      timeout: 17000,
+      maximumAge: 0,
+    });
   }
 
   async function toggleBlock() {
