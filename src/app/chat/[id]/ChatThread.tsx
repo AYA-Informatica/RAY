@@ -163,9 +163,11 @@ export function ChatThread({
       },
       (err) => {
         setLocating(false);
-        setLocationError(
-          err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"),
-        );
+        const base =
+          err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable");
+        // TEMP diagnostic: show the raw browser error so we can see exactly
+        // why mobile fails (code 1=permission, 2=unavailable, 3=timeout).
+        setLocationError(`${base} [code ${err.code}: ${err.message || "no message"}]`);
       },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 },
     );
