@@ -163,13 +163,14 @@ export function ChatThread({
       },
       (err) => {
         setLocating(false);
-        const base =
-          err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable");
-        // TEMP diagnostic: show the raw browser error so we can see exactly
-        // why mobile fails (code 1=permission, 2=unavailable, 3=timeout).
-        setLocationError(`${base} [code ${err.code}: ${err.message || "no message"}]`);
+        setLocationError(
+          err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"),
+        );
       },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 },
+      // Chat location-sharing is a deliberate tap-and-wait action, so give it
+      // longer than the home feed's silent background lookup (which timed
+      // out at 10s on a cold GPS fix — code 3, "Timeout expired").
+      { enableHighAccuracy: false, timeout: 20_000, maximumAge: 5 * 60_000 },
     );
   }
 
