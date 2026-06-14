@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Check, CheckCheck, MapPin, Tag, ThumbsUp, ThumbsDown, Loader2, X, Download } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { timeAgo, formatPrice } from "@/lib/utils/format";
 
@@ -36,6 +36,30 @@ export function MessageBubble({
   onOfferRespond?: (messageId: string, status: "accepted" | "declined") => void;
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Let the mobile/browser back button close the lightbox instead of
+  // navigating away from the chat. Pushes a history entry while open and
+  // closes on popstate; closing via the X also unwinds that entry.
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    history.pushState({ lightbox: true }, "");
+    const onPopState = () => setLightboxOpen(false);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+    };
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [lightboxOpen]);
+
+  function closeLightbox() {
+    setLightboxOpen(false);
+    if (history.state?.lightbox) history.back();
+  }
+
   const isOffer = message.offerAmount != null;
 
   if (isOffer) {
@@ -97,13 +121,13 @@ export function MessageBubble({
       {lightboxOpen && message.imageUrl && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setLightboxOpen(false)}
+          onClick={closeLightbox}
         >
           <button
             type="button"
             aria-label="Close"
-            onClick={() => setLightboxOpen(false)}
-            className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
+            onClick={closeLightbox}
+            className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
           >
             <X size={20} />
           </button>
@@ -114,7 +138,7 @@ export function MessageBubble({
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             aria-label="Download photo"
-            className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
+            className="absolute left-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white"
           >
             <Download size={20} />
           </a>

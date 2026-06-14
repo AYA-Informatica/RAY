@@ -38,6 +38,7 @@ export function ChatThread({
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(thread.isBlocked);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -126,14 +127,24 @@ export function ChatThread({
   }
 
   function shareLocation() {
-    if (!navigator.geolocation || locating) return;
+    if (locating) return;
+    setLocationError(null);
+    if (!navigator.geolocation) {
+      setLocationError(t("chat.locationUnavailable"));
+      return;
+    }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
         void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
       },
-      () => setLocating(false),
+      (err) => {
+        setLocating(false);
+        setLocationError(
+          err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"),
+        );
+      },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   }
@@ -242,6 +253,11 @@ export function ChatThread({
 
       {/* Footer: composer + privacy note */}
       <footer className="sticky bottom-0 border-t border-border bg-background">
+        {locationError && (
+          <p className="border-b border-border/50 px-4 py-1.5 text-center text-[11px] text-danger">
+            {locationError}
+          </p>
+        )}
         {/* Privacy note — persistent, matches OLX's trust layer */}
         <p className="border-b border-border/50 px-4 py-1.5 text-center text-[11px] text-text-muted">
           🔒 {t("chat.privacyNote")}
