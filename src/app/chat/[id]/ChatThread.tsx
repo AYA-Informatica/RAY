@@ -151,27 +151,43 @@ export function ChatThread({
       return;
     }
     setLocating(true);
+
+    const getPosition = (options: PositionOptions) =>
+      new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, options),
+      );
+
     // Belt-and-braces: some mobile browsers never call either callback if the
     // location prompt is dismissed in certain ways. Stop the spinner either way.
     const fallback = setTimeout(() => {
       setLocating(false);
       setLocationError(t("chat.locationUnavailable"));
-    }, 12000);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    }, 25000);
+
+    void (async () => {
+      try {
+        let pos: GeolocationPosition;
+        try {
+          // Fast path: network/wifi positioning.
+          pos = await getPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 });
+        } catch (err) {
+          // Some phones (especially with "battery saving" location mode) can't
+          // resolve a network fix and report POSITION_UNAVAILABLE/TIMEOUT —
+          // retry once with GPS before giving up.
+          const e = err as GeolocationPositionError;
+          if (e.code === e.PERMISSION_DENIED) throw e;
+          pos = await getPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+        }
         clearTimeout(fallback);
         setLocating(false);
         void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-      },
-      (err) => {
+      } catch (err) {
         clearTimeout(fallback);
         setLocating(false);
-        setLocationError(
-          err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"),
-        );
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
-    );
+        const e = err as GeolocationPositionError;
+        setLocationError(e.code === e.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"));
+      }
+    })();
   }
 
   async function toggleBlock() {
