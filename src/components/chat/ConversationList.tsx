@@ -181,7 +181,7 @@ export function ConversationList({
   }
 
   return (
-    <div className={selectMode && selected.size > 0 ? "pb-16" : undefined}>
+    <div>
       {/* Search bar + select toggle — only shown when there are conversations */}
       {conversations.length > 0 && (
         <div className="flex items-center gap-2 border-b border-border px-4 py-2">
@@ -197,13 +197,23 @@ export function ConversationList({
               />
             </div>
           )}
-          <button
-            type="button"
-            onClick={toggleSelectMode}
-            className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-modal"
-          >
-            {selectMode ? t("chat.cancel") : t("chat.select")}
-          </button>
+          {selectMode && selected.size > 0 ? (
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              className="shrink-0 rounded-md bg-danger px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              {t("chat.deleteSelected")} ({selected.size})
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={toggleSelectMode}
+              className="shrink-0 rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-modal"
+            >
+              {selectMode ? t("chat.cancel") : t("chat.select")}
+            </button>
+          )}
         </div>
       )}
 
@@ -285,25 +295,6 @@ export function ConversationList({
           })
         )}
       </ul>
-
-      {selectMode && selected.size > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-10 flex items-center justify-between gap-3 border-t border-border bg-surface-card px-4 py-3">
-          <button
-            type="button"
-            onClick={toggleSelectMode}
-            className="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-surface-modal"
-          >
-            {t("chat.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={handleDeleteSelected}
-            className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            {t("chat.deleteSelected")} ({selected.size})
-          </button>
-        </div>
-      )}
     </div>
   );
 }
