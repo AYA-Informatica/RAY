@@ -40,7 +40,9 @@ export function ChatThread({
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
-  const [blocked, setBlocked] = useState(thread.isBlocked);
+  const [blockedByMe, setBlockedByMe] = useState(thread.blockedByMe);
+  const blockedByOther = thread.blockedByOther;
+  const blocked = blockedByMe || blockedByOther;
   const [menuOpen, setMenuOpen] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [showOfferInput, setShowOfferInput] = useState(false);
@@ -176,12 +178,12 @@ export function ChatThread({
 
   async function toggleBlock() {
     setMenuOpen(false);
-    const next = !blocked;
-    setBlocked(next); // optimistic
+    const next = !blockedByMe;
+    setBlockedByMe(next); // optimistic
     try {
       await fetch(`/api/blocks/${thread.otherId}`, { method: next ? "POST" : "DELETE" });
     } catch {
-      setBlocked(!next); // revert
+      setBlockedByMe(!next); // revert
     }
   }
 
@@ -236,7 +238,7 @@ export function ChatThread({
                 onClick={toggleBlock}
                 className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-danger hover:bg-surface-card"
               >
-                <Ban size={16} /> {blocked ? t("chat.unblock") : t("chat.block")}
+                <Ban size={16} /> {blockedByMe ? t("chat.unblock") : t("chat.block")}
               </button>
             </div>
           )}
@@ -289,10 +291,14 @@ export function ChatThread({
         </p>
         {blocked ? (
           <div className="flex items-center justify-between gap-3 p-4">
-            <p className="text-sm text-text-secondary">{t("chat.blocked")}</p>
-            <button onClick={toggleBlock} className="shrink-0 text-sm font-medium text-primary">
-              {t("chat.unblock")}
-            </button>
+            <p className="text-sm text-text-secondary">
+              {blockedByMe ? t("chat.blocked") : t("chat.blockedByOther")}
+            </p>
+            {blockedByMe && (
+              <button onClick={toggleBlock} className="shrink-0 text-sm font-medium text-primary">
+                {t("chat.unblock")}
+              </button>
+            )}
           </div>
         ) : (
           <>

@@ -96,7 +96,8 @@ export interface ThreadHeader {
   otherName: string;
   otherAvatar: string | null;
   otherLastSeenAt: string;
-  isBlocked: boolean;
+  blockedByMe: boolean;
+  blockedByOther: boolean;
 }
 
 /**
@@ -119,15 +120,17 @@ export async function getThread(
   if (c.buyerId !== userId && c.sellerId !== userId) return null;
   const other = c.buyerId === userId ? c.seller : c.buyer;
 
-  const block = await prisma.block.findFirst({
+  const blocks = await prisma.block.findMany({
     where: {
       OR: [
         { blockerId: userId, blockedId: other.id },
         { blockerId: other.id, blockedId: userId },
       ],
     },
-    select: { id: true },
+    select: { blockerId: true },
   });
+  const blockedByMe = blocks.some((b) => b.blockerId === userId);
+  const blockedByOther = blocks.some((b) => b.blockerId === other.id);
 
   return {
     conversationId: c.id,
@@ -141,7 +144,8 @@ export async function getThread(
     otherAvatar: other.avatarUrl,
     otherLastSeenAt:
       other.lastSeenAt instanceof Date ? other.lastSeenAt.toISOString() : String(other.lastSeenAt),
-    isBlocked: Boolean(block),
+    blockedByMe,
+    blockedByOther,
   };
 }
 
