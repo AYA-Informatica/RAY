@@ -41,14 +41,14 @@ export function AnnouncementEditor() {
       <h2 className="font-display text-lg font-bold">Platform Announcement</h2>
 
       {/* Toggle */}
-      <label className="flex cursor-pointer items-center gap-3">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           role="switch"
           aria-checked={config.active}
           onClick={() => setConfig((c) => ({ ...c, active: !c.active }))}
-          className={`relative h-6 w-11 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-            config.active ? "bg-primary" : "bg-surface-modal border border-border"
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+            config.active ? "bg-primary" : "bg-border"
           }`}
         >
           <span
@@ -57,8 +57,13 @@ export function AnnouncementEditor() {
             }`}
           />
         </button>
-        <span className="text-sm text-text-primary">Show banner to all users</span>
-      </label>
+        <span
+          className="cursor-pointer select-none text-sm text-text-primary"
+          onClick={() => setConfig((c) => ({ ...c, active: !c.active }))}
+        >
+          Show banner to all users
+        </span>
+      </div>
 
       {/* Text area */}
       <div className="space-y-1">

@@ -69,6 +69,7 @@ export default function AdminListings() {
     return (
       !q ||
       l.title.toLowerCase().includes(q) ||
+      (l.user.name?.toLowerCase() ?? "").includes(q) ||
       l.user.email.toLowerCase().includes(q) ||
       l.status.toLowerCase().includes(q) ||
       l.category.name.toLowerCase().includes(q) ||
@@ -93,7 +94,7 @@ export default function AdminListings() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search title, email, status…"
+            placeholder="Search title, seller name, email, status…"
             className="w-full rounded-md border border-border bg-surface-card py-2 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
