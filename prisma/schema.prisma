@@ -94,6 +94,7 @@ model User {
   reports               Report[]
   blocksMade            Block[]        @relation("Blocker")
   blocksReceived        Block[]        @relation("Blocked")
+  adminActions          AdminAction[]  @relation("AdminActions")
 
   @@index([city])
   @@index([district])
@@ -178,6 +179,7 @@ model Listing {
   longitude    Float?
 
   status       ListingStatus @default(ACTIVE)
+  featured     Boolean       @default(false)
   views        Int           @default(0)
 
   expiresAt    DateTime
@@ -200,6 +202,7 @@ model Listing {
   @@index([district])
   @@index([categoryId])
   @@index([status])
+  @@index([featured])
   @@index([createdAt])
 }
 
@@ -327,4 +330,32 @@ model Report {
   @@index([listingId])
   @@index([reporterId])
   @@index([resolved])
+}
+
+// ---------------------------------------------------------------------------
+// SiteConfig — key/value store for platform-wide settings
+// ---------------------------------------------------------------------------
+
+model SiteConfig {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// AdminAction — audit log for every moderation action
+// ---------------------------------------------------------------------------
+
+model AdminAction {
+  id         String   @id @default(cuid())
+  adminId    String   @db.Uuid
+  admin      User     @relation("AdminActions", fields: [adminId], references: [id])
+  action     String
+  targetType String
+  targetId   String?
+  details    String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([createdAt(sort: Desc)])
 }

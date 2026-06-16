@@ -18,7 +18,14 @@ export async function getModerationListings() {
   const rows = await prisma.listing.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: {
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      status: true,
+      featured: true,
+      city: true,
+      createdAt: true,
       user: { select: { id: true, name: true, email: true } },
       category: { select: { name: true } },
       images: { orderBy: { order: "asc" }, take: 1 },
@@ -52,6 +59,49 @@ export async function getOpenReports() {
       listing: { select: { id: true, title: true, status: true } },
     },
   });
+}
+
+/** Category health stats — total listings, new this week, flagged count. */
+export async function getCategoryHealth() {
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const categories = await prisma.category.findMany({
+    orderBy: { order: "asc" },
+    select: {
+      id: true,
+      name: true,
+      icon: true,
+      _count: { select: { listings: true } },
+    },
+  });
+
+  const weekCounts = await prisma.$queryRaw<
+    { categoryId: string; week_count: bigint; flagged_count: bigint }[]
+  >`
+    SELECT
+      "categoryId",
+      COUNT(*) FILTER (WHERE "createdAt" >= ${oneWeekAgo}) AS week_count,
+      COUNT(*) FILTER (WHERE status = 'FLAGGED') AS flagged_count
+    FROM "Listing"
+    GROUP BY "categoryId"
+  `;
+
+  const weekMap = Object.fromEntries(
+    weekCounts.map((r) => [
+      r.categoryId,
+      { week: Number(r.week_count), flagged: Number(r.flagged_count) },
+    ]),
+  );
+
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon ?? "📦",
+    total: c._count.listings,
+    week: weekMap[c.id]?.week ?? 0,
+    flagged: weekMap[c.id]?.flagged ?? 0,
+  }));
 }
 
 /** All users for management. */

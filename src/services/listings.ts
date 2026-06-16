@@ -14,7 +14,7 @@ async function queryListings(where: object, take: number, skip: number) {
     where: { status: "ACTIVE", ...where },
     take,
     skip,
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
     include: {
       category: true,
       images: { orderBy: { order: "asc" }, take: 1 },
@@ -34,6 +34,7 @@ function toCard(l: RawListing, origin?: { lat: number; lng: number }): ListingCa
     createdAt: l.createdAt,
     status: l.status,
     views: l.views,
+    featured: l.featured,
     coverImage: l.images[0]?.url ?? null,
     category: { slug: l.category.slug, name: l.category.name, icon: l.category.icon ?? "📦" },
     distanceKm:
@@ -261,6 +262,7 @@ export async function getUserListings(userId: string, includeRemoved = false): P
     createdAt: r.createdAt,
     status: r.status,
     views: r.views,
+    featured: r.featured,
     coverImage: r.images[0]?.url ?? null,
     category: { slug: r.category.slug, name: r.category.name, icon: r.category.icon ?? "📦" },
   }));

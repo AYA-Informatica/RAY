@@ -9,19 +9,25 @@ import { getRankedRecentListings } from "@/services/listings";
 import { getFavoriteIds } from "@/services/favorites";
 import { getCurrentUser } from "@/lib/auth/session";
 import { serverT } from "@/i18n/server";
+import { prisma } from "@/lib/prisma";
 
 const PAGE_SIZE = 15;
 
 export async function HomeContent() {
   const user = await getCurrentUser();
-  const [categories, recent, favoriteIds] = await Promise.all([
+  const [categories, recent, favoriteIds, announcementRow] = await Promise.all([
     getCategories(),
     getRankedRecentListings(
       { profileLocation: user ? { city: user.city, district: user.district, neighborhood: user.neighborhood } : undefined },
       PAGE_SIZE,
     ),
     user ? getFavoriteIds(user.id) : Promise.resolve([]),
+    prisma.siteConfig.findUnique({ where: { key: "announcement" } }).catch(() => null),
   ]);
+
+  const announcement = announcementRow
+    ? (JSON.parse(announcementRow.value) as { active: boolean; text: string })
+    : null;
 
   // Show user's city if known, otherwise fall back to "Rwanda".
   const locationLabel = user?.city ?? "Rwanda";
@@ -35,6 +41,13 @@ export async function HomeContent() {
       <div className="lg:hidden">
         <LocationHeader location={locationLabel} />
       </div>
+
+      {/* Announcement banner */}
+      {announcement?.active && announcement.text && (
+        <div className="mx-4 mt-4 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-text-primary sm:mx-6">
+          {announcement.text}
+        </div>
+      )}
 
       {/* Browse Categories */}
       <section className="px-4 pt-5 sm:px-6 lg:pt-8">

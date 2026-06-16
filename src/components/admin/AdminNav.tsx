@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ListChecks, Users, Flag } from "lucide-react";
+import { LayoutDashboard, ListChecks, Users, Flag, Clock } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/admin/listings", label: "Listings",  icon: ListChecks },
   { href: "/admin/reports",  label: "Reports",   icon: Flag },
   { href: "/admin/users",    label: "Users",     icon: Users },
+  { href: "/admin/audit",    label: "Audit",     icon: Clock },
 ] as const;
 
 /** Admin tab nav with pathname-driven active state. */

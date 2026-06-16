@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils/cn";
 type AdminAction =
   | { action: "removeListing"; listingId: string }
   | { action: "restoreListing"; listingId: string }
+  | { action: "featureListing"; listingId: string }
+  | { action: "unfeatureListing"; listingId: string }
   | { action: "resolveReport"; reportId: string; outcome: "no_action" }
   | { action: "banUser"; userId: string }
   | { action: "unbanUser"; userId: string };

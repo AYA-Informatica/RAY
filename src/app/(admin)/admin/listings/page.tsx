@@ -24,6 +24,7 @@ type Listing = {
   title: string;
   price: number;
   status: string;
+  featured: boolean;
   city: string;
   createdAt: string | Date;
   user: { email: string; name: string | null };
@@ -133,6 +134,7 @@ export default function AdminListings() {
                         {l.title}
                       </Link>
                       <Badge tone={STATUS_TONE[l.status] ?? "muted"}>{l.status}</Badge>
+                      {l.featured && <Badge tone="warning">★ Featured</Badge>}
                       {l._count.reports > 0 && (
                         <Badge tone="danger">{l._count.reports} report{l._count.reports !== 1 ? "s" : ""}</Badge>
                       )}
@@ -144,6 +146,21 @@ export default function AdminListings() {
 
                   {/* Actions */}
                   <div className="flex shrink-0 items-center gap-1.5">
+                    {l.featured ? (
+                      <AdminActionButton
+                        payload={{ action: "unfeatureListing", listingId: l.id }}
+                        label="Unfeature"
+                        tone="default"
+                        onDone={(ok) => { show(ok ? "Listing unfeatured" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                      />
+                    ) : (
+                      <AdminActionButton
+                        payload={{ action: "featureListing", listingId: l.id }}
+                        label="Feature ★"
+                        tone="success"
+                        onDone={(ok) => { show(ok ? "Listing featured" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                      />
+                    )}
                     {l.status === "REMOVED" ? (
                       <AdminActionButton
                         payload={{ action: "restoreListing", listingId: l.id }}

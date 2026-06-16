@@ -1,6 +1,8 @@
 import { Users, ListChecks, Flag, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { getAdminStats } from "@/services/admin";
+import { AnnouncementEditor } from "./AnnouncementEditor";
+import { CategoryHealthTable } from "./CategoryHealthTable";
 
 /** Admin overview — key moderation/analytics-foundation counts. */
 export default async function AdminOverview() {
@@ -14,6 +16,9 @@ export default async function AdminOverview() {
   return (
     <div className="space-y-6">
       <h1 className="font-display text-2xl font-bold">Overview</h1>
+
+      <AnnouncementEditor />
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {cards.map(({ label, value, icon: Icon, tone }) => (
           <Card key={label} className="p-4">
@@ -23,6 +28,9 @@ export default async function AdminOverview() {
           </Card>
         ))}
       </div>
+
+      <CategoryHealthTable />
+
       <Card className="p-4 text-sm text-text-secondary">
         Listings publish instantly. Reports raise moderation visibility; 3+ open reports on a
         listing auto-flag it for review. Use the tabs above to moderate.

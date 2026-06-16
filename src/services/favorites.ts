@@ -34,6 +34,7 @@ export async function getFavoriteListings(userId: string): Promise<ListingCardDa
       createdAt: f.listing.createdAt,
       status: f.listing.status,
       views: f.listing.views,
+      featured: f.listing.featured,
       coverImage: f.listing.images[0]?.url ?? null,
       category: {
         slug: f.listing.category.slug,
