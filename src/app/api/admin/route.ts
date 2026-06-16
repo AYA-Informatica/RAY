@@ -30,6 +30,10 @@ export async function POST(req: NextRequest) {
     switch (body.action) {
       case "removeListing":
         await prisma.listing.update({ where: { id: body.listingId }, data: { status: "REMOVED" } });
+        await prisma.report.updateMany({
+          where: { listingId: body.listingId, resolved: false },
+          data: { resolved: true },
+        });
         console.log("[POST admin] removeListing OK listingId=", body.listingId);
         break;
       case "restoreListing":

@@ -11,10 +11,12 @@ export async function getAdminStats() {
   return { users, listings, flagged, openReports };
 }
 
+const MODERATION_PRIORITY: Record<string, number> = { FLAGGED: 0, REMOVED: 1, ACTIVE: 2, EXPIRED: 3, SOLD: 4 };
+
 /** Recent listings for moderation (flagged first), with thumbnail + reports. */
 export async function getModerationListings() {
-  return prisma.listing.findMany({
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+  const rows = await prisma.listing.findMany({
+    orderBy: { createdAt: "desc" },
     take: 100,
     include: {
       user: { select: { id: true, name: true, email: true } },
@@ -34,6 +36,9 @@ export async function getModerationListings() {
       _count: { select: { reports: true } },
     },
   });
+  return rows.sort(
+    (a, b) => (MODERATION_PRIORITY[a.status] ?? 5) - (MODERATION_PRIORITY[b.status] ?? 5),
+  );
 }
 
 /** Open reports with their target listing. */

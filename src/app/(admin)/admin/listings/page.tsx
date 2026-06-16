@@ -197,11 +197,11 @@ export default function AdminListings() {
                             onDone={(ok) => { show(ok ? "Report resolved — no action taken" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                           />
                           <AdminActionButton
-                            payload={{ action: "resolveReport", reportId: r.id, outcome: "listing_removed" }}
+                            payload={{ action: "removeListing", listingId: l.id }}
                             label="Remove & resolve"
                             tone="danger"
-                            confirm="Remove the listing and mark this report as resolved?"
-                            onDone={(ok) => { show(ok ? "Listing removed and report resolved" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                            confirm="Remove the listing and mark all open reports as resolved?"
+                            onDone={(ok) => { show(ok ? "Listing removed and reports resolved" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                           />
                         </div>
                       </div>
