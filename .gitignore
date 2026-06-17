@@ -21,6 +21,12 @@ prisma/*.db
 e2e/**/*-actual.png
 e2e/**/*-diff.png
 
+# IDE / tooling
+.vscode/
+.trunk/
+.playwright-mcp/
+verify-screenshots/
+
 # next-pwa generated service worker
 public/sw.js
 public/sw.js.map
