@@ -11,11 +11,8 @@ const inboxInclude = {
 type InboxConversation = Awaited<ReturnType<typeof prisma.conversation.findFirstOrThrow<{ include: typeof inboxInclude }>>>;
 
 /** Map a conversation (with its inbox includes) to a list preview for `userId`. */
-async function toPreview(c: InboxConversation, userId: string): Promise<ConversationPreview> {
+function toPreview(c: InboxConversation, userId: string, unread: number): ConversationPreview {
   const other = c.buyerId === userId ? c.seller : c.buyer;
-  const unread = await prisma.message.count({
-    where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
-  });
   const last = c.messages[0];
   let lastMessage: string | null = null;
   let lastMessageType: ConversationPreview["lastMessageType"] = null;
@@ -63,7 +60,21 @@ export async function getInbox(userId: string): Promise<ConversationPreview[]> {
     include: inboxInclude,
   });
 
-  return Promise.all(convos.filter((c) => !isHiddenFor(c, userId)).map((c) => toPreview(c, userId)));
+  const visible = convos.filter((c) => !isHiddenFor(c, userId));
+  if (visible.length === 0) return [];
+
+  const unreadCounts = await prisma.message.groupBy({
+    by: ["conversationId"],
+    where: {
+      conversationId: { in: visible.map((c) => c.id) },
+      isRead: false,
+      NOT: { senderId: userId },
+    },
+    _count: { id: true },
+  });
+  const unreadMap = new Map(unreadCounts.map((r) => [r.conversationId, r._count.id]));
+
+  return visible.map((c) => toPreview(c, userId, unreadMap.get(c.id) ?? 0));
 }
 
 /**
@@ -82,7 +93,10 @@ export async function getConversationPreview(
   if (!c) return null;
   if (c.buyerId !== userId && c.sellerId !== userId) return null;
   if (isHiddenFor(c, userId)) return null;
-  return toPreview(c, userId);
+  const unread = await prisma.message.count({
+    where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
+  });
+  return toPreview(c, userId, unread);
 }
 
 export interface ThreadHeader {

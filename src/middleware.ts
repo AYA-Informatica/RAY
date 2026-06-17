@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { prisma } from "@/lib/prisma";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
@@ -65,6 +66,26 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
+  }
+
+  // For protected routes, check ban status and admin role in one lightweight query.
+  if (needsAuth && user) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { isBanned: true, role: true },
+    });
+
+    if (dbUser?.isBanned) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/home";
+      return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith("/admin") && dbUser?.role !== "ADMIN" && dbUser?.role !== "MODERATOR") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/home";
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;

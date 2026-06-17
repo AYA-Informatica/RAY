@@ -14,7 +14,6 @@ export const getAuthUser = cache(async () => {
     error,
   } = await supabase.auth.getUser();
   if (error) console.error("[session] getAuthUser error:", error.message);
-  console.log("[session] getAuthUser:", user ? `uid=${user.id}` : "null");
   return user;
 });
 
@@ -25,13 +24,9 @@ export const getAuthUser = cache(async () => {
 export const getCurrentUser = cache(async (): Promise<User | null> => {
   const authUser = await getAuthUser();
   if (!authUser) return null;
-  console.log("[session] getCurrentUser: looking up prisma User for", authUser.id);
   try {
     const existing = await prisma.user.findUnique({ where: { id: authUser.id } });
-    if (existing) {
-      console.log("[session] getCurrentUser: uid=", existing.id, "email=", existing.email);
-      return existing;
-    }
+    if (existing) return existing;
     // Row missing — create it from OAuth metadata (trigger race or missing trigger).
     const meta = authUser.user_metadata ?? {};
     const user = await prisma.user.create({
@@ -42,10 +37,9 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
         avatarUrl: (meta.avatar_url ?? meta.picture ?? null) as string | null,
       },
     });
-    console.log("[session] getCurrentUser: created uid=", user.id);
     return user;
   } catch (err) {
-    console.error("[session] getCurrentUser prisma error:", err instanceof Error ? err.message : err);
+    console.error("[session] getCurrentUser error:", err instanceof Error ? err.message : err);
     throw err;
   }
 });
@@ -55,7 +49,6 @@ export async function requireUser(): Promise<User> {
   const user = await getCurrentUser();
   if (!user) throw new AuthError("Unauthorized");
   if (user.isBanned) throw new AuthError("Account suspended");
-  console.log("[session] requireUser OK: uid=", user.id);
   return user;
 }
 

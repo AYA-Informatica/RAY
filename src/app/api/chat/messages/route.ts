@@ -38,22 +38,18 @@ async function isBlockedBetween(a: string, b: string): Promise<boolean> {
 /** GET /api/chat/messages?conversationId=… — messages, marks incoming as read. */
 export async function GET(req: NextRequest) {
   const conversationId = req.nextUrl.searchParams.get("conversationId");
-  console.log("[GET chat/messages] conversationId=", conversationId);
   try {
     const user = await requireUser();
     if (!conversationId) return fail("conversationId required", 400);
 
     const participant = await assertParticipant(conversationId, user.id);
-    console.log("[GET chat/messages] participant=", !!participant);
     if (!participant) return fail("Forbidden", 403);
 
-    console.log("[GET chat/messages] fetching messages...");
     const messages = await prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: "asc" },
       take: 200,
     });
-    console.log("[GET chat/messages] fetched", messages.length, "messages");
 
     await prisma.message.updateMany({
       where: { conversationId, isRead: false, NOT: { senderId: user.id } },
@@ -63,21 +59,18 @@ export async function GET(req: NextRequest) {
     const unreadCount = await getUnreadCount(user.id);
     return ok(messages, { headers: { "X-Unread-Count": String(unreadCount) } });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[GET chat/messages] ERROR:", msg);
+    console.error("[GET chat/messages] ERROR:", err instanceof Error ? err.message : String(err));
     return handleApiError(err);
   }
 }
 
 /** POST /api/chat/messages — send a message (participant-checked, rate limited). */
 export async function POST(req: NextRequest) {
-  console.log("[POST chat/messages] start");
   try {
     const user = await requireUser();
     if (!(await checkLimit(limiters.chatSend, user.id))) return RATE_LIMITED();
 
     const data = sendMessageSchema.parse(await req.json());
-    console.log("[POST chat/messages] conversationId=", data.conversationId, "hasOffer=", data.offerAmount != null);
     const convo = await assertParticipant(data.conversationId, user.id);
     if (!convo) return fail("Forbidden", 403);
 
@@ -85,7 +78,6 @@ export async function POST(req: NextRequest) {
       return fail("You can't message this user.", 403, "BLOCKED");
     }
 
-    console.log("[POST chat/messages] creating message...");
     const [message] = await prisma.$transaction([
       prisma.message.create({
         data: {
@@ -104,12 +96,10 @@ export async function POST(req: NextRequest) {
         data: { updatedAt: new Date() },
       }),
     ]);
-    console.log("[POST chat/messages] message created id=", message.id);
 
     return ok(message, { status: 201 });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[POST chat/messages] ERROR:", msg);
+    console.error("[POST chat/messages] ERROR:", err instanceof Error ? err.message : String(err));
     return handleApiError(err);
   }
 }
@@ -129,13 +119,11 @@ export async function PATCH(req: NextRequest) {
     });
     if (!message) return fail("Message not found", 404);
 
-    // offerStatus is a new column not in the stale Prisma client — read via raw query.
     const offerRows = await prisma.$queryRaw<{ offerStatus: string | null }[]>`
       SELECT "offerStatus" FROM "Message" WHERE id = ${data.messageId}
     `;
     if (offerRows[0]?.offerStatus !== "pending") return fail("Offer already responded to", 400);
 
-    // Only the seller can respond to an offer.
     if (message.conversation.sellerId !== user.id) return fail("Forbidden", 403);
 
     await prisma.$executeRaw`

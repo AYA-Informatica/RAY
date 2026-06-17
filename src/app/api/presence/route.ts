@@ -16,13 +16,10 @@ export async function POST() {
     const authUser = await getAuthUser();
     if (!authUser) return ok({ ok: true });
 
-    console.log("[POST presence] heartbeat uid=", authUser.id);
     prisma.user.update({
       where: { id: authUser.id },
       data: { lastSeenAt: new Date() },
-    }).catch((err) => {
-      console.error("[POST presence] lastSeenAt update failed uid=", authUser.id, err instanceof Error ? err.message : err);
-    });
+    }).catch(() => {});
     const unreadCount = await getUnreadCount(authUser.id);
     return ok({ ok: true, unreadCount });
   } catch (err) {

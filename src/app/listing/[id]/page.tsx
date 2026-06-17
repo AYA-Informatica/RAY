@@ -13,6 +13,9 @@ import { getListing } from "@/services/listings";
 import { formatPrice, timeAgo } from "@/lib/utils/format";
 import { serverT } from "@/i18n/server";
 import { MapPin, Eye } from "lucide-react";
+import { FavoritesProvider } from "@/components/shared/FavoritesProvider";
+import { getAuthUser } from "@/lib/auth/session";
+import { getFavoriteIds } from "@/services/favorites";
 
 type Params = { params: { id: string } };
 
@@ -45,8 +48,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function ListingDetailPage({ params }: Params) {
-  const listing = await getListing(params.id);
+  const [listing, authUser] = await Promise.all([getListing(params.id), getAuthUser()]);
   if (!listing) notFound();
+  const favoriteIds = authUser ? await getFavoriteIds(authUser.id) : [];
 
   const isRental = listing.category.slug === "rentals";
 
@@ -67,6 +71,7 @@ export default async function ListingDetailPage({ params }: Params) {
 
   return (
     <div className="min-h-dvh bg-background pb-24 lg:pb-12">
+      <FavoritesProvider initialIds={favoriteIds} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026") }} />
       <RecordView item={{ id: listing.id, title: listing.title, price: listing.price, coverImage: listing.images[0]?.url ?? null, city: listing.city }} />
 
