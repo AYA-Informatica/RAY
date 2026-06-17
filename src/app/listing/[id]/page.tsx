@@ -35,6 +35,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       images: cover ? [{ url: cover }] : undefined,
       type: "website",
     },
+    twitter: {
+      card: "summary_large_image",
+      title: listing.title,
+      description: `${formatPrice(listing.price)} · ${listing.district}, ${listing.city}`,
+      images: cover ? [cover] : undefined,
+    },
   };
 }
 
@@ -61,7 +67,7 @@ export default async function ListingDetailPage({ params }: Params) {
 
   return (
     <div className="min-h-dvh bg-background pb-24 lg:pb-12">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026") }} />
       <RecordView item={{ id: listing.id, title: listing.title, price: listing.price, coverImage: listing.images[0]?.url ?? null, city: listing.city }} />
 
       <div className="mx-auto w-full max-w-6xl lg:px-8 lg:py-8">

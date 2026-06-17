@@ -24,7 +24,7 @@ export function ProfileMenu({ name, email, avatarUrl, activeAds, totalViews, fav
   return (
     <>
       {/* Orange header with avatar */}
-      <div className="relative bg-primary px-4 pb-12 pt-5">
+      <div className="bg-primary px-4 pb-5 pt-5">
         <div className="flex items-center justify-between text-text-primary">
           <h1 className="font-display text-2xl font-bold">{t("profile.title")}</h1>
           <Link href="/profile/settings" aria-label="Settings">
@@ -51,8 +51,8 @@ export function ProfileMenu({ name, email, avatarUrl, activeAds, totalViews, fav
         </div>
       </div>
 
-      {/* Stats card overlapping the header */}
-      <div className="-mt-8 px-4">
+      {/* Stats card */}
+      <div className="px-4 pt-4">
         <Card className="grid grid-cols-3 divide-x divide-border p-0">
           <Stat value={activeAds} label={t("profile.activeAds")} />
           <Stat value={totalViews} label={t("profile.totalViews")} />

@@ -32,57 +32,64 @@ const actionSchema = z.discriminatedUnion("action", [
 
 /** POST /api/admin — staff/admin moderation actions. Role-gated. */
 export async function POST(req: NextRequest) {
-  console.log("[POST admin] start");
   try {
     const user = await requireUser();
     requireStaff(user);
-    console.log("[POST admin] staff check passed uid=", user.id, "role=", user.role);
 
     const body = actionSchema.parse(await req.json());
-    console.log("[POST admin] action=", body.action);
 
     switch (body.action) {
-      case "removeListing":
+      case "removeListing": {
+        const listing = await prisma.listing.findUnique({ where: { id: body.listingId }, select: { title: true } });
         await prisma.listing.update({ where: { id: body.listingId }, data: { status: "REMOVED" } });
         await prisma.report.updateMany({
           where: { listingId: body.listingId, resolved: false },
           data: { resolved: true },
         });
-        await logAction(user.id, "remove_listing", "listing", body.listingId);
-        console.log("[POST admin] removeListing OK listingId=", body.listingId);
+        await logAction(user.id, "remove_listing", "listing", body.listingId, listing?.title ?? undefined);
         break;
-      case "restoreListing":
+      }
+      case "restoreListing": {
+        const listing = await prisma.listing.findUnique({ where: { id: body.listingId }, select: { title: true } });
         await prisma.listing.update({ where: { id: body.listingId }, data: { status: "ACTIVE" } });
-        await logAction(user.id, "restore_listing", "listing", body.listingId);
-        console.log("[POST admin] restoreListing OK listingId=", body.listingId);
+        await logAction(user.id, "restore_listing", "listing", body.listingId, listing?.title ?? undefined);
         break;
-      case "featureListing":
+      }
+      case "featureListing": {
+        const listing = await prisma.listing.findUnique({ where: { id: body.listingId }, select: { title: true } });
         await prisma.listing.update({ where: { id: body.listingId }, data: { featured: true } });
-        await logAction(user.id, "feature_listing", "listing", body.listingId);
-        console.log("[POST admin] featureListing OK listingId=", body.listingId);
+        await logAction(user.id, "feature_listing", "listing", body.listingId, listing?.title ?? undefined);
         break;
-      case "unfeatureListing":
+      }
+      case "unfeatureListing": {
+        const listing = await prisma.listing.findUnique({ where: { id: body.listingId }, select: { title: true } });
         await prisma.listing.update({ where: { id: body.listingId }, data: { featured: false } });
-        await logAction(user.id, "unfeature_listing", "listing", body.listingId);
-        console.log("[POST admin] unfeatureListing OK listingId=", body.listingId);
+        await logAction(user.id, "unfeature_listing", "listing", body.listingId, listing?.title ?? undefined);
         break;
-      case "resolveReport":
+      }
+      case "resolveReport": {
+        const report = await prisma.report.findUnique({
+          where: { id: body.reportId },
+          select: { listing: { select: { title: true } } },
+        });
         await prisma.report.update({ where: { id: body.reportId }, data: { resolved: true } });
-        await logAction(user.id, "resolve_report", "report", body.reportId);
-        console.log("[POST admin] resolveReport OK reportId=", body.reportId);
+        await logAction(user.id, "resolve_report", "report", body.reportId, report?.listing?.title ?? undefined);
         break;
-      case "banUser":
+      }
+      case "banUser": {
         requireAdmin(user);
+        const target = await prisma.user.findUnique({ where: { id: body.userId }, select: { name: true, email: true } });
         await prisma.user.update({ where: { id: body.userId }, data: { isBanned: true } });
-        await logAction(user.id, "ban_user", "user", body.userId);
-        console.log("[POST admin] banUser OK targetUid=", body.userId);
+        await logAction(user.id, "ban_user", "user", body.userId, target ? (target.name ?? target.email) : undefined);
         break;
-      case "unbanUser":
+      }
+      case "unbanUser": {
         requireAdmin(user);
+        const target = await prisma.user.findUnique({ where: { id: body.userId }, select: { name: true, email: true } });
         await prisma.user.update({ where: { id: body.userId }, data: { isBanned: false } });
-        await logAction(user.id, "unban_user", "user", body.userId);
-        console.log("[POST admin] unbanUser OK targetUid=", body.userId);
+        await logAction(user.id, "unban_user", "user", body.userId, target ? (target.name ?? target.email) : undefined);
         break;
+      }
       default:
         return fail("Unknown action", 400);
     }
@@ -90,7 +97,6 @@ export async function POST(req: NextRequest) {
     logger.info({ by: user.id, action: body.action }, "Moderation action");
     return ok({ done: true });
   } catch (err) {
-    console.error("[POST admin] ERROR:", err instanceof Error ? err.message : err);
     return handleApiError(err);
   }
 }

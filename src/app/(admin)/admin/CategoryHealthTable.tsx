@@ -54,7 +54,13 @@ export function CategoryHealthTable() {
                     </span>
                   </td>
                   <td className="py-2 text-right font-medium">{row.total}</td>
-                  <td className="py-2 text-right text-success">+{row.week}</td>
+                  <td className="py-2 text-right">
+                    {row.week > 0 ? (
+                      <span className="text-success">+{row.week}</span>
+                    ) : (
+                      <span className="text-text-muted">—</span>
+                    )}
+                  </td>
                   <td className="py-2 text-right">
                     {row.flagged > 0 ? (
                       <span className="font-medium text-danger">{row.flagged}</span>

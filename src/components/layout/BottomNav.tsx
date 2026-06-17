@@ -28,7 +28,7 @@ export function BottomNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
   const liveUnread = useUnreadMessages((s) => s.count);
   const unread = liveUnread ?? unreadMessages;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-primary mouse-lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface-card mouse-lg:hidden">
       <ul className="mx-auto flex max-w-md items-center justify-around px-2 py-2">
         {ITEMS.map(({ href, labelKey, icon: Icon, center }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
@@ -37,13 +37,16 @@ export function BottomNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
             <li key={href}>
               <Link
                 href={href}
-                className="flex flex-col items-center gap-0.5 px-2 text-text-primary"
+                className={cn(
+                  "flex flex-col items-center gap-0.5 px-2 transition-colors",
+                  active ? "text-primary" : "text-text-secondary",
+                )}
                 aria-current={active ? "page" : undefined}
               >
                 <span className={cn(
                   "relative flex items-center justify-center transition-colors",
-                  center && "rounded-pill ring-2 ring-text-primary p-0.5",
-                  active && !center && "rounded-full bg-white/25 px-2.5 py-1",
+                  center && "rounded-pill ring-2 ring-primary p-0.5",
+                  active && !center && "rounded-full bg-primary/15 px-2.5 py-1",
                 )}>
                   <Icon size={center ? 24 : 22} strokeWidth={active ? 2.6 : 2} />
                   {badge > 0 && (
@@ -52,7 +55,7 @@ export function BottomNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
                     </span>
                   )}
                 </span>
-                <span className={cn("text-[10px]", active ? "font-bold" : "font-medium opacity-90")}>
+                <span className={cn("text-[10px]", active ? "font-bold" : "font-medium")}>
                   {t(labelKey)}
                 </span>
               </Link>

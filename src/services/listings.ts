@@ -214,22 +214,21 @@ const listingDetailInclude = {
 export const getListing = cache(async (id: string): Promise<ListingDetailData | null> => {
   try {
     const authUser = await getAuthUser();
-    const owner = await prisma.listing.findUnique({ where: { id }, select: { userId: true } });
-    if (!owner) return null;
 
-    const l =
-      authUser?.id === owner.userId
-        ? await prisma.listing.findUniqueOrThrow({ where: { id }, include: listingDetailInclude })
-        : await prisma.listing.update({
-            where: { id },
-            data: { views: { increment: 1 } },
-            include: listingDetailInclude,
-          });
+    // Single fetch — then run view increment + seller stats in one parallel batch.
+    const l = await prisma.listing.findUnique({ where: { id }, include: listingDetailInclude });
+    if (!l) return null;
 
+    const isOwner = authUser?.id === l.userId;
     const [listingsCount, responseTimeMins] = await Promise.all([
       prisma.listing.count({ where: { userId: l.userId, status: "ACTIVE" } }),
       getSellerResponseTime(l.userId),
+      // View increment runs in the same batch — only for non-owners.
+      isOwner
+        ? Promise.resolve(null)
+        : prisma.listing.update({ where: { id }, data: { views: { increment: 1 } }, select: { id: true } }),
     ]);
+
     return { ...l, user: { ...l.user, listingsCount, responseTimeMins } };
   } catch (err) {
     // P2025 = record not found — valid 404, not a bug

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { LocationHeader } from "@/components/layout/LocationHeader";
+import { CategoryBrowser } from "@/components/home/CategoryBrowser";
 import { RecentListings } from "@/components/listings/RecentListings";
 import { RecentlyViewed } from "@/components/listings/RecentlyViewed";
 import { FavoritesProvider } from "@/components/shared/FavoritesProvider";
@@ -50,25 +51,7 @@ export async function HomeContent() {
       )}
 
       {/* Browse Categories */}
-      <section className="px-4 pt-5 sm:px-6 lg:pt-8">
-        <h2 className="mb-3 font-display text-lg font-bold lg:text-xl">{serverT("home.browseCategories")}</h2>
-        <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
-          {categories.map((c) => (
-            <Link
-              key={c.id}
-              href={`/search?category=${c.slug}`}
-              className="flex flex-col items-center gap-1.5 rounded-xl p-1 transition-colors hover:bg-surface-card/60 active:scale-95"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-card text-2xl">
-                {c.icon}
-              </span>
-              <span className="text-center text-[10px] font-medium leading-tight text-text-secondary">
-                {c.name}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <CategoryBrowser categories={categories} title={serverT("home.browseCategories")} />
 
       {/* Recently Viewed — localStorage-backed, only shows after a listing visit */}
       <RecentlyViewed />

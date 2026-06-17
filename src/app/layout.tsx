@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   applicationName: "RAY",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "RAY" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
   openGraph: {
     type: "website",
     siteName: "RAY",

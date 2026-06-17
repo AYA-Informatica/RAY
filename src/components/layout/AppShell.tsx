@@ -2,9 +2,11 @@ import { BottomNav } from "./BottomNav";
 import { TopNav } from "./TopNav";
 import { PresenceHeartbeat } from "@/components/shared/PresenceHeartbeat";
 import { UnreadMessagesProvider } from "@/components/shared/UnreadMessagesProvider";
+import { FavoritesProvider } from "@/components/shared/FavoritesProvider";
 import { cn } from "@/lib/utils/cn";
 import { getAuthUser } from "@/lib/auth/session";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
+import { getFavoriteIds } from "@/services/favorites";
 
 /**
  * Responsive marketplace shell.
@@ -23,7 +25,10 @@ export async function AppShell({
   width?: "wide" | "reading";
 }) {
   const authUser = await getAuthUser();
-  const unread = authUser ? await getUnreadCount(authUser.id) : 0;
+  const [unread, favoriteIds] = await Promise.all([
+    authUser ? getUnreadCount(authUser.id) : Promise.resolve(0),
+    authUser ? getFavoriteIds(authUser.id) : Promise.resolve([]),
+  ]);
 
   return (
     <div className="min-h-dvh bg-background pb-24 mouse-lg:pb-12">
@@ -36,6 +41,7 @@ export async function AppShell({
       </a>
       <PresenceHeartbeat />
       {authUser && <UnreadMessagesProvider initialCount={unread} userId={authUser.id} />}
+      {authUser && <FavoritesProvider initialIds={favoriteIds} />}
       <TopNav unreadMessages={unread} />
       <main id="main-content" className={cn("mx-auto w-full", width === "wide" ? "max-w-6xl" : "max-w-2xl")}>
         {children}

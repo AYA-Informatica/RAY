@@ -1,7 +1,6 @@
 import { formatPrice } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 
-/** Brand-orange price, the loudest element on a card (per design psychology). */
 export function PriceTag({
   amount,
   suffix,
@@ -15,9 +14,9 @@ export function PriceTag({
 }) {
   const sizes = { sm: "text-base", md: "text-xl", lg: "text-3xl" } as const;
   return (
-    <p className={cn("font-display font-bold text-primary", sizes[size], className)}>
+    <p className={cn("font-display font-bold text-text-primary", sizes[size], className)}>
       {formatPrice(amount)}
-      {suffix && <span className="text-text-secondary">{suffix}</span>}
+      {suffix && <span className="font-normal text-text-secondary">{suffix}</span>}
     </p>
   );
 }

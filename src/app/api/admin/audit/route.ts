@@ -12,7 +12,7 @@ export async function GET() {
     requireStaff(user);
     const actions = await prisma.adminAction.findMany({
       orderBy: { createdAt: "desc" },
-      take: 100,
+      take: 500,
       include: {
         admin: { select: { name: true, email: true, avatarUrl: true } },
       },

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Search } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -28,6 +28,7 @@ async function fetchReports(): Promise<Report[]> {
 
 export default function AdminReports() {
   const [reports, setReports] = useState<Report[]>([]);
+  const [query, setQuery] = useState("");
   const [, startTransition] = useTransition();
   const { toasts, show } = useToast();
 
@@ -36,6 +37,18 @@ export default function AdminReports() {
       void fetchReports().then(setReports);
     });
   }, []);
+
+  const filtered = reports.filter((r) => {
+    const q = query.toLowerCase();
+    return (
+      !q ||
+      r.reason.toLowerCase().includes(q) ||
+      (r.listing?.title.toLowerCase() ?? "").includes(q) ||
+      (r.reporter.name?.toLowerCase() ?? "").includes(q) ||
+      r.reporter.email.toLowerCase().includes(q) ||
+      (r.details?.toLowerCase() ?? "").includes(q)
+    );
+  });
 
   function refresh() {
     startTransition(() => {
@@ -46,17 +59,38 @@ export default function AdminReports() {
   return (
     <div className="space-y-4">
       <ToastStack toasts={toasts} />
-      <h1 className="font-display text-2xl font-bold">Reports</h1>
 
-      {reports.length === 0 ? (
-        <EmptyState
-          icon={<ShieldCheck size={32} />}
-          title="No open reports"
-          description="The queue is clear."
-        />
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-display text-2xl font-bold">
+          Reports
+          {reports.length > 0 && (
+            <span className="ml-2 text-base font-normal text-text-secondary">({reports.length})</span>
+          )}
+        </h1>
+        <div className="relative max-w-xs flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search listing, reporter, reason…"
+            className="w-full rounded-md border border-border bg-surface-card py-2 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        reports.length === 0 ? (
+          <EmptyState
+            icon={<ShieldCheck size={32} />}
+            title="No open reports"
+            description="The queue is clear."
+          />
+        ) : (
+          <Card className="p-6 text-sm text-text-secondary">No reports match your search.</Card>
+        )
       ) : (
         <div className="space-y-2">
-          {reports.map((r) => (
+          {filtered.map((r) => (
             <Card key={r.id} className="flex items-start gap-3 p-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

@@ -6,6 +6,8 @@ const withPWA = require("next-pwa")({
   skipWaiting: true,
   // Don't precache the API or Next data routes.
   buildExcludes: [/middleware-manifest\.json$/],
+  // Serve /offline when a navigation request fails (user is fully offline).
+  fallbacks: { document: "/offline" },
   runtimeCaching: [
     {
       // Listing/avatar/chat images from Supabase Storage — cache-first, capped.
@@ -40,6 +42,7 @@ const withPWA = require("next-pwa")({
       // Never cache API responses (auth, chat, search must be fresh).
       urlPattern: /\/api\/.*/i,
       handler: "NetworkOnly",
+      options: {},
     },
     {
       // HTML pages — network-first so users get fresh content, offline fallback.

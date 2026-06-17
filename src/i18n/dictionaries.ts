@@ -331,6 +331,10 @@ const en: Dict = {
   "notFound.title": "Page not found",
   "notFound.body": "This listing may have been sold, expired, or removed.",
   "notFound.back": "Back to home",
+  // Offline fallback page
+  "offline.title": "You're offline",
+  "offline.body": "Check your connection and try again.",
+  "offline.retry": "Try again",
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -626,6 +630,9 @@ const rw: Dict = {
   "notFound.title": "Paji ntiboneka",
   "notFound.body": "Iri tangazo rirashobora kuba ryagurishijwe, ryarangiye, cyangwa ryakuweho.",
   "notFound.back": "Subira mu rugo",
+  "offline.title": "Nta interineti",
+  "offline.body": "Suzuma iyunguruza ryawe hanyuma ugerageze nanone.",
+  "offline.retry": "Ongera ugerageze",
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -921,6 +928,9 @@ const fr: Dict = {
   "notFound.title": "Page introuvable",
   "notFound.body": "Cette annonce a peut-être été vendue, expirée ou supprimée.",
   "notFound.back": "Retour à l'accueil",
+  "offline.title": "Vous êtes hors ligne",
+  "offline.body": "Vérifiez votre connexion et réessayez.",
+  "offline.retry": "Réessayer",
 };
 
 // ────────────────────────────────────────────────────────────────────────────

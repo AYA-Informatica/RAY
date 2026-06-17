@@ -2,13 +2,18 @@ import { prisma } from "@/lib/prisma";
 
 /** Dashboard counts for the admin overview. */
 export async function getAdminStats() {
-  const [users, listings, flagged, openReports] = await Promise.all([
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const [users, listings, featured, flagged, openReports, newUsers] = await Promise.all([
     prisma.user.count(),
     prisma.listing.count({ where: { status: "ACTIVE" } }),
+    prisma.listing.count({ where: { featured: true } }),
     prisma.listing.count({ where: { status: "FLAGGED" } }),
     prisma.report.count({ where: { resolved: false } }),
+    prisma.user.count({ where: { createdAt: { gte: oneWeekAgo } } }),
   ]);
-  return { users, listings, flagged, openReports };
+  return { users, listings, featured, flagged, openReports, newUsers };
 }
 
 const MODERATION_PRIORITY: Record<string, number> = { FLAGGED: 0, REMOVED: 1, ACTIVE: 2, EXPIRED: 3, SOLD: 4 };
@@ -17,7 +22,7 @@ const MODERATION_PRIORITY: Record<string, number> = { FLAGGED: 0, REMOVED: 1, AC
 export async function getModerationListings() {
   const rows = await prisma.listing.findMany({
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: 500,
     select: {
       id: true,
       title: true,
@@ -53,7 +58,7 @@ export async function getOpenReports() {
   return prisma.report.findMany({
     where: { resolved: false },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: 500,
     include: {
       reporter: { select: { name: true, email: true } },
       listing: { select: { id: true, title: true, status: true } },
@@ -108,7 +113,7 @@ export async function getCategoryHealth() {
 export async function getManagedUsers() {
   return prisma.user.findMany({
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: 500,
     select: {
       id: true,
       name: true,

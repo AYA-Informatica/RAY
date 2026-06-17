@@ -8,9 +8,14 @@
  * fails to initialise in Vercel's serverless runtime environment.
  */
 export function sanitizeText(input: string): string {
+  // 1st pass: strip raw tags
+  // 2nd: decode common HTML entities so the 3rd pass can catch tags that
+  //      arrived encoded (e.g. &lt;script&gt; → <script> → stripped)
+  // 3rd pass: strip any tags that survived encoding
   return input
-    .replace(/<[^>]*>/g, "") // strip any <tag> or </tag>
-    .replace(/&lt;/gi, "<") // decode encoded lt (then stripped on re-pass if needed)
+    .replace(/<[^>]*>/g, "")
+    .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&amp;/gi, "&")
+    .replace(/<[^>]*>/g, "")
     .trim();
 }
 

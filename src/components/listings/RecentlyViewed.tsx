@@ -42,7 +42,7 @@ export function RecentlyViewed() {
             </div>
             <div className="p-2">
               <p className="line-clamp-1 text-xs text-text-primary">{item.title}</p>
-              <p className="mt-0.5 font-display text-sm font-bold text-primary">
+              <p className="mt-0.5 font-display text-sm font-bold text-text-primary">
                 {formatPrice(item.price)}
               </p>
               <p className="truncate text-[10px] text-text-muted">{item.city}</p>

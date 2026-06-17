@@ -17,6 +17,14 @@
   body {
     @apply bg-background text-text-primary font-sans antialiased;
     overscroll-behavior-y: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Re-enable text selection for all input surfaces. */
+  input, textarea, [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
   }
 
   h1, h2, h3, h4, .font-display {
