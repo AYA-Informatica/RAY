@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { AppShell } from "@/components/layout/AppShell";
 import { LocationHeader } from "@/components/layout/LocationHeader";
 import { CategoryBrowser } from "@/components/home/CategoryBrowser";
@@ -12,23 +13,29 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { serverT } from "@/i18n/server";
 import { prisma } from "@/lib/prisma";
 
+const getAnnouncement = unstable_cache(
+  async () => {
+    const row = await prisma.siteConfig.findUnique({ where: { key: "announcement" } }).catch(() => null);
+    if (!row) return null;
+    return JSON.parse(row.value) as { active: boolean; text: string };
+  },
+  ["announcement"],
+  { revalidate: 300 },
+);
+
 const PAGE_SIZE = 15;
 
 export async function HomeContent() {
   const user = await getCurrentUser();
-  const [categories, recent, favoriteIds, announcementRow] = await Promise.all([
+  const [categories, recent, favoriteIds, announcement] = await Promise.all([
     getCategories(),
     getRankedRecentListings(
       { profileLocation: user ? { city: user.city, district: user.district, neighborhood: user.neighborhood } : undefined },
       PAGE_SIZE,
     ),
     user ? getFavoriteIds(user.id) : Promise.resolve([]),
-    prisma.siteConfig.findUnique({ where: { key: "announcement" } }).catch(() => null),
+    getAnnouncement(),
   ]);
-
-  const announcement = announcementRow
-    ? (JSON.parse(announcementRow.value) as { active: boolean; text: string })
-    : null;
 
   // Show user's city if known, otherwise fall back to "Rwanda".
   const locationLabel = user?.city ?? "Rwanda";
