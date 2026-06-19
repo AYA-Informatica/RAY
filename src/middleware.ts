@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { prisma } from "@/lib/prisma";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
@@ -8,6 +7,10 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
  * Refreshes the Supabase session cookie on every request and gates the
  * protected route groups. Public browsing is allowed; posting / chat /
  * favorites / profile / admin require a session.
+ *
+ * Ban check and admin role check are enforced in the server components /
+ * API layer (requireUser, requireStaff) — not here, because middleware
+ * runs on Edge Runtime where Prisma is unavailable.
  */
 const PROTECTED_PREFIXES = ["/sell", "/chat", "/favorites", "/profile", "/admin"];
 
@@ -66,26 +69,6 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
-  }
-
-  // For protected routes, check ban status and admin role in one lightweight query.
-  if (needsAuth && user) {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { isBanned: true, role: true },
-    });
-
-    if (dbUser?.isBanned) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/home";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/admin") && dbUser?.role !== "ADMIN" && dbUser?.role !== "MODERATOR") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/home";
-      return NextResponse.redirect(url);
-    }
   }
 
   return response;
