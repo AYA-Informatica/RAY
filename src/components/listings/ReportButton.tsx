@@ -26,11 +26,16 @@ export function ReportButton({ listingId }: { listingId: string }) {
   async function submit() {
     setStatus("sending");
     try {
-      await fetch("/api/reports", {
+      const res = await fetch("/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason, details, listingId }),
       });
+      if (res.status === 401) {
+        window.location.href = `/login?redirect=/listing/${listingId}`;
+        return;
+      }
+      if (!res.ok) throw new Error("Report failed");
       setStatus("done");
     } catch {
       setStatus("idle");

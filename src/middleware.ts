@@ -8,19 +8,25 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
  * protected route groups. Public browsing is allowed; posting / chat /
  * favorites / profile / admin require a session.
  *
- * Ban check and admin role check are enforced in the server components /
- * API layer (requireUser, requireStaff) — not here, because middleware
- * runs on Edge Runtime where Prisma is unavailable.
+ * IMPORTANT: This runs on Edge Runtime. Never import Prisma, Node-only
+ * modules, or anything that requires the Node.js runtime here.
+ *
+ * The entire body is wrapped in try/catch so a Supabase timeout or
+ * transient network error returns a pass-through instead of a 500.
+ * Auth is enforced again at the API/server-component layer, so letting
+ * a request through on middleware failure is safe.
  */
 const PROTECTED_PREFIXES = ["/sell", "/chat", "/favorites", "/profile", "/admin"];
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  try {
+    let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return response;
+
+    const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -33,45 +39,45 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
-    },
-  );
+    });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
+    const { pathname } = request.nextUrl;
 
-  // Returning visitors who hit "/" go straight to /home — skips the splash entirely.
-  if (pathname === "/" && request.cookies.get("ray_visited")?.value === "1") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/home";
-    return NextResponse.redirect(url);
+    if (pathname === "/" && request.cookies.get("ray_visited")?.value === "1") {
+      const rUrl = request.nextUrl.clone();
+      rUrl.pathname = "/home";
+      return NextResponse.redirect(rUrl);
+    }
+
+    if (pathname === "/login" && user) {
+      const rUrl = request.nextUrl.clone();
+      const raw = request.nextUrl.searchParams.get("redirect") ?? "/home";
+      const safe =
+        raw.startsWith("/") && !raw.startsWith("//") && !raw.includes(":") && raw !== "/login"
+          ? raw
+          : "/home";
+      rUrl.pathname = safe;
+      rUrl.search = "";
+      return NextResponse.redirect(rUrl);
+    }
+
+    const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+
+    if (needsAuth && !user) {
+      const rUrl = request.nextUrl.clone();
+      rUrl.pathname = "/login";
+      rUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(rUrl);
+    }
+
+    return response;
+  } catch {
+    return NextResponse.next();
   }
-
-  // Already authenticated — kick them out of /login back to where they wanted to go.
-  if (pathname === "/login" && user) {
-    const url = request.nextUrl.clone();
-    const raw = request.nextUrl.searchParams.get("redirect") ?? "/home";
-    const safe =
-      raw.startsWith("/") && !raw.startsWith("//") && !raw.includes(":") && raw !== "/login"
-        ? raw
-        : "/home";
-    url.pathname = safe;
-    url.search = "";
-    return NextResponse.redirect(url);
-  }
-
-  const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-
-  if (needsAuth && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
-  }
-
-  return response;
 }
 
 export const config = {

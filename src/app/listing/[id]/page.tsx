@@ -53,6 +53,7 @@ export default async function ListingDetailPage({ params }: Params) {
   const favoriteIds = authUser ? await getFavoriteIds(authUser.id) : [];
 
   const isRental = listing.category.slug === "rentals";
+  const isOwner = authUser?.id === listing.userId;
 
   // Structured data for rich search results.
   const jsonLd = {
@@ -149,15 +150,19 @@ export default async function ListingDetailPage({ params }: Params) {
             </div>
 
             {/* Desktop: in-flow CTA (mobile uses the sticky bar below) */}
-            <div className="hidden lg:block">
-              <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? "the seller"} inline />
-            </div>
+            {!isOwner && (
+              <div className="hidden lg:block">
+                <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? "the seller"} inline />
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Mobile/tablet sticky chat CTA */}
-      <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? "the seller"} />
+      {!isOwner && (
+        <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? "the seller"} />
+      )}
     </div>
   );
 }

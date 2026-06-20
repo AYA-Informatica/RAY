@@ -142,7 +142,7 @@
 - Presence heartbeat should update every 60 seconds
 - Offer cards should show Accept/Decline buttons to seller only
 
-> ⚠️ **Known gap**: `shareLocation()` in `ChatThread.tsx` calls `navigator.geolocation.getCurrentPosition(success)` with no error callback. If the user denies the location permission (or it's unavailable), clicking "Share location" silently does nothing — no error message or fallback UI.
+> ✅ **Resolved**: `shareLocation()` in `ChatThread.tsx` now has a proper error callback — shows `t("chat.locationDenied")` if permission denied, `t("chat.locationUnavailable")` for other failures, and checks `window.isSecureContext` upfront.
 
 ---
 

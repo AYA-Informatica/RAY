@@ -35,7 +35,11 @@ export function ChatCtaBar({
         return;
       }
       const json = (await res.json()) as { data?: { id: string } };
-      if (json.data?.id) router.push(`/chat/${json.data.id}`);
+      if (json.data?.id) {
+        router.push(`/chat/${json.data.id}`);
+        return;
+      }
+      setLoading(false);
     } catch {
       setLoading(false);
     }
