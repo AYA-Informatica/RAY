@@ -6,7 +6,7 @@ import { translate, type Locale } from "./dictionaries";
 interface I18nContextValue {
   locale: Locale;
   setLocale: (l: Locale) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string>) => string;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -30,11 +30,11 @@ export function I18nProvider({
     if (typeof document !== "undefined") {
       document.documentElement.lang = l;
       // 1-year cookie; read by the server layout for SSR on next load.
-      document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
+      document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax; secure`;
     }
   }, []);
 
-  const t = useCallback((key: string) => translate(locale, key), [locale]);
+  const t = useCallback((key: string, params?: Record<string, string>) => translate(locale, key, params), [locale]);
 
   const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);
 

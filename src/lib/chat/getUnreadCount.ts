@@ -10,7 +10,8 @@ export async function getUnreadCount(userId: string): Promise<number> {
         conversation: { OR: [{ buyerId: userId }, { sellerId: userId }] },
       },
     });
-  } catch {
+  } catch (err) {
+    console.error("[getUnreadCount] failed uid=", userId, err instanceof Error ? err.message : err);
     return 0;
   }
 }

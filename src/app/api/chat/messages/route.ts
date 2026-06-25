@@ -119,16 +119,13 @@ export async function PATCH(req: NextRequest) {
     });
     if (!message) return fail("Message not found", 404);
 
-    const offerRows = await prisma.$queryRaw<{ offerStatus: string | null }[]>`
-      SELECT "offerStatus" FROM "Message" WHERE id = ${data.messageId}
-    `;
-    if (offerRows[0]?.offerStatus !== "pending") return fail("Offer already responded to", 400);
-
     if (message.conversation.sellerId !== user.id) return fail("Forbidden", 403);
 
-    await prisma.$executeRaw`
-      UPDATE "Message" SET "offerStatus" = ${data.status} WHERE id = ${data.messageId}
+    const result = await prisma.$executeRaw`
+      UPDATE "Message" SET "offerStatus" = ${data.status}
+      WHERE id = ${data.messageId} AND "offerStatus" = 'pending'
     `;
+    if (result === 0) return fail("Offer already responded to", 400);
     return ok({ id: data.messageId, offerStatus: data.status });
   } catch (err) {
     return handleApiError(err);

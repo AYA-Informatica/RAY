@@ -31,7 +31,7 @@ export function LoginForm() {
       });
       if (error) throw error;
     } catch {
-      setError("Could not start sign-in. Please try again.");
+      setError(t("auth.signInError"));
       setLoading(false);
     }
   }

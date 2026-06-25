@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin } from "lucide-react";
@@ -5,11 +7,13 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "./PriceTag";
 import { FavoriteButton } from "./FavoriteButton";
+import { useI18n } from "@/i18n/I18nProvider";
 import { timeAgo, formatDistance } from "@/lib/utils/format";
 import type { ListingCardData } from "@/types";
 
 /** Grid card used on Home (search results) and the search page. */
 export function ListingCard({ listing, priority, index = 0 }: { listing: ListingCardData; priority?: boolean; index?: number }) {
+  const { t } = useI18n();
   const isRental = listing.category.slug === "rentals";
   return (
     <Link
@@ -36,7 +40,7 @@ export function ListingCard({ listing, priority, index = 0 }: { listing: Listing
           )}
           {listing.featured && (
             <Badge tone="primary" className="absolute left-2 top-2 bg-primary text-text-primary">
-              Featured
+              {t("common.featured")}
             </Badge>
           )}
           <FavoriteButton listingId={listing.id} className="absolute right-2 top-2" />

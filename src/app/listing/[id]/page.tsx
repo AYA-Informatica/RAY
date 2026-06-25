@@ -152,7 +152,7 @@ export default async function ListingDetailPage({ params }: Params) {
             {/* Desktop: in-flow CTA (mobile uses the sticky bar below) */}
             {!isOwner && (
               <div className="hidden lg:block">
-                <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? "the seller"} inline />
+                <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? serverT("common.theSeller")} inline />
               </div>
             )}
           </div>
@@ -161,7 +161,7 @@ export default async function ListingDetailPage({ params }: Params) {
 
       {/* Mobile/tablet sticky chat CTA */}
       {!isOwner && (
-        <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? "the seller"} />
+        <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? serverT("common.theSeller")} />
       )}
     </div>
   );

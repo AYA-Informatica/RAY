@@ -31,6 +31,27 @@ const en: Dict = {
   "common.loading": "Loading…",
   "common.seeAll": "See all",
   "common.negotiable": "Negotiable",
+  "common.error": "Something went wrong. Please try again.",
+  "common.featured": "Featured",
+  "common.theSeller": "the seller",
+  "auth.signInError": "Could not start sign-in. Please try again.",
+  "report.reasonSpam": "Spam",
+  "report.reasonFake": "Fake listing",
+  "report.reasonStolen": "Stolen item",
+  "report.reasonScam": "Scam",
+  "report.reasonHarassment": "Harassment",
+  "report.reasonInappropriate": "Inappropriate",
+  "chat.sharedLocation": "Shared location",
+  "chat.sharedPhoto": "Shared photo",
+  "search.all": "All",
+  "search.filterWithin": "Within",
+  "sell.noSpecsNeeded": "No extra details needed — you're almost done.",
+  "sell.repost": "Repost",
+  "sell.reposting": "Reposting…",
+  "location.allowTitle": "Use your location",
+  "location.allowBody": "We'll use your location to show your listing to nearby buyers. Only your city and district will appear publicly — your exact position is never stored or shared.",
+  "location.allow": "Allow location",
+  "location.notNow": "Not now",
   // Splash / auth
   "splash.tagline": "Buy & Sell Anything Near You",
   "splash.getStarted": "Get Started",
@@ -390,6 +411,27 @@ const rw: Dict = {
   "common.loading": "Gutegereza…",
   "common.seeAll": "Reba yose",
   "common.negotiable": "Igiciro cyibazwaho",
+  "common.error": "Hari ikintu kitagenze neza. Ongera ugerageze.",
+  "common.featured": "Ibyihariye",
+  "common.theSeller": "umucuruzi",
+  "auth.signInError": "Kwinjira ntibyakozwe. Ongera ugerageze.",
+  "report.reasonSpam": "Spam",
+  "report.reasonFake": "Itangazo ry'ibinyoma",
+  "report.reasonStolen": "Ikintu cyibwe",
+  "report.reasonScam": "Uburiganya",
+  "report.reasonHarassment": "Gutoteza",
+  "report.reasonInappropriate": "Ibitagendanye",
+  "chat.sharedLocation": "Aho uri hatanzwe",
+  "chat.sharedPhoto": "Ifoto yatanzwe",
+  "search.all": "Byose",
+  "search.filterWithin": "Hagati ya",
+  "sell.noSpecsNeeded": "Nta makuru yinyongera akenewe — ugiye kurangiza.",
+  "sell.repost": "Tangaza bundi bushya",
+  "sell.reposting": "Gutangaza bundi bushya…",
+  "location.allowTitle": "Koresha aho uri",
+  "location.allowBody": "Tuzakoresha aho uri kugaragaza itangazo ryawe ku baguzi bari hafi. Umujyi n'akarere byawe gusa nibigaragara — aho uri nyayo ntibigeze bibikwa.",
+  "location.allow": "Emera aho uri",
+  "location.notNow": "Ntabwo ubu",
   "splash.tagline": "Gurisha no Kugura Ikintu Cyose Hafi Yawe",
   "splash.getStarted": "Tangira",
   "auth.welcome": "Murakaza neza kuri RAY",
@@ -719,6 +761,27 @@ const fr: Dict = {
   "common.loading": "Chargement…",
   "common.seeAll": "Voir tout",
   "common.negotiable": "Négociable",
+  "common.error": "Une erreur s'est produite. Veuillez réessayer.",
+  "common.featured": "En vedette",
+  "common.theSeller": "le vendeur",
+  "auth.signInError": "Connexion impossible. Veuillez réessayer.",
+  "report.reasonSpam": "Spam",
+  "report.reasonFake": "Fausse annonce",
+  "report.reasonStolen": "Objet volé",
+  "report.reasonScam": "Arnaque",
+  "report.reasonHarassment": "Harcèlement",
+  "report.reasonInappropriate": "Inapproprié",
+  "chat.sharedLocation": "Position partagée",
+  "chat.sharedPhoto": "Photo partagée",
+  "search.all": "Tout",
+  "search.filterWithin": "Dans un rayon de",
+  "sell.noSpecsNeeded": "Pas de détails supplémentaires nécessaires — vous avez presque fini.",
+  "sell.repost": "Republier",
+  "sell.reposting": "Republication…",
+  "location.allowTitle": "Utiliser votre position",
+  "location.allowBody": "Nous utiliserons votre position pour montrer votre annonce aux acheteurs proches. Seuls votre ville et district apparaîtront — votre position exacte n'est jamais stockée.",
+  "location.allow": "Autoriser la localisation",
+  "location.notNow": "Pas maintenant",
   "splash.tagline": "Achetez et vendez n'importe quoi près de chez vous",
   "splash.getStarted": "Commencer",
   "auth.welcome": "Bienvenue sur RAY",
@@ -1034,7 +1097,14 @@ const fr: Dict = {
 // ────────────────────────────────────────────────────────────────────────────
 export const dictionaries: Record<Locale, Dict> = { en, rw, fr };
 
-/** Translate a key — falls back to English then the raw key. */
-export function translate(locale: Locale, key: string): string {
-  return dictionaries[locale][key] ?? dictionaries.en[key] ?? key;
+/** Translate a key — falls back to English then the raw key.
+ *  Supports `{name}` placeholders via optional `params`. */
+export function translate(locale: Locale, key: string, params?: Record<string, string>): string {
+  let text = dictionaries[locale][key] ?? dictionaries.en[key] ?? key;
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      text = text.replace(`{${k}}`, v);
+    }
+  }
+  return text;
 }

@@ -13,7 +13,7 @@ export async function getFavoriteIds(userId: string): Promise<string[]> {
 /** Full favorited listings as cards. */
 export async function getFavoriteListings(userId: string): Promise<ListingCardData[]> {
   const favs = await prisma.favorite.findMany({
-    where: { userId },
+    where: { userId, listing: { status: "ACTIVE" } },
     orderBy: { createdAt: "desc" },
     include: {
       listing: {
@@ -21,9 +21,7 @@ export async function getFavoriteListings(userId: string): Promise<ListingCardDa
       },
     },
   });
-  return favs
-    .filter((f) => f.listing.status === "ACTIVE")
-    .map((f) => ({
+  return favs.map((f) => ({
       id: f.listing.id,
       title: f.listing.title,
       price: f.listing.price,

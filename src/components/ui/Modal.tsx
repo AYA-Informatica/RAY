@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -10,33 +10,61 @@ export interface ModalProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
-  /** On mobile, render as a bottom sheet. */
   sheet?: boolean;
 }
 
 export function Modal({ open, onClose, title, children, sheet = true }: ModalProps) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (open) {
+      previousFocus.current = document.activeElement as HTMLElement | null;
       setMounted(true);
       requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
       document.body.style.overflow = "hidden";
     } else {
       setVisible(false);
-      const timer = setTimeout(() => setMounted(false), 200);
+      const timer = setTimeout(() => {
+        setMounted(false);
+        previousFocus.current?.focus();
+      }, 200);
       document.body.style.overflow = "";
       return () => clearTimeout(timer);
     }
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    if (!open || !mounted) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
     document.addEventListener("keydown", onKey);
+    requestAnimationFrame(() => {
+      const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea',
+      );
+      firstFocusable?.focus();
+    });
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, mounted, onClose]);
 
   if (typeof document === "undefined" || !mounted) return null;
 
@@ -47,8 +75,12 @@ export function Modal({ open, onClose, title, children, sheet = true }: ModalPro
         visible ? "opacity-100" : "opacity-0",
       )}
     >
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} aria-hidden />
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? "modal-title" : undefined}
         className={cn(
           "relative z-10 w-full max-w-md bg-surface-modal shadow-modal transition-transform duration-200 ease-out",
           sheet ? "rounded-t-xl sm:rounded-xl" : "rounded-xl",
@@ -60,18 +92,16 @@ export function Modal({ open, onClose, title, children, sheet = true }: ModalPro
               : "translate-y-4 opacity-0",
         )}
       >
-        {(title || true) && (
-          <div className="sticky top-0 flex items-center justify-between border-b border-border bg-surface-modal px-4 py-3">
-            <h3 className="font-display text-lg font-bold">{title}</h3>
-            <button
-              onClick={onClose}
-              className="rounded-pill p-1 text-text-secondary hover:bg-surface-card hover:text-text-primary"
-              aria-label="Close"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        )}
+        <div className="sticky top-0 flex items-center justify-between border-b border-border bg-surface-modal px-4 py-3">
+          <h3 id="modal-title" className="font-display text-lg font-bold">{title}</h3>
+          <button
+            onClick={onClose}
+            className="rounded-pill p-1 text-text-secondary hover:bg-surface-card hover:text-text-primary"
+            aria-label="Close"
+          >
+            <X size={20} />
+          </button>
+        </div>
         <div className="p-4">{children}</div>
       </div>
     </div>,

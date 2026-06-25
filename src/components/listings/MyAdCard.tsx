@@ -20,6 +20,7 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
   const [status, setStatus] = useState(listing.status);
   const [isDeleted, setIsDeleted] = useState(false);
   const [isReposting, setIsReposting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function setListingStatus(next: "ACTIVE" | "SOLD") {
     // Optimistic update
@@ -38,11 +39,9 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error?.message || "Failed to update status");
       }
-    } catch (error) {
-      // Revert on error
+    } catch (err) {
       setStatus(prevStatus);
-      const message = error instanceof Error ? error.message : "Failed to update listing";
-      alert(message);
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setBusy(false);
     }
@@ -61,7 +60,7 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        alert(errorData.error?.message || "Failed to repost listing");
+        setError(errorData.error?.message || t("common.error"));
         setIsReposting(false);
         setBusy(false);
         return;
@@ -73,7 +72,7 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
     } catch {
       setIsReposting(false);
       setBusy(false);
-      alert("Failed to repost listing. Please try again.");
+      setError(t("common.error"));
     }
   }
 
@@ -93,7 +92,7 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
       setIsDeleted(true);
     } catch {
       setBusy(false);
-      alert("Failed to delete listing. Please try again.");
+      setError(t("common.error"));
     }
   }
 
@@ -129,6 +128,9 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
         </div>
       </div>
 
+      {error && (
+        <p className="border-t border-danger/20 bg-danger/10 px-3 py-1.5 text-xs text-danger">{error}</p>
+      )}
       <div className="flex items-center gap-1 border-t border-border px-2 py-1.5">
         {status === "EXPIRED" || status === "REMOVED" ? (
           <button

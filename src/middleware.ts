@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
       const rUrl = request.nextUrl.clone();
       const raw = request.nextUrl.searchParams.get("redirect") ?? "/home";
       const safe =
-        raw.startsWith("/") && !raw.startsWith("//") && !raw.includes(":") && raw !== "/login"
+        raw.startsWith("/") && !raw.startsWith("//") && !raw.includes(":") && !raw.includes("%") && raw !== "/login"
           ? raw
           : "/home";
       rUrl.pathname = safe;
