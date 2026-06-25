@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import type { ListingCardData, ListingDetailData, Paginated } from "@/types";
 import { distanceKm as haversine } from "@/lib/utils/format";
 import type { SearchQuery } from "@/lib/validations/search.schema";
@@ -233,7 +234,7 @@ export const getListing = cache(async (id: string): Promise<ListingDetailData | 
   } catch (err) {
     // P2025 = record not found — valid 404, not a bug
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") return null;
-    console.error("[getListing] DB error id=", id, err instanceof Error ? err.message : err);
+    logger.error({ id, error: err instanceof Error ? err.message : String(err) }, "getListing DB error");
     throw err;
   }
 });

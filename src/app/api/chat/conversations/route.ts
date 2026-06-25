@@ -27,10 +27,11 @@ export async function POST(req: NextRequest) {
 
     const listing = await prisma.listing.findUnique({
       where: { id: listingId },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, user: { select: { isBanned: true } } },
     });
     if (!listing) return fail("Listing not found", 404);
     if (listing.userId === user.id) return fail("You can't chat on your own listing", 400);
+    if (listing.user.isBanned) return fail("This seller is no longer active", 400);
 
     const convo = await prisma.conversation.upsert({
       where: { listingId_buyerId: { listingId, buyerId: user.id } },

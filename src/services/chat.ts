@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import type { ConversationPreview } from "@/components/chat/ConversationList";
 
 const inboxInclude = {
@@ -210,7 +211,7 @@ export async function getSellerResponseTime(sellerId: string): Promise<number | 
       ? Math.round((intervals[mid - 1]! + intervals[mid]!) / 2)
       : intervals[mid]!;
   } catch (err) {
-    console.error("[getSellerResponseTime] error sellerId=", sellerId, err instanceof Error ? err.message : err);
+    logger.error({ sellerId, error: err instanceof Error ? err.message : String(err) }, "getSellerResponseTime failed");
     return undefined;
   }
 }

@@ -29,39 +29,40 @@ export async function POST(req: NextRequest) {
 
     // Repost: clone an expired/removed listing owned by this user.
     if (typeof body.repostFromId === "string") {
-      const source = await prisma.listing.findFirst({
-        where: { id: body.repostFromId, userId: user.id },
-        include: { images: { orderBy: { order: "asc" } }, attributeValues: true },
-      });
-      if (!source) return fail("Listing not found or not yours", 404);
+      const newListing = await prisma.$transaction(async (tx) => {
+        const source = await tx.listing.findFirst({
+          where: { id: body.repostFromId as string, userId: user.id },
+          include: { images: { orderBy: { order: "asc" } }, attributeValues: true },
+        });
+        if (!source) return null;
+        if (source.status === "ACTIVE") return "ALREADY_ACTIVE" as const;
 
-      if (source.status === "ACTIVE") {
-        return fail("This listing is already active", 400);
-      }
-
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-      const newListing = await prisma.listing.create({
-        data: {
-          title: source.title,
-          description: source.description,
-          price: source.price,
-          negotiable: source.negotiable,
-          condition: source.condition,
-          categoryId: source.categoryId,
-          city: source.city,
-          district: source.district,
-          neighborhood: source.neighborhood,
-          latitude: source.latitude,
-          longitude: source.longitude,
-          userId: user.id,
-          expiresAt,
-          status: "ACTIVE",
-          images: { create: source.images.map((img) => ({ url: img.url, order: img.order })) },
-          attributeValues: { create: source.attributeValues.map((av) => ({ attributeId: av.attributeId, value: av.value })) },
-        },
-        select: { id: true },
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        return tx.listing.create({
+          data: {
+            title: source.title,
+            description: source.description,
+            price: source.price,
+            negotiable: source.negotiable,
+            condition: source.condition,
+            categoryId: source.categoryId,
+            city: source.city,
+            district: source.district,
+            neighborhood: source.neighborhood,
+            latitude: source.latitude,
+            longitude: source.longitude,
+            userId: user.id,
+            expiresAt,
+            status: "ACTIVE",
+            images: { create: source.images.map((img) => ({ url: img.url, order: img.order })) },
+            attributeValues: { create: source.attributeValues.map((av) => ({ attributeId: av.attributeId, value: av.value })) },
+          },
+          select: { id: true },
+        });
       });
+      if (newListing === null) return fail("Listing not found or not yours", 404);
+      if (newListing === "ALREADY_ACTIVE") return fail("This listing is already active", 400);
       return ok(newListing, { status: 201 });
     }
 

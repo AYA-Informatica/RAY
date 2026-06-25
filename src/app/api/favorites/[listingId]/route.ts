@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
-import { ok, handleApiError } from "@/lib/utils/api";
+import { ok, fail, handleApiError } from "@/lib/utils/api";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,11 @@ type Ctx = { params: { listingId: string } };
 export async function POST(_req: NextRequest, { params }: Ctx) {
   try {
     const user = await requireUser();
+    const listing = await prisma.listing.findUnique({
+      where: { id: params.listingId },
+      select: { id: true },
+    });
+    if (!listing) return fail("Listing not found", 404);
     await prisma.favorite.upsert({
       where: { userId_listingId: { userId: user.id, listingId: params.listingId } },
       update: {},

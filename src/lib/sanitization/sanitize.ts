@@ -19,11 +19,15 @@ export function sanitizeText(input: string): string {
     .trim();
 }
 
-/** Sanitize all string fields of a plain object in-place. */
+/** Sanitize all string fields of a plain object, recursing into nested objects. */
 export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
   const out = { ...obj } as Record<string, unknown>;
   for (const [k, v] of Object.entries(out)) {
-    if (typeof v === "string") out[k] = sanitizeText(v);
+    if (typeof v === "string") {
+      out[k] = sanitizeText(v);
+    } else if (v && typeof v === "object" && !Array.isArray(v)) {
+      out[k] = sanitizeObject(v as Record<string, unknown>);
+    }
   }
   return out as T;
 }

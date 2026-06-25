@@ -8,7 +8,10 @@ export const sendMessageSchema = z
   .object({
     conversationId: z.string().min(1),
     content: z.string().trim().max(2000).optional(),
-    imageUrl: z.string().url().optional(),
+    imageUrl: z.string().url().refine(
+      (url) => url.includes(".supabase.co/storage/"),
+      { message: "Image must be hosted on Supabase Storage" },
+    ).optional(),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
     offerAmount: z.number().positive().optional(),
