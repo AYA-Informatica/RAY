@@ -7,6 +7,7 @@ import { distanceKm as haversine } from "@/lib/utils/format";
 import type { SearchQuery } from "@/lib/validations/search.schema";
 import { getSellerResponseTime } from "./chat";
 import { getAuthUser } from "@/lib/auth/session";
+import { expandSearchQuery } from "@/lib/search/aliases";
 
 type RawListing = Awaited<ReturnType<typeof queryListings>>[number];
 
@@ -129,15 +130,25 @@ export async function getRankedRecentListings(
 export async function searchListings(q: SearchQuery): Promise<Paginated<ListingCardData>> {
   const where: Record<string, unknown> = {};
   if (q.q) {
-    where.OR = [
-      { title: { contains: q.q, mode: "insensitive" } },
+    const { categorySlugs, extraTerms } = expandSearchQuery(q.q);
+    const orConditions: object[] = [
+      { title:       { contains: q.q, mode: "insensitive" } },
       { description: { contains: q.q, mode: "insensitive" } },
       { attributeValues: { some: { value: { contains: q.q, mode: "insensitive" } } } },
-      { city: { contains: q.q, mode: "insensitive" } },
-      { district: { contains: q.q, mode: "insensitive" } },
+      { city:         { contains: q.q, mode: "insensitive" } },
+      { district:     { contains: q.q, mode: "insensitive" } },
       { neighborhood: { contains: q.q, mode: "insensitive" } },
       { category: { is: { name: { contains: q.q, mode: "insensitive" } } } },
     ];
+    // Expand RW/FR queries: also search English equivalents and matched categories.
+    for (const term of extraTerms) {
+      orConditions.push({ title:       { contains: term, mode: "insensitive" } });
+      orConditions.push({ description: { contains: term, mode: "insensitive" } });
+    }
+    for (const slug of categorySlugs) {
+      orConditions.push({ category: { is: { slug: { equals: slug } } } });
+    }
+    where.OR = orConditions;
   }
   if (q.category) where.category = { slug: q.category };
   if (q.city) where.city = q.city;
