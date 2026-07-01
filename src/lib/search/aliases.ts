@@ -60,11 +60,11 @@ const MANUAL_ALIASES: Record<string, Omit<SearchExpansion, never>> = {
   serivisi:   { categorySlugs: ["services"],                                 extraTerms: ["service"] },
   imbago:     { categorySlugs: ["furniture"],                                extraTerms: ["furniture"] },
   telefone:   { categorySlugs: ["phones"],                                   extraTerms: ["phone", "smartphone"] },
-  gikoni:     { categorySlugs: ["kitchen"],                                  extraTerms: ["kitchen", "appliance"] },
-  uburemere:  { categorySlugs: ["beauty"],                                   extraTerms: ["beauty", "care"] },
+  igikoni:     { categorySlugs: ["kitchen"],                                  extraTerms: ["kitchen", "appliance"] },
+  ibyubwiza:  { categorySlugs: ["beauty"],                                   extraTerms: ["beauty", "care"] },
   abana:      { categorySlugs: ["kids"],                                     extraTerms: ["kids", "baby", "children", "toys"] },
   imashini:   { categorySlugs: ["machinery"],                                extraTerms: ["machine", "machinery", "equipment"] },
-  ikoranabuhanga: { categorySlugs: ["electronics"],                         extraTerms: ["electronics", "laptop", "tv"] },
+  elekitoronike: { categorySlugs: ["electronics"],                         extraTerms: ["electronics", "laptop", "tv"] },
 
   // ── French ───────────────────────────────────────────────────────────────
   maison:       { categorySlugs: ["residential-rentals"],  extraTerms: ["house", "home", "apartment"] },
