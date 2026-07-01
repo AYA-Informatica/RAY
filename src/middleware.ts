@@ -4,29 +4,44 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 /**
- * Refreshes the Supabase session cookie on every request and gates the
- * protected route groups. Public browsing is allowed; posting / chat /
- * favorites / profile / admin require a session.
+ * Refreshes the Supabase session cookie and gates protected routes.
  *
- * IMPORTANT: This runs on Edge Runtime. Never import Prisma, Node-only
- * modules, or anything that requires the Node.js runtime here.
+ * Key optimization: supabase.auth.getUser() is a network round-trip to
+ * Supabase. We only pay that cost when the route actually needs auth —
+ * public routes (home, listings, search) pass through with zero Supabase
+ * overhead.
  *
- * The entire body is wrapped in try/catch so a Supabase timeout or
- * transient network error returns a pass-through instead of a 500.
- * Auth is enforced again at the API/server-component layer, so letting
- * a request through on middleware failure is safe.
+ * IMPORTANT: Edge Runtime only. Never import Prisma or Node-only modules.
  */
 const PROTECTED_PREFIXES = ["/sell", "/chat", "/favorites", "/profile", "/admin"];
 
 export async function middleware(request: NextRequest) {
   try {
+    const { pathname } = request.nextUrl;
+
+    // Redirect returning visitors from landing → home feed without any auth call.
+    if (pathname === "/" && request.cookies.get("ray_visited")?.value === "1") {
+      const rUrl = request.nextUrl.clone();
+      rUrl.pathname = "/home";
+      return NextResponse.redirect(rUrl);
+    }
+
+    const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+    const isLoginPage = pathname === "/login";
+
+    // Public routes: pass through immediately — no Supabase round-trip.
+    if (!needsAuth && !isLoginPage) {
+      return NextResponse.next({ request });
+    }
+
+    // Auth-gated path: build the Supabase client and fetch the session.
     let response = NextResponse.next({ request });
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !key) return response;
 
-    const supabase = createServerClient(url, key, {
+    const supabase = createServerClient(url, key, { // NOSONAR S1874 — uses getAll/setAll (non-deprecated overload); SonarLint resolves to any and misidentifies it
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -45,15 +60,7 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { pathname } = request.nextUrl;
-
-    if (pathname === "/" && request.cookies.get("ray_visited")?.value === "1") {
-      const rUrl = request.nextUrl.clone();
-      rUrl.pathname = "/home";
-      return NextResponse.redirect(rUrl);
-    }
-
-    if (pathname === "/login" && user) {
+    if (isLoginPage && user) {
       const rUrl = request.nextUrl.clone();
       const raw = request.nextUrl.searchParams.get("redirect") ?? "/home";
       const safe =
@@ -64,8 +71,6 @@ export async function middleware(request: NextRequest) {
       rUrl.search = "";
       return NextResponse.redirect(rUrl);
     }
-
-    const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
 
     if (needsAuth && !user) {
       const rUrl = request.nextUrl.clone();
