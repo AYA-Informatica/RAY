@@ -11,6 +11,7 @@ out
 
 # local MCP server config (may contain DB credentials)
 .mcp.json
+.claude/
 .DS_Store
 prisma/*.db
 
