@@ -77,8 +77,8 @@ export function SellWizard({
   const STEP_LABELS = [
     t("sell.stepCategory"),
     t("sell.stepPhotos"),
-    t("sell.stepDetails"),
     t("sell.stepSpecs"),
+    t("sell.stepDetails"),
     t("sell.stepLocation"),
     t("sell.stepReview"),
   ];
@@ -106,6 +106,10 @@ export function SellWizard({
   // currently in free-text mode (i.e. its dropdown is set to "Other").
   const [otherValues, setOtherValues] = useState<Record<string, string>>({});
   const hasProfileLocation = Boolean(profileLocation?.city);
+  // Skip the location step entirely for returning sellers — their profile
+  // location is already pre-filled. A "Change" link on the Review step lets
+  // them override for a specific listing if needed.
+  const skipLocation = hasProfileLocation;
   const [locationMode, setLocationMode] = useState<"profile" | "manual" | "gps">(
     hasProfileLocation ? "profile" : "manual",
   );
@@ -179,22 +183,62 @@ export function SellWizard({
   const hideCondition = hasOwnCondition || isNonPhysical;
   const noPriceRequired = isNonPhysical;
 
+  // After the seller fills Specs, try to pre-populate the title field from
+  // key attribute values (Brand, Model, Year, etc.) so they don't have to
+  // retype information already captured. Never overwrites an existing title.
+  function tryAutoTitle() {
+    if (!schema || draft.title.trim().length >= 3) return;
+    const get = (key: string): string => {
+      const attr = schema.attributes.find((a) => a.key === key);
+      return attr ? (draft.attributes[attr.id] ?? "").trim() : "";
+    };
+    const parts: string[] = [];
+    const year = get("year");
+    if (year) parts.push(year);
+    const brand = get("brand");
+    if (brand) parts.push(brand);
+    const model = get("model");
+    if (model) parts.push(model);
+    if (!model) {
+      const type =
+        get("type") ||
+        get("bike_type") ||
+        get("item_type") ||
+        get("job_type") ||
+        get("service_type") ||
+        get("property_type") ||
+        get("listing_type");
+      if (type) parts.push(type);
+    }
+    const storage = get("storage");
+    if (storage) parts.push(storage);
+    const suggested = parts.join(" ").trim();
+    if (suggested) set({ title: suggested });
+  }
+
   function next() {
     setError(null);
     setDraftNotice(false);
     if (step < STEP_COUNT - 1) {
       const target = step + 1;
-      // Skip Specs step (index 3) forward when no required attributes exist.
-      if (target === 3 && skipSpecs) setStep(4);
-      else setStep(target);
+      // Specs are now step 2 — skip forward to Details (3) when no attributes exist.
+      if (target === 2 && skipSpecs) setStep(3);
+      // Location is step 4 — skip to Review (5) when profile location is pre-filled.
+      else if (target === 4 && skipLocation) setStep(5);
+      else {
+        // Auto-generate a title from specs when advancing from Specs → Details.
+        if (step === 2) tryAutoTitle();
+        setStep(target);
+      }
     }
   }
   function back() {
     setError(null);
     if (step > 0) {
       const target = step - 1;
-      // Mirror the skip when navigating backwards.
-      if (target === 3 && skipSpecs) setStep(2);
+      // Mirror the forward skips when navigating backwards.
+      if (target === 2 && skipSpecs) setStep(1);
+      else if (target === 4 && skipLocation) setStep(3);
       else setStep(target);
     } else router.replace("/home");
   }
@@ -369,14 +413,7 @@ export function SellWizard({
           ? { ok: true }
           : { ok: false, reason: t("sell.gate.addPhoto") };
       case 2: {
-        if (draft.title.trim().length < 3) return { ok: false, reason: t("sell.gate.title") };
-        if (!noPriceRequired && (draft.price === "" || Number(draft.price) < 0))
-          return { ok: false, reason: t("sell.gate.price") };
-        if (!hideCondition && draft.condition === "")
-          return { ok: false, reason: t("sell.gate.condition") };
-        return { ok: true };
-      }
-      case 3: {
+        // Specs step (now index 2) — ensure all required attributes are filled.
         const all = schema?.attributes ?? [];
         const missing = all
           .filter((a) => isAttributeVisible(a, all, draft.attributes))
@@ -384,6 +421,15 @@ export function SellWizard({
         return missing
           ? { ok: false, reason: t("sell.gate.required").replace("{field}", missing.label) }
           : { ok: true };
+      }
+      case 3: {
+        // Details step (now index 3) — title, price, and condition.
+        if (draft.title.trim().length < 3) return { ok: false, reason: t("sell.gate.title") };
+        if (!noPriceRequired && (draft.price === "" || Number(draft.price) < 0))
+          return { ok: false, reason: t("sell.gate.price") };
+        if (!hideCondition && draft.condition === "")
+          return { ok: false, reason: t("sell.gate.condition") };
+        return { ok: true };
       }
       case 4: {
         // Regardless of locationMode, draft.city/district hold whatever will
@@ -515,62 +561,8 @@ export function SellWizard({
           </div>
         )}
 
-        {/* Step 3 — Basic details */}
+        {/* Step 3 — Dynamic category specs */}
         {step === 2 && (
-          <div className="space-y-4">
-            <Input
-              label={t("sell.title")}
-              required
-              placeholder={t("sell.titlePlaceholder")}
-              value={draft.title}
-              onChange={(e) => set({ title: e.target.value })}
-            />
-            <Input
-              label={isNonPhysical ? t("sell.salary") : t("sell.price")}
-              required={!noPriceRequired}
-              type="number"
-              inputMode="numeric"
-              placeholder="0"
-              leftAddon={<span className="text-sm">Rwf</span>}
-              value={draft.price}
-              onChange={(e) => set({ price: e.target.value })}
-            />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={draft.negotiable}
-                onChange={(e) => set({ negotiable: e.target.checked })}
-                className="accent-[#E8390E]"
-              />
-              {t("sell.priceNegotiable")}
-            </label>
-            {!hideCondition && (
-              <Select
-                label={t("sell.condition")}
-                required
-                placeholder={t("sell.conditionPlaceholder")}
-                options={CONDITIONS}
-                value={draft.condition}
-                onChange={(e) => set({ condition: e.target.value as typeof draft.condition })}
-              />
-            )}
-            <div className="space-y-1">
-              <Textarea
-                label={t("sell.descriptionLabel")}
-                placeholder={t("sell.descriptionPlaceholder")}
-                value={draft.description}
-                maxLength={500}
-                onChange={(e) => set({ description: e.target.value })}
-              />
-              <p className={cn("text-right text-xs", draft.description.length > 450 ? "text-warning" : "text-text-muted")}>
-                {draft.description.length} / 500
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4 — Dynamic category specs */}
-        {step === 3 && (
           <div className="space-y-4">
             {!schema || schema.attributes.length === 0 ? (
               <p className="text-sm text-text-secondary">{t("sell.noSpecsNeeded")}</p>
@@ -664,6 +656,60 @@ export function SellWizard({
                   );
                 })
             )}
+          </div>
+        )}
+
+        {/* Step 4 — Basic details */}
+        {step === 3 && (
+          <div className="space-y-4">
+            <Input
+              label={t("sell.title")}
+              required
+              placeholder={t("sell.titlePlaceholder")}
+              value={draft.title}
+              onChange={(e) => set({ title: e.target.value })}
+            />
+            <Input
+              label={isNonPhysical ? t("sell.salary") : t("sell.price")}
+              required={!noPriceRequired}
+              type="number"
+              inputMode="numeric"
+              placeholder="0"
+              leftAddon={<span className="text-sm">Rwf</span>}
+              value={draft.price}
+              onChange={(e) => set({ price: e.target.value })}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={draft.negotiable}
+                onChange={(e) => set({ negotiable: e.target.checked })}
+                className="accent-[#E8390E]"
+              />
+              {t("sell.priceNegotiable")}
+            </label>
+            {!hideCondition && (
+              <Select
+                label={t("sell.condition")}
+                required
+                placeholder={t("sell.conditionPlaceholder")}
+                options={CONDITIONS}
+                value={draft.condition}
+                onChange={(e) => set({ condition: e.target.value as typeof draft.condition })}
+              />
+            )}
+            <div className="space-y-1">
+              <Textarea
+                label={t("sell.descriptionLabel")}
+                placeholder={t("sell.descriptionPlaceholder")}
+                value={draft.description}
+                maxLength={500}
+                onChange={(e) => set({ description: e.target.value })}
+              />
+              <p className={cn("text-right text-xs", draft.description.length > 450 ? "text-warning" : "text-text-muted")}>
+                {draft.description.length} / 500
+              </p>
+            </div>
           </div>
         )}
 
@@ -805,9 +851,20 @@ export function SellWizard({
                       ))}
                   </dl>
                 )}
-                <p className="text-sm text-text-secondary">
-                  {[draft.neighborhood, draft.district, draft.city].filter(Boolean).join(", ")}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-text-secondary">
+                    {[draft.neighborhood, draft.district, draft.city].filter(Boolean).join(", ")}
+                  </p>
+                  {skipLocation && (
+                    <button
+                      type="button"
+                      onClick={() => setStep(4)}
+                      className="shrink-0 text-xs text-primary underline underline-offset-2"
+                    >
+                      {t("common.edit")}
+                    </button>
+                  )}
+                </div>
                 {draft.description && (
                   <p className="line-clamp-3 pt-1 text-sm text-text-secondary">{draft.description}</p>
                 )}
