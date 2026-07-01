@@ -25,6 +25,12 @@ export function Modal({ open, onClose, title, children, sheet = true }: ModalPro
       setMounted(true);
       requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
       document.body.style.overflow = "hidden";
+      // Cleanup runs on unmount OR when open changes — prevents body.overflow
+      // from staying "hidden" if the parent removes the Modal while open=true
+      // (e.g. PermissionPrompt unmounting when the user dismisses it).
+      return () => {
+        document.body.style.overflow = "";
+      };
     } else {
       setVisible(false);
       const timer = setTimeout(() => {

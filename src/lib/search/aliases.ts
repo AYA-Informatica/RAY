@@ -45,26 +45,62 @@ for (const dict of Object.values(dictionaries)) {
  * Curated aliases for everyday terms that don't match a full category name.
  * Keep entries for the top search intents in RW and FR.
  */
-const MANUAL_ALIASES: Record<string, Omit<SearchExpansion, never>> = {
+/**
+ * Multi-word phrase aliases checked before word-by-word splitting.
+ * Kinyarwanda often expresses a single concept as a compound phrase
+ * (e.g. "igare rya moteri" = motorcycle, "inzu yo gutunga" = house for rent).
+ * Matching the full phrase first avoids ambiguity from individual tokens.
+ */
+const PHRASE_ALIASES: Record<string, SearchExpansion> = {
+  // ── Kinyarwanda compound phrases ─────────────────────────────────────────
+  "igare rya moteri":       { categorySlugs: ["bikes"],                    extraTerms: ["motorcycle", "motorbike"] },
+  "igare rya motorsikeli":  { categorySlugs: ["bikes"],                    extraTerms: ["motorcycle", "motorbike"] },
+  "inzu yo gutunga":        { categorySlugs: ["residential-rentals"],      extraTerms: ["house", "rent", "rental", "apartment"] },
+  "amazu yo gutunga":       { categorySlugs: ["residential-rentals"],      extraTerms: ["house", "rent", "rental", "apartment"] },
+  "inzu yo kugurisha":      { categorySlugs: ["residential-rentals"],      extraTerms: ["house", "sale", "home"] },
+  "imodoka yo kugurisha":   { categorySlugs: ["cars"],                     extraTerms: ["car", "sale", "vehicle"] },
+  "imodoka yo gutunga":     { categorySlugs: ["cars"],                     extraTerms: ["car", "rent", "vehicle"] },
+  "telefone nshya":         { categorySlugs: ["phones"],                   extraTerms: ["phone", "new", "smartphone"] },
+  "akazi kato":             { categorySlugs: ["jobs"],                     extraTerms: ["job", "part-time", "work"] },
+  "ibikoresho bya gikoni":  { categorySlugs: ["kitchen"],                  extraTerms: ["kitchen", "appliance"] },
+  // ── French compound phrases ───────────────────────────────────────────────
+  "à louer":                { categorySlugs: ["residential-rentals", "commercial-spaces", "cars"], extraTerms: ["rent", "rental"] },
+  "à vendre":               { categorySlugs: [],                           extraTerms: ["sale", "sell", "selling"] },
+  "maison à louer":         { categorySlugs: ["residential-rentals"],      extraTerms: ["house", "rent"] },
+  "appartement à louer":    { categorySlugs: ["residential-rentals"],      extraTerms: ["apartment", "flat", "rent"] },
+  "voiture à vendre":       { categorySlugs: ["cars"],                     extraTerms: ["car", "sale", "vehicle"] },
+  "vélo à vendre":          { categorySlugs: ["bikes"],                    extraTerms: ["bike", "bicycle", "sale"] },
+  "offre d'emploi":         { categorySlugs: ["jobs"],                     extraTerms: ["job", "work", "employment"] },
+};
+
+/**
+ * Single-word aliases — each key maps to category slugs and English keywords.
+ */
+const MANUAL_ALIASES: Record<string, SearchExpansion> = {
   // ── Kinyarwanda ──────────────────────────────────────────────────────────
-  inzu:       { categorySlugs: ["residential-rentals", "commercial-spaces"], extraTerms: ["house", "home", "apartment", "room", "studio"] },
-  amazu:      { categorySlugs: ["residential-rentals"],                      extraTerms: ["house", "home", "apartment"] },
-  gutunga:    { categorySlugs: [],                                           extraTerms: ["rent", "rental"] },
-  kugurisha:  { categorySlugs: [],                                           extraTerms: ["sale", "sell"] },
-  imodoka:    { categorySlugs: ["cars"],                                     extraTerms: ["car", "vehicle"] },
-  motosikal:  { categorySlugs: ["bikes"],                                    extraTerms: ["motorcycle", "motorbike"] },
-  igisiga:    { categorySlugs: ["bikes"],                                    extraTerms: ["bike", "bicycle"] },
-  ibisiga:    { categorySlugs: ["bikes"],                                    extraTerms: ["bike", "bicycle"] },
-  imyambaro:  { categorySlugs: ["fashion"],                                  extraTerms: ["clothes", "clothing"] },
-  akazi:      { categorySlugs: ["jobs"],                                     extraTerms: ["job", "work", "employment"] },
-  serivisi:   { categorySlugs: ["services"],                                 extraTerms: ["service"] },
-  imbago:     { categorySlugs: ["furniture"],                                extraTerms: ["furniture"] },
-  telefone:   { categorySlugs: ["phones"],                                   extraTerms: ["phone", "smartphone"] },
-  igikoni:     { categorySlugs: ["kitchen"],                                  extraTerms: ["kitchen", "appliance"] },
-  ibyubwiza:  { categorySlugs: ["beauty"],                                   extraTerms: ["beauty", "care"] },
-  abana:      { categorySlugs: ["kids"],                                     extraTerms: ["kids", "baby", "children", "toys"] },
-  imashini:   { categorySlugs: ["machinery"],                                extraTerms: ["machine", "machinery", "equipment"] },
-  elekitoronike: { categorySlugs: ["electronics"],                         extraTerms: ["electronics", "laptop", "tv"] },
+  inzu:         { categorySlugs: ["residential-rentals", "commercial-spaces"], extraTerms: ["house", "home", "apartment", "room", "studio"] },
+  amazu:        { categorySlugs: ["residential-rentals"],                      extraTerms: ["house", "home", "apartment"] },
+  gutunga:      { categorySlugs: [],                                           extraTerms: ["rent", "rental"] },
+  kugurisha:    { categorySlugs: [],                                           extraTerms: ["sale", "sell"] },
+  imodoka:      { categorySlugs: ["cars"],                                     extraTerms: ["car", "vehicle"] },
+  motosikal:    { categorySlugs: ["bikes"],                                    extraTerms: ["motorcycle", "motorbike"] },
+  motorsikeli:  { categorySlugs: ["bikes"],                                    extraTerms: ["motorcycle", "motorbike"] },
+  igare:        { categorySlugs: ["bikes"],                                    extraTerms: ["bike", "bicycle", "motorcycle"] },
+  moteri:       { categorySlugs: ["bikes"],                                    extraTerms: ["motorcycle", "motorbike", "engine"] },
+  igisiga:      { categorySlugs: ["bikes"],                                    extraTerms: ["bike", "bicycle"] },
+  ibisiga:      { categorySlugs: ["bikes"],                                    extraTerms: ["bike", "bicycle"] },
+  imyambaro:    { categorySlugs: ["fashion"],                                  extraTerms: ["clothes", "clothing"] },
+  akazi:        { categorySlugs: ["jobs"],                                     extraTerms: ["job", "work", "employment"] },
+  serivisi:     { categorySlugs: ["services"],                                 extraTerms: ["service"] },
+  imbago:       { categorySlugs: ["furniture"],                                extraTerms: ["furniture"] },
+  telefone:     { categorySlugs: ["phones"],                                   extraTerms: ["phone", "smartphone"] },
+  igikoni:      { categorySlugs: ["kitchen"],                                  extraTerms: ["kitchen", "appliance"] },
+  ibyubwiza:    { categorySlugs: ["beauty"],                                   extraTerms: ["beauty", "care"] },
+  abana:        { categorySlugs: ["kids"],                                     extraTerms: ["kids", "baby", "children", "toys"] },
+  imashini:     { categorySlugs: ["machinery"],                                extraTerms: ["machine", "machinery", "equipment"] },
+  elekitoronike:{ categorySlugs: ["electronics"],                             extraTerms: ["electronics", "laptop", "tv"] },
+  ubucuruzi:    { categorySlugs: ["commercial-spaces"],                        extraTerms: ["office", "commercial", "business"] },
+  inyubako:     { categorySlugs: ["construction"],                             extraTerms: ["construction", "building", "materials"] },
 
   // ── French ───────────────────────────────────────────────────────────────
   maison:       { categorySlugs: ["residential-rentals"],  extraTerms: ["house", "home", "apartment"] },
@@ -94,38 +130,50 @@ const MANUAL_ALIASES: Record<string, Omit<SearchExpansion, never>> = {
  * to include in the OR clause. Returns empty arrays when the query is already
  * English or not in the alias table.
  */
+function mergeExpansion(into: SearchExpansion, from: SearchExpansion) {
+  for (const slug of from.categorySlugs) {
+    if (!into.categorySlugs.includes(slug)) into.categorySlugs.push(slug);
+  }
+  for (const term of from.extraTerms) {
+    if (!into.extraTerms.includes(term)) into.extraTerms.push(term);
+  }
+}
+
+function applyNgrams(words: string[], into: SearchExpansion) {
+  for (let i = 0; i < words.length; i++) {
+    const bigram = words.slice(i, i + 2).join(" ");
+    if (PHRASE_ALIASES[bigram]) mergeExpansion(into, PHRASE_ALIASES[bigram]);
+    const trigram = words.slice(i, i + 3).join(" ");
+    if (PHRASE_ALIASES[trigram]) mergeExpansion(into, PHRASE_ALIASES[trigram]);
+  }
+}
+
+function applyCategoryMap(word: string, into: SearchExpansion) {
+  for (const [name, slug] of CATEGORY_I18N_MAP.entries()) {
+    if (name.includes(word) || word.includes(name)) {
+      if (!into.categorySlugs.includes(slug)) into.categorySlugs.push(slug);
+    }
+  }
+}
+
 export function expandSearchQuery(query: string): SearchExpansion {
   const result: SearchExpansion = { categorySlugs: [], extraTerms: [] };
   if (!query || query.trim().length < 2) return result;
 
-  const addSlug = (slug: string) => {
-    if (slug && !result.categorySlugs.includes(slug)) result.categorySlugs.push(slug);
-  };
-  const addTerm = (term: string) => {
-    if (term && !result.extraTerms.includes(term)) result.extraTerms.push(term);
-  };
+  const normalized = query.toLowerCase().trim();
+  const words = normalized.split(/\s+/);
 
-  const words = query.toLowerCase().trim().split(/\s+/);
+  // Full phrase match first — catches compound concepts like "igare rya moteri"
+  if (PHRASE_ALIASES[normalized]) mergeExpansion(result, PHRASE_ALIASES[normalized]);
 
+  // Sliding 2- and 3-word windows — catches phrases embedded in longer sentences
+  if (words.length > 1) applyNgrams(words, result);
+
+  // Word-by-word lookup
   for (const word of words) {
     if (word.length < 2) continue;
-
-    // 1. Manual alias exact match
-    const manual = MANUAL_ALIASES[word];
-    if (manual) {
-      manual.categorySlugs.forEach(addSlug);
-      manual.extraTerms.forEach(addTerm);
-    }
-
-    // 2. Category i18n map — match if the translated name contains this word
-    //    or this word contains the translated name (guards against single-char hits)
-    if (word.length >= 3) {
-      for (const [name, slug] of CATEGORY_I18N_MAP.entries()) {
-        if (name.includes(word) || word.includes(name)) {
-          addSlug(slug);
-        }
-      }
-    }
+    if (MANUAL_ALIASES[word]) mergeExpansion(result, MANUAL_ALIASES[word]);
+    if (word.length >= 3) applyCategoryMap(word, result);
   }
 
   return result;
