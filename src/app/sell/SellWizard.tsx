@@ -299,12 +299,12 @@ export function SellWizard({
       }
       if (!res.ok) {
         const j = (await res.json()) as { error?: { message?: string } };
-        throw new Error(j.error?.message ?? "Could not post");
+        throw new Error(j.error?.message ?? t("sell.postError"));
       }
       reset();
       router.push("/profile/ads?posted=1");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not post your ad.");
+      setError(e instanceof Error ? e.message : t("sell.postError"));
       setSubmitting(false);
     }
   }
@@ -381,7 +381,7 @@ export function SellWizard({
         <div className="flex items-center gap-3">
           <button
             onClick={back}
-            aria-label="Back"
+            aria-label={t("common.back")}
             className="-ml-2 grid h-11 w-11 place-items-center text-text-secondary hover:text-text-primary"
           >
             <ArrowLeft size={22} />
@@ -429,11 +429,11 @@ export function SellWizard({
               {draft.images.map((url, i) => (
                 <div key={url} className="relative aspect-square overflow-hidden rounded-md bg-surface-modal">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+                  <img src={url} alt={t("sell.photoAlt").replace("{n}", String(i + 1))} className="h-full w-full object-cover" />
                   <button
                     onClick={() => set({ images: draft.images.filter((u) => u !== url) })}
                     className="absolute -right-1 -top-1 grid h-11 w-11 place-items-center"
-                    aria-label="Remove photo"
+                    aria-label={t("sell.removePhoto")}
                   >
                     <span className="grid h-7 w-7 place-items-center rounded-pill bg-black/70">
                       <X size={16} />
@@ -719,7 +719,7 @@ export function SellWizard({
             <div className="overflow-hidden rounded-lg border border-border bg-surface-card">
               {draft.images[0] && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={draft.images[0]} alt="Cover" className="aspect-[4/3] w-full object-cover" />
+                <img src={draft.images[0]} alt={t("sell.cover")} className="aspect-[4/3] w-full object-cover" />
               )}
               <div className="space-y-2 p-4">
                 <h3 className="font-display text-lg font-bold">{draft.title || t("sell.untitled")}</h3>
