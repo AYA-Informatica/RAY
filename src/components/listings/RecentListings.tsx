@@ -19,7 +19,7 @@ const PAGE_SIZE = 15;
  * precise GPS proximity once location is available (existing grant or
  * after this prompt).
  */
-export function RecentListings({ initial }: { initial: ListingCardData[] }) {
+export function RecentListings({ initial }: { readonly initial: ListingCardData[] }) {
   const { t } = useI18n();
   const pathname = usePathname();
   const [items, setItems] = useState(initial);
@@ -33,6 +33,11 @@ export function RecentListings({ initial }: { initial: ListingCardData[] }) {
   useEffect(() => {
     if (isSplashPage) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    // If the user previously dismissed our pre-prompt without ever triggering the
+    // OS dialog, navigator.permissions.state stays "prompt" indefinitely — the
+    // modal would re-appear on every /home visit. Persist the decline in
+    // localStorage so we only ask once per browser.
+    if (localStorage.getItem("ray_loc_declined") === "1") return;
     let cancelled = false;
 
     function fetchRanked(lat: number, lng: number) {
@@ -54,7 +59,7 @@ export function RecentListings({ initial }: { initial: ListingCardData[] }) {
 
     if (navigator.permissions?.query) {
       navigator.permissions
-        .query({ name: "geolocation" as PermissionName })
+        .query({ name: "geolocation" })
         .then((status) => {
           if (cancelled) return;
           if (status.state === "granted") requestPosition();
@@ -93,7 +98,10 @@ export function RecentListings({ initial }: { initial: ListingCardData[] }) {
         <PermissionPrompt
           type="location"
           onAllow={handleAllowLocation}
-          onDismiss={() => setShowLocationPrompt(false)}
+          onDismiss={() => {
+            setShowLocationPrompt(false);
+            localStorage.setItem("ray_loc_declined", "1");
+          }}
         />
       )}
 

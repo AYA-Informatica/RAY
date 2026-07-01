@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Users, ListChecks, Flag, AlertTriangle, Star, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { getAdminStats } from "@/services/admin";
@@ -30,6 +31,13 @@ export default async function AdminOverview() {
           </Card>
         ))}
       </div>
+
+      <Link
+        href="/admin/analytics"
+        className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        View full analytics →
+      </Link>
 
       <CategoryHealthTable />
     </div>

@@ -126,3 +126,109 @@ export async function getManagedUsers() {
     },
   });
 }
+
+/** District-level user and listing density for admin geographic view. */
+export async function getGeographicStats() {
+  const [usersByDistrict, listingsByDistrict, topNeighborhoods] = await Promise.all([
+    prisma.$queryRaw<{ district: string; count: bigint }[]>`
+      SELECT district, COUNT(*)::bigint AS count
+      FROM "User"
+      WHERE district IS NOT NULL AND district <> ''
+      GROUP BY district
+      ORDER BY count DESC
+      LIMIT 20
+    `,
+    prisma.$queryRaw<{ district: string; count: bigint }[]>`
+      SELECT district, COUNT(*)::bigint AS count
+      FROM "Listing"
+      WHERE status = 'ACTIVE' AND district IS NOT NULL AND district <> ''
+      GROUP BY district
+      ORDER BY count DESC
+      LIMIT 20
+    `,
+    prisma.$queryRaw<{ neighborhood: string; district: string; count: bigint }[]>`
+      SELECT neighborhood, district, COUNT(*)::bigint AS count
+      FROM "Listing"
+      WHERE status = 'ACTIVE'
+        AND neighborhood IS NOT NULL AND neighborhood <> ''
+      GROUP BY neighborhood, district
+      ORDER BY count DESC
+      LIMIT 15
+    `,
+  ]);
+
+  return {
+    usersByDistrict: usersByDistrict.map((r) => ({ district: r.district, count: Number(r.count) })),
+    listingsByDistrict: listingsByDistrict.map((r) => ({ district: r.district, count: Number(r.count) })),
+    topNeighborhoods: topNeighborhoods.map((r) => ({
+      neighborhood: r.neighborhood,
+      district: r.district,
+      count: Number(r.count),
+    })),
+  };
+}
+
+/** Week-over-week new users and listings for the last 12 weeks. */
+export async function getGrowthStats() {
+  const twelveWeeksAgo = new Date();
+  twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
+
+  const [userWeeks, listingWeeks] = await Promise.all([
+    prisma.$queryRaw<{ week: Date; count: bigint }[]>`
+      SELECT date_trunc('week', "createdAt") AS week, COUNT(*)::bigint AS count
+      FROM "User"
+      WHERE "createdAt" >= ${twelveWeeksAgo}
+      GROUP BY week
+      ORDER BY week
+    `,
+    prisma.$queryRaw<{ week: Date; count: bigint }[]>`
+      SELECT date_trunc('week', "createdAt") AS week, COUNT(*)::bigint AS count
+      FROM "Listing"
+      WHERE "createdAt" >= ${twelveWeeksAgo}
+      GROUP BY week
+      ORDER BY week
+    `,
+  ]);
+
+  return {
+    userWeeks: userWeeks.map((r) => ({ week: r.week.toISOString().slice(0, 10), count: Number(r.count) })),
+    listingWeeks: listingWeeks.map((r) => ({ week: r.week.toISOString().slice(0, 10), count: Number(r.count) })),
+  };
+}
+
+/** Platform engagement metrics. */
+export async function getEngagementStats() {
+  const [totalConversations, totalMessages, viewStats, listingsWithInquiries] = await Promise.all([
+    prisma.conversation.count(),
+    prisma.message.count(),
+    prisma.listing.aggregate({
+      where: { status: "ACTIVE" },
+      _avg: { views: true },
+      _sum: { views: true },
+      _count: true,
+    }),
+    prisma.listing.count({
+      where: {
+        status: "ACTIVE",
+        conversations: { some: {} },
+      },
+    }),
+  ]);
+
+  const totalActiveListings = viewStats._count;
+  const listingsWithNoInquiries = totalActiveListings - listingsWithInquiries;
+  const deadStockPct = totalActiveListings > 0
+    ? Math.round((listingsWithNoInquiries / totalActiveListings) * 100)
+    : 0;
+
+  return {
+    totalConversations,
+    totalMessages,
+    totalViews: viewStats._sum.views ?? 0,
+    avgViewsPerListing: Math.round(viewStats._avg.views ?? 0),
+    totalActiveListings,
+    listingsWithInquiries,
+    listingsWithNoInquiries,
+    deadStockPct,
+  };
+}

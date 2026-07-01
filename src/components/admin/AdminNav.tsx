@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ListChecks, Users, Flag, Clock } from "lucide-react";
+import { LayoutDashboard, ListChecks, Users, Flag, Clock, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const NAV = [
-  { href: "/admin",          label: "Overview",  icon: LayoutDashboard },
-  { href: "/admin/listings", label: "Listings",  icon: ListChecks },
-  { href: "/admin/reports",  label: "Reports",   icon: Flag },
-  { href: "/admin/users",    label: "Users",     icon: Users },
-  { href: "/admin/audit",    label: "Audit",     icon: Clock },
+  { href: "/admin",            label: "Overview",   icon: LayoutDashboard },
+  { href: "/admin/listings",   label: "Listings",   icon: ListChecks },
+  { href: "/admin/analytics",  label: "Analytics",  icon: BarChart2 },
+  { href: "/admin/reports",    label: "Reports",    icon: Flag },
+  { href: "/admin/users",      label: "Users",      icon: Users },
+  { href: "/admin/audit",      label: "Audit",      icon: Clock },
 ] as const;
 
 /** Admin tab nav with pathname-driven active state. */
