@@ -92,6 +92,7 @@ const CATEGORIES: SeedCategory[] = [
     order: 3,
     attributes: [
       { label: "Brand", key: "brand", type: "SELECT", required: true, options: ["Toyota", "Honda", "Nissan", "Mazda", "Mercedes-Benz", "BMW", "Volkswagen", "Suzuki", "Other"] },
+      { label: "Model", key: "model", type: "TEXT", required: true, placeholder: "e.g. Corolla, Land Cruiser, Hilux, RAV4" },
       { label: "Year", key: "year", type: "NUMBER", required: true, placeholder: "e.g. 2018" },
       { label: "Mileage (km)", key: "mileage", type: "NUMBER", placeholder: "e.g. 85000" },
       { label: "Fuel Type", key: "fuel", type: "SELECT", options: ["Petrol", "Diesel", "Hybrid", "Electric"] },
@@ -107,6 +108,7 @@ const CATEGORIES: SeedCategory[] = [
     attributes: [
       { label: "Bike Type", key: "bike_type", type: "SELECT", required: true, options: ["Bicycle", "Motorbike / Motorcycle", "Scooter / Moped", "Electric Bike (E-bike)"] },
       { label: "Brand", key: "brand", type: "TEXT", placeholder: "e.g. Honda, Yamaha, Trek, Giant" },
+      { label: "Model", key: "model", type: "TEXT", placeholder: "e.g. CG 125, CB 300R, Ninja 400", showIf: { key: "bike_type", in: ["Motorbike / Motorcycle", "Scooter / Moped"] } },
       { label: "Year", key: "year", type: "NUMBER", placeholder: "e.g. 2020" },
       { label: "Engine Size", key: "engine_size", type: "SELECT", options: ["Under 125cc", "125cc", "150cc", "200cc", "250cc", "400cc", "600cc+"], showIf: { key: "bike_type", in: ["Motorbike / Motorcycle", "Scooter / Moped"] } },
       { label: "Gear Count", key: "gear_count", type: "SELECT", options: ["Single Speed", "3-Speed", "7-Speed", "21-Speed", "27-Speed+"], showIf: { key: "bike_type", in: ["Bicycle"] } },
@@ -123,6 +125,7 @@ const CATEGORIES: SeedCategory[] = [
     icon: "🏠",
     order: 5,
     attributes: [
+      { label: "Listing Type", key: "listing_type", type: "SELECT", required: true, options: ["For Rent", "For Sale"] },
       { label: "Property Type", key: "property_type", type: "SELECT", required: true, options: ["Studio", "1 Bedroom", "2 Bedrooms", "3 Bedrooms", "4+ Bedrooms", "Full House", "Villa / Compound", "Shared Room"] },
       { label: "Furnished", key: "furnished", type: "SELECT", required: true, options: ["Furnished", "Semi-furnished", "Unfurnished"] },
       { label: "Bathrooms", key: "bathrooms", type: "SELECT", options: ["1", "2", "3+"] },
@@ -139,6 +142,7 @@ const CATEGORIES: SeedCategory[] = [
     icon: "🏢",
     order: 6,
     attributes: [
+      { label: "Listing Type", key: "listing_type", type: "SELECT", required: true, options: ["For Rent", "For Sale"] },
       { label: "Space Type", key: "space_type", type: "SELECT", required: true, options: ["Office Space", "Shop / Retail", "Warehouse", "Restaurant Space", "Event Venue", "Salon / Spa", "Workshop / Garage", "Parking / Storage"] },
       { label: "Floor Area (sqm)", key: "floor_area_sqm", type: "NUMBER", required: true, placeholder: "e.g. 50" },
       { label: "Floor Level", key: "floor_level", type: "SELECT", options: ["Ground floor", "1st floor", "2nd floor", "3rd floor", "Higher"] },
@@ -172,6 +176,7 @@ const CATEGORIES: SeedCategory[] = [
     attributes: [
       { label: "Category", key: "category", type: "SELECT", options: ["Men", "Women", "Kids", "Unisex"] },
       { label: "Item Type", key: "item_type", type: "SELECT", required: true, options: ["Clothing", "Shoes", "Bags", "Jewelry & Watches", "Other"] },
+      { label: "Brand", key: "brand", type: "TEXT", placeholder: "e.g. Nike, Adidas, Zara, H&M" },
       { label: "Size", key: "size", type: "SELECT", options: ["XS", "S", "M", "L", "XL", "XXL"], showIf: { key: "item_type", in: ["Clothing"] } },
       { label: "Shoe Size", key: "shoe_size", type: "SELECT", options: ["EU 36", "EU 37", "EU 38", "EU 39", "EU 40", "EU 41", "EU 42", "EU 43", "EU 44", "EU 45", "EU 46"], showIf: { key: "item_type", in: ["Shoes"] } },
     ],

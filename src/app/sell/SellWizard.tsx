@@ -31,6 +31,32 @@ const STEP_COUNT = 6;
 const OTHER_VALUE = "__OTHER__";
 
 /**
+ * Maps category-specific condition labels → global Condition enum values.
+ * Used when a category owns its own condition attribute so we can still
+ * persist a meaningful global condition for search/filtering without
+ * showing the seller a redundant second picker.
+ */
+const CONDITION_MAP: Record<string, string> = {
+  // Beauty
+  "New / Sealed": "NEW",
+  "Used — Like New": "LIKE_NEW",
+  // Bikes / Kitchen (mirror the global labels exactly)
+  "New": "NEW",
+  "Like New": "LIKE_NEW",
+  "Good": "GOOD",
+  "Fair": "FAIR",
+  "Used": "USED",
+  // Construction
+  "New / Unused": "NEW",
+  "Used / Surplus": "USED",
+  // Machinery
+  "Excellent — like new": "NEW",
+  "Good — fully operational": "GOOD",
+  "Fair — needs minor repair": "FAIR",
+  "For parts / Not working": "USED",
+};
+
+/**
  * 6-step posting flow (Build Prompt + Product Experience):
  * Category -> Photos -> Basic Details -> Dynamic Specs -> Location -> Review.
  * Target: under 60s. "Structure without intimidation."
@@ -135,10 +161,23 @@ export function SellWizard({
     return districts.find((d) => d.name === draft.district)?.neighborhoods ?? [];
   }, [districts, draft.district]);
 
-  // Step 3 (Specs) is auto-skipped when the chosen category has no required
-  // attributes — the spec's "feel like sending a message" target wins over
-  // ceremony for categories like Furniture or Fashion.
-  const skipSpecs = (schema?.attributes ?? []).every((a) => !a.required);
+  // Skip Specs only when the category truly has no attributes at all.
+  // Previously this skipped whenever no attribute was *required*, which silently
+  // dropped Jobs (job_type, remote) and Services (service_type) entirely.
+  const skipSpecs = (schema?.attributes ?? []).length === 0;
+
+  // When the category supplies its own "condition" attribute in Specs, hide the
+  // global Condition picker in step 3 to avoid asking the seller twice.
+  const conditionAttr = schema?.attributes.find((a) => a.key === "condition") ?? null;
+  const hasOwnCondition = conditionAttr !== null;
+
+  // Jobs and Services are non-physical: the global condition and price fields
+  // don't apply (a job posting isn't "Like New"; a service can be quoted).
+  const isNonPhysical =
+    selectedCategory?.slug === "jobs" || selectedCategory?.slug === "services";
+
+  const hideCondition = hasOwnCondition || isNonPhysical;
+  const noPriceRequired = isNonPhysical;
 
   function next() {
     setError(null);
@@ -267,6 +306,14 @@ export function SellWizard({
     setSubmitting(true);
     setError(null);
     try {
+      // Derive the global condition enum when the category owns its own condition
+      // attribute (Beauty, Bikes, Construction, Kitchen, Machinery) so the seller
+      // only fills it once. For non-physical categories (Jobs, Services) default
+      // to "NEW" since the enum is required at the DB level.
+      const effectiveCondition: string = hasOwnCondition && conditionAttr
+        ? (CONDITION_MAP[draft.attributes[conditionAttr.id] ?? ""] ?? "USED")
+        : (draft.condition || (isNonPhysical ? "NEW" : draft.condition));
+
       const res = await fetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -275,7 +322,7 @@ export function SellWizard({
           description: draft.description,
           price: Number(draft.price),
           negotiable: draft.negotiable,
-          condition: draft.condition,
+          condition: effectiveCondition,
           categoryId: draft.categoryId,
           city: draft.city,
           district: draft.district,
@@ -323,8 +370,10 @@ export function SellWizard({
           : { ok: false, reason: t("sell.gate.addPhoto") };
       case 2: {
         if (draft.title.trim().length < 3) return { ok: false, reason: t("sell.gate.title") };
-        if (draft.price === "" || Number(draft.price) < 0) return { ok: false, reason: t("sell.gate.price") };
-        if (draft.condition === "") return { ok: false, reason: t("sell.gate.condition") };
+        if (!noPriceRequired && (draft.price === "" || Number(draft.price) < 0))
+          return { ok: false, reason: t("sell.gate.price") };
+        if (!hideCondition && draft.condition === "")
+          return { ok: false, reason: t("sell.gate.condition") };
         return { ok: true };
       }
       case 3: {
@@ -477,8 +526,8 @@ export function SellWizard({
               onChange={(e) => set({ title: e.target.value })}
             />
             <Input
-              label={t("sell.price")}
-              required
+              label={isNonPhysical ? t("sell.salary") : t("sell.price")}
+              required={!noPriceRequired}
               type="number"
               inputMode="numeric"
               placeholder="0"
@@ -495,14 +544,16 @@ export function SellWizard({
               />
               {t("sell.priceNegotiable")}
             </label>
-            <Select
-              label={t("sell.condition")}
-              required
-              placeholder={t("sell.conditionPlaceholder")}
-              options={CONDITIONS}
-              value={draft.condition}
-              onChange={(e) => set({ condition: e.target.value as typeof draft.condition })}
-            />
+            {!hideCondition && (
+              <Select
+                label={t("sell.condition")}
+                required
+                placeholder={t("sell.conditionPlaceholder")}
+                options={CONDITIONS}
+                value={draft.condition}
+                onChange={(e) => set({ condition: e.target.value as typeof draft.condition })}
+              />
+            )}
             <div className="space-y-1">
               <Textarea
                 label={t("sell.descriptionLabel")}
