@@ -131,6 +131,9 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   const where: Record<string, unknown> = {};
   if (q.q) {
     const { categorySlugs, extraTerms } = expandSearchQuery(q.q);
+
+    // Seed with the full phrase first — exact phrase hits rank naturally first
+    // because Prisma returns them and JS pagination sees them earliest.
     const orConditions: object[] = [
       { title:       { contains: q.q, mode: "insensitive" } },
       { description: { contains: q.q, mode: "insensitive" } },
@@ -140,7 +143,20 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
       { neighborhood: { contains: q.q, mode: "insensitive" } },
       { category: { is: { name: { contains: q.q, mode: "insensitive" } } } },
     ];
-    // Expand RW/FR queries: also search English equivalents and matched categories.
+
+    // Word-by-word OR: each token >= 3 chars is searched independently so
+    // "imodoka ya nissan" also finds listings with "nissan" in the title or
+    // brand attribute, not just listings containing the whole phrase.
+    const tokens = q.q.split(/\s+/).filter((w) => w.length >= 3);
+    if (tokens.length > 1) {
+      for (const token of tokens) {
+        orConditions.push({ title:       { contains: token, mode: "insensitive" } });
+        orConditions.push({ description: { contains: token, mode: "insensitive" } });
+        orConditions.push({ attributeValues: { some: { value: { contains: token, mode: "insensitive" } } } });
+      }
+    }
+
+    // RW/FR alias expansion: English equivalents and matched category slugs.
     for (const term of extraTerms) {
       orConditions.push({ title:       { contains: term, mode: "insensitive" } });
       orConditions.push({ description: { contains: term, mode: "insensitive" } });
@@ -148,6 +164,7 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
     for (const slug of categorySlugs) {
       orConditions.push({ category: { is: { slug: { equals: slug } } } });
     }
+
     where.OR = orConditions;
   }
   if (q.category) where.category = { slug: q.category };
