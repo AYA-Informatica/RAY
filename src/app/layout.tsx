@@ -46,10 +46,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        {/* media="print" onLoad trick: loads the stylesheet asynchronously
+            (as a non-render-blocking print sheet), then promotes it to "all"
+            once downloaded. This prevents the font CSS from blocking the first
+            paint — system fonts render immediately, web fonts swap in once ready. */}
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap"
+          media="print"
+          // @ts-expect-error -- onLoad is valid on link elements
+          onLoad="this.media='all'"
         />
+        <noscript>
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap"
+          />
+        </noscript>
       </head>
       <body className="min-h-dvh bg-background">
         <I18nProvider initialLocale={locale}>{children}</I18nProvider>

@@ -12,26 +12,36 @@ const VISITED_KEY = "ray_visited";
  *
  * First-visit behaviour:
  *   Shows the splash. "Get Started" sets localStorage `ray_visited = 1` then
- *   navigates to /home. On every subsequent visit the overlay is skipped and
- *   the user lands directly on the home feed.
+ *   navigates to /home. On every subsequent visit the middleware redirects
+ *   / → /home via cookie before this component is ever rendered.
  *
  * Mobile / tablet (< lg):  full-bleed RAY orange.
  * Desktop (≥ lg):           semi-transparent scrim — home feed visible behind.
+ *
+ * WHY visible defaults to true:
+ *   Previously it defaulted to false and was set to true after the useEffect
+ *   ran. This meant the SSR output had no splash, so the browser displayed
+ *   the home feed underneath, then 1-3 seconds later (after JS hydrated) the
+ *   fixed overlay snapped in — capturing all pointer events and making the
+ *   page appear completely frozen. Defaulting to true puts the splash in the
+ *   SSR HTML so it is visible from the very first paint, eliminating the
+ *   jarring snap and the frozen state.
  */
 export function SplashContent() {
   const { t } = useI18n();
   const router = useRouter();
-  const [visible, setVisible] = useState(false); // hidden until we confirm first visit
+  const [visible, setVisible] = useState(true);
 
-  // Check localStorage on mount (client-only — avoids SSR mismatch).
+  // Check localStorage on mount (client-only).
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (localStorage.getItem(VISITED_KEY)) {
-      // Returning visitor — skip the splash immediately.
+      // Returning visitor whose cookie was cleared (middleware normally handles
+      // the redirect before we get here). Hide immediately and navigate away.
+      setVisible(false);
       router.replace("/home");
     } else {
-      // First visit — show splash and warm up /home in the background.
-      setVisible(true);
+      // First visit — already visible. Warm up /home in the background.
       router.prefetch("/home");
     }
   }, [router]);
@@ -39,13 +49,10 @@ export function SplashContent() {
   function handleGetStarted() {
     localStorage.setItem(VISITED_KEY, "1");
     document.cookie = "ray_visited=1; path=/; max-age=31536000; SameSite=Lax";
-    // Dismiss the overlay instantly — HomeContent is already rendered below.
     setVisible(false);
-    // Update the address bar to /home without a server round-trip.
     window.history.replaceState({}, "", "/home");
   }
 
-  // Render nothing until we've confirmed first-visit status (avoids flash).
   if (!visible) return null;
 
   return (

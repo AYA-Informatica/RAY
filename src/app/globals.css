@@ -16,7 +16,10 @@
 
   body {
     @apply bg-background text-text-primary font-sans antialiased;
-    overscroll-behavior-y: none;
+    /* overscroll-behavior-y: none was removed — it disabled the natural scroll
+       bounce on iOS/Android, making the page feel frozen when the user first
+       tries to scroll. Only suppress overscroll on specific surfaces that need
+       it (e.g. modal/sheet interiors) via a utility class, not globally. */
     user-select: none;
     -webkit-user-select: none;
   }
