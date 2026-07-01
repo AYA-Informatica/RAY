@@ -170,7 +170,14 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
         </div>
 
         <Tabs
-          tabs={[{ id: "all", label: "All" }, ...categories.map((c) => ({ id: c.slug, label: c.name }))]}
+          tabs={[
+            { id: "all", label: t("search.all") },
+            ...categories.map((c) => {
+              const key = `category.${c.slug.replace(/-([a-z])/g, (_, l: string) => l.toUpperCase())}`;
+              const label = t(key);
+              return { id: c.slug, label: label === key ? c.name : label };
+            }),
+          ]}
           active={category}
           onChange={setCategory}
         />

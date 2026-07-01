@@ -30,6 +30,7 @@ export default async function EditListingPage({ params }: Params) {
     neighborhood: listing.neighborhood ?? "",
     images: listing.images.map((i: ListingImage) => i.url),
     categoryName: listing.category.name,
+    categorySlug: listing.category.slug,
     categoryIcon: listing.category.icon ?? "📦",
     attributes: (listing.category.attributes ?? []).map((a: CategoryAttribute) => {
       const { values, showIf } = parseAttributeOptions(a.options);

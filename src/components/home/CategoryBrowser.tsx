@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { LayoutGrid, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { useI18n } from "@/i18n/I18nProvider";
 
 type Category = { id: string; slug: string; icon: string | null; name: string };
 
@@ -15,6 +16,13 @@ export function CategoryBrowser({
   title: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useI18n();
+
+  function tCategory(slug: string, fallback: string): string {
+    const key = `category.${slug.replace(/-([a-z])/g, (_, l: string) => l.toUpperCase())}`;
+    const r = t(key);
+    return r === key ? fallback : r;
+  }
 
   return (
     <section className="px-4 pt-5 sm:px-6 lg:pt-8">
@@ -60,7 +68,7 @@ export function CategoryBrowser({
               {c.icon}
             </span>
             <span className="text-center text-[10px] font-medium leading-tight text-text-secondary">
-              {c.name}
+              {tCategory(c.slug, c.name)}
             </span>
           </Link>
         ))}

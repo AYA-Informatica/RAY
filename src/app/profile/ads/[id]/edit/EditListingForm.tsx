@@ -37,17 +37,10 @@ interface InitialListing {
   neighborhood: string;
   images: string[];
   categoryName: string;
+  categorySlug: string;
   categoryIcon: string;
   attributes: EditAttribute[];
 }
-
-const CONDITIONS = [
-  { value: "NEW", label: "New" },
-  { value: "LIKE_NEW", label: "Like new" },
-  { value: "GOOD", label: "Good" },
-  { value: "FAIR", label: "Fair" },
-  { value: "USED", label: "Used" },
-];
 
 /** Sentinel value for the auto-appended "Other" option on SELECT attributes. */
 const OTHER_VALUE = "__OTHER__";
@@ -62,6 +55,28 @@ export function EditListingForm({
 }) {
   const router = useRouter();
   const { t } = useI18n();
+
+  const CONDITIONS = [
+    { value: "NEW",      label: t("condition.NEW") },
+    { value: "LIKE_NEW", label: t("condition.LIKE_NEW") },
+    { value: "GOOD",     label: t("condition.GOOD") },
+    { value: "FAIR",     label: t("condition.FAIR") },
+    { value: "USED",     label: t("condition.USED") },
+  ];
+
+  const tLabel = (key: string, fallback: string) => {
+    const r = t(`attr.${key}`);
+    return r === `attr.${key}` ? fallback : r;
+  };
+  const tOption = (opt: string) => {
+    const r = t(`attrOpt.${opt}`);
+    return r === `attrOpt.${opt}` ? opt : r;
+  };
+  const tCategory = (slug: string, fallback: string) => {
+    const key = `category.${slug.replace(/-([a-z])/g, (_: string, l: string) => l.toUpperCase())}`;
+    const r = t(key);
+    return r === key ? fallback : r;
+  };
 
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
@@ -107,7 +122,7 @@ export function EditListingForm({
       const urls = await uploadImages(Array.from(files).slice(0, remaining), "listings", userId);
       setImages((prev) => [...prev, ...urls].slice(0, 7));
     } catch {
-      setError("Upload failed. Check your connection and try again.");
+      setError(t("sell.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -145,12 +160,12 @@ export function EditListingForm({
       }
       if (!res.ok) {
         const j = (await res.json()) as { error?: { message?: string } };
-        throw new Error(j.error?.message ?? "Could not save");
+        throw new Error(j.error?.message ?? t("sell.postError"));
       }
       router.push("/profile/ads");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save changes.");
+      setError(e instanceof Error ? e.message : t("sell.postError"));
       setSaving(false);
     }
   }
@@ -165,7 +180,7 @@ export function EditListingForm({
         </button>
         <h1 className="font-display text-lg font-bold">{t("myAds.editAd")}</h1>
         <span className="ml-auto flex items-center gap-1.5 text-sm text-text-secondary">
-          <span>{initial.categoryIcon}</span> {initial.categoryName}
+          <span>{initial.categoryIcon}</span> {tCategory(initial.categorySlug, initial.categoryName)}
         </span>
       </header>
 
@@ -177,11 +192,11 @@ export function EditListingForm({
             {images.map((url, i) => (
               <div key={url} className="relative aspect-square overflow-hidden rounded-md bg-surface-modal">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+                <img src={url} alt={t("sell.photoAlt").replace("{n}", String(i + 1))} className="h-full w-full object-cover" />
                 <button
                   onClick={() => setImages(images.filter((u) => u !== url))}
                   className="absolute -right-1 -top-1 grid h-11 w-11 place-items-center"
-                  aria-label="Remove photo"
+                  aria-label={t("sell.removePhoto")}
                 >
                   <span className="grid h-7 w-7 place-items-center rounded-pill bg-black/70"><X size={16} /></span>
                 </button>
@@ -270,10 +285,10 @@ export function EditListingForm({
             return (
               <div key={attr.id} className="space-y-2">
                 <Select
-                  label={attr.label}
+                  label={tLabel(attr.key, attr.label)}
                   required={attr.required}
-                  placeholder={`Select ${attr.label.toLowerCase()}`}
-                  options={[...filteredOpts.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
+                  placeholder={t("sell.selectAttribute").replace("{field}", tLabel(attr.key, attr.label).toLowerCase())}
+                  options={[...filteredOpts.map((o) => ({ value: o, label: tOption(o) })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
                   value={isOther ? OTHER_VALUE : val}
                   onChange={(e) => {
                     if (e.target.value === OTHER_VALUE) {
@@ -311,14 +326,14 @@ export function EditListingForm({
                   onChange={(e) => setVal(e.target.checked ? "true" : "false")}
                   className="accent-[#E8390E]"
                 />
-                {attr.label}
+                {tLabel(attr.key, attr.label)}
               </label>
             );
           }
           return (
             <Input
               key={attr.id}
-              label={attr.label}
+              label={tLabel(attr.key, attr.label)}
               required={attr.required}
               type={attr.type === "NUMBER" ? "number" : "text"}
               inputMode={attr.type === "NUMBER" ? "numeric" : undefined}
@@ -342,7 +357,7 @@ export function EditListingForm({
         />
         <Select
           label={t("sell.district")}
-          placeholder="Select district"
+          placeholder={t("sell.districtPlaceholder")}
           options={districts.map((d) => ({ value: d.name, label: d.name }))}
           value={district}
           onChange={(e) => {
@@ -353,7 +368,7 @@ export function EditListingForm({
         {neighborhoods.length > 0 && (
           <Select
             label={t("sell.neighborhood")}
-            placeholder="Select neighborhood (optional)"
+            placeholder={t("sell.neighborhoodPlaceholder")}
             options={neighborhoods.map((n) => ({ value: n, label: n }))}
             value={neighborhood}
             onChange={(e) => setNeighborhood(e.target.value)}
