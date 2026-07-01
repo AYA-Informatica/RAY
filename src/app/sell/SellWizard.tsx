@@ -74,6 +74,20 @@ export function SellWizard({
   const { draft, step, set, setStep, reset } = useSellDraft();
   const { t } = useI18n();
 
+  // Translate a DB attribute label by its key, falling back to the English
+  // label stored in the DB when no i18n entry is registered for that key.
+  const tLabel = (key: string, fallback: string) => {
+    const r = t(`attr.${key}`);
+    return r === `attr.${key}` ? fallback : r;
+  };
+  // Translate a DB attribute option value, falling back to the raw English string.
+  // The `value` prop always stores the raw English string so CONDITION_MAP and
+  // back-end storage remain locale-independent.
+  const tOption = (opt: string) => {
+    const r = t(`attrOpt.${opt}`);
+    return r === `attrOpt.${opt}` ? opt : r;
+  };
+
   const STEP_LABELS = [
     t("sell.stepCategory"),
     t("sell.stepPhotos"),
@@ -419,7 +433,7 @@ export function SellWizard({
           .filter((a) => isAttributeVisible(a, all, draft.attributes))
           .find((a) => a.required && !draft.attributes[a.id]);
         return missing
-          ? { ok: false, reason: t("sell.gate.required").replace("{field}", missing.label) }
+          ? { ok: false, reason: t("sell.gate.required").replace("{field}", tLabel(missing.key, missing.label)) }
           : { ok: true };
       }
       case 3: {
@@ -506,7 +520,12 @@ export function SellWizard({
           <div className="space-y-3">
             <p className="font-display text-xl font-bold">{t("sell.whatSelling")}</p>
             <CategorySelector
-              categories={categories.map((c) => ({ slug: c.id, name: c.name, icon: c.icon }))}
+              categories={categories.map((c) => ({
+                slug: c.id,
+                // Convert slug to camelCase i18n key: "residential-rentals" → "category.residentialRentals"
+                name: t(`category.${c.slug.replace(/-([a-z])/g, (_, l: string) => l.toUpperCase())}`),
+                icon: c.icon,
+              }))}
               value={draft.categoryId}
               onChange={(id) => {
                 set({ categoryId: id, attributes: {} });
@@ -597,10 +616,10 @@ export function SellWizard({
                     return (
                       <div key={attr.id} className="space-y-2">
                         <Select
-                          label={attr.label}
+                          label={tLabel(attr.key, attr.label)}
                           required={attr.required}
-                          placeholder={t("sell.selectAttribute").replace("{field}", attr.label.toLowerCase())}
-                          options={[...filteredOpts.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
+                          placeholder={t("sell.selectAttribute").replace("{field}", tLabel(attr.key, attr.label).toLowerCase())}
+                          options={[...filteredOpts.map((o) => ({ value: o, label: tOption(o) })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
                           value={isOther ? OTHER_VALUE : val}
                           onChange={(e) => {
                             if (e.target.value === OTHER_VALUE) {
@@ -638,14 +657,14 @@ export function SellWizard({
                           onChange={(e) => setVal(e.target.checked ? "true" : "false")}
                           className="accent-[#E8390E]"
                         />
-                        {attr.label}
+                        {tLabel(attr.key, attr.label)}
                       </label>
                     );
                   }
                   return (
                     <Input
                       key={attr.id}
-                      label={attr.label}
+                      label={tLabel(attr.key, attr.label)}
                       required={attr.required}
                       type={attr.type === "NUMBER" ? "number" : "text"}
                       inputMode={attr.type === "NUMBER" ? "numeric" : undefined}
@@ -845,8 +864,8 @@ export function SellWizard({
                       .filter((a) => draft.attributes[a.id] && isAttributeVisible(a, schema.attributes, draft.attributes))
                       .map((a) => (
                         <div key={a.id} className="flex flex-col">
-                          <dt className="text-xs text-text-muted">{a.label}</dt>
-                          <dd className="text-sm font-medium text-text-primary">{draft.attributes[a.id]}</dd>
+                          <dt className="text-xs text-text-muted">{tLabel(a.key, a.label)}</dt>
+                          <dd className="text-sm font-medium text-text-primary">{tOption(draft.attributes[a.id] ?? "")}</dd>
                         </div>
                       ))}
                   </dl>
