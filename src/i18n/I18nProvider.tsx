@@ -30,7 +30,11 @@ export function I18nProvider({
     if (typeof document !== "undefined") {
       document.documentElement.lang = l;
       // 1-year cookie; read by the server layout for SSR on next load.
-      document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax; secure`;
+      // Only add `secure` on HTTPS — the flag prevents the browser from sending
+    // the cookie back to the server on HTTP (dev), which would cause every
+    // server-rendered page to reset to "en" regardless of the user's choice.
+    const secure = window.location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `${COOKIE}=${l}; path=/; max-age=31536000; samesite=lax${secure}`;
     }
   }, []);
 

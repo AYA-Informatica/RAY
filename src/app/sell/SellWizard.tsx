@@ -472,7 +472,7 @@ export function SellWizard({
             <Input
               label={t("sell.title")}
               required
-              placeholder="e.g. iPhone 14 Pro Max 256GB"
+              placeholder={t("sell.titlePlaceholder")}
               value={draft.title}
               onChange={(e) => set({ title: e.target.value })}
             />
@@ -498,7 +498,7 @@ export function SellWizard({
             <Select
               label={t("sell.condition")}
               required
-              placeholder="Select condition"
+              placeholder={t("sell.conditionPlaceholder")}
               options={CONDITIONS}
               value={draft.condition}
               onChange={(e) => set({ condition: e.target.value as typeof draft.condition })}
@@ -506,7 +506,7 @@ export function SellWizard({
             <div className="space-y-1">
               <Textarea
                 label={t("sell.descriptionLabel")}
-                placeholder="Describe your item — what's included, why you're selling…"
+                placeholder={t("sell.descriptionPlaceholder")}
                 value={draft.description}
                 maxLength={500}
                 onChange={(e) => set({ description: e.target.value })}
@@ -522,7 +522,7 @@ export function SellWizard({
         {step === 3 && (
           <div className="space-y-4">
             {!schema || schema.attributes.length === 0 ? (
-              <p className="text-sm text-text-secondary">No extra details needed — you're almost done.</p>
+              <p className="text-sm text-text-secondary">{t("sell.noSpecsNeeded")}</p>
             ) : (
               schema.attributes
                 .filter((attr) => isAttributeVisible(attr, schema.attributes, draft.attributes))
@@ -556,7 +556,7 @@ export function SellWizard({
                         <Select
                           label={attr.label}
                           required={attr.required}
-                          placeholder={`Select ${attr.label.toLowerCase()}`}
+                          placeholder={t("sell.selectAttribute").replace("{field}", attr.label.toLowerCase())}
                           options={[...filteredOpts.map((o) => ({ value: o, label: o })), { value: OTHER_VALUE, label: t("sell.otherOption") }]}
                           value={isOther ? OTHER_VALUE : val}
                           onChange={(e) => {
@@ -667,7 +667,7 @@ export function SellWizard({
                 <Select
                   label={t("sell.district")}
                   required
-                  placeholder="Select district"
+                  placeholder={t("sell.districtPlaceholder")}
                   options={districts.map((d) => ({ value: d.name, label: d.name }))}
                   value={draft.district}
                   onChange={(e) => set({ district: e.target.value, neighborhood: "" })}
@@ -675,7 +675,7 @@ export function SellWizard({
                 {neighborhoods.length > 0 && (
                   <Select
                     label={t("sell.neighborhood")}
-                    placeholder="Select neighborhood (optional)"
+                    placeholder={t("sell.neighborhoodPlaceholder")}
                     options={neighborhoods.map((n) => ({ value: n, label: n }))}
                     value={draft.neighborhood}
                     onChange={(e) => set({ neighborhood: e.target.value })}
@@ -722,7 +722,7 @@ export function SellWizard({
                 <img src={draft.images[0]} alt="Cover" className="aspect-[4/3] w-full object-cover" />
               )}
               <div className="space-y-2 p-4">
-                <h3 className="font-display text-lg font-bold">{draft.title || "Untitled"}</h3>
+                <h3 className="font-display text-lg font-bold">{draft.title || t("sell.untitled")}</h3>
                 <PriceTag amount={Number(draft.price) || 0} />
                 <div className="flex flex-wrap gap-2">
                   {draft.condition && (
@@ -735,7 +735,9 @@ export function SellWizard({
                   )}
                   {draft.images.length > 0 && (
                     <span className="rounded-pill bg-surface-modal px-2 py-0.5 text-xs text-text-secondary">
-                      {draft.images.length} photo{draft.images.length !== 1 ? "s" : ""}
+                      {draft.images.length === 1
+                        ? t("sell.onePhoto")
+                        : t("sell.photos").replace("{count}", String(draft.images.length))}
                     </span>
                   )}
                 </div>
