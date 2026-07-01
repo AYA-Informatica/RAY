@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Rocket } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -20,10 +21,17 @@ const PAGE_SIZE = 15;
  */
 export function RecentListings({ initial }: { initial: ListingCardData[] }) {
   const { t } = useI18n();
+  const pathname = usePathname();
   const [items, setItems] = useState(initial);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
 
+  // Don't ask for location while the splash overlay is active on "/".
+  // The prompt modal renders via a portal and punches through the z-50 splash,
+  // confusing users who haven't clicked "Get Started" yet.
+  const isSplashPage = pathname === "/";
+
   useEffect(() => {
+    if (isSplashPage) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     let cancelled = false;
 
@@ -61,7 +69,7 @@ export function RecentListings({ initial }: { initial: ListingCardData[] }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isSplashPage]);
 
   function handleAllowLocation() {
     setShowLocationPrompt(false);
