@@ -80,14 +80,16 @@ const nextConfig = {
   },
   async headers() {
     const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
+    const isDev = process.env.NODE_ENV === "development";
     // CSP: tight policy for RAY's stack.
     // - scripts/styles: self only (Tailwind is inlined at build; no CDN scripts)
     // - connect: self + Supabase (auth, DB, realtime, storage) + Upstash (rate limit)
     // - img: self + Supabase storage + data URIs (canvas-compressed WebP blobs)
     // - frame/object: deny (no embeds)
+    // - 'unsafe-eval' is dev-only: next.js fast-refresh runtime requires it
     const csp = [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline' https://vercel.live`,
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://vercel.live`,
       `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live`,
       `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://images.unsplash.com https://vercel.live https://vercel.com`,
       `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com https://nominatim.openstreetmap.org`,
