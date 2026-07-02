@@ -5,12 +5,14 @@ import Image from "next/image";
 import { Clock } from "lucide-react";
 import { useRecentlyViewed } from "@/lib/recentlyViewed";
 import { formatPrice } from "@/lib/utils/format";
+import { useI18n } from "@/i18n/I18nProvider";
 
 /**
  * Recently Viewed section — shown on the home feed when the user has
  * browsed at least one listing. Purely localStorage-backed; no DB queries.
  */
 export function RecentlyViewed() {
+  const { t } = useI18n();
   const items = useRecentlyViewed();
   if (items.length === 0) return null;
 
@@ -18,7 +20,7 @@ export function RecentlyViewed() {
     <section className="px-4 pb-2 pt-4 sm:px-6">
       <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold lg:text-xl">
         <Clock size={18} className="text-text-secondary" />
-        Recently Viewed
+        {t("home.recentlyViewed")}
       </h2>
       <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
         {items.map((item) => (

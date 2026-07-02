@@ -8,13 +8,7 @@ import { useI18n } from "@/i18n/I18nProvider";
 
 type Category = { id: string; slug: string; icon: string | null; name: string };
 
-export function CategoryBrowser({
-  categories,
-  title,
-}: {
-  categories: Category[];
-  title: string;
-}) {
+export function CategoryBrowser({ categories }: { categories: Category[] }) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useI18n();
 
@@ -27,7 +21,7 @@ export function CategoryBrowser({
   return (
     <section className="px-4 pt-5 sm:px-6 lg:pt-8">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold lg:text-xl">{title}</h2>
+        <h2 className="font-display text-lg font-bold lg:text-xl">{t("home.browseCategories")}</h2>
 
         <button
           onClick={() => setExpanded((v) => !v)}

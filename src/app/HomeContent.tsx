@@ -1,9 +1,9 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { AppShell } from "@/components/layout/AppShell";
 import { LocationHeader } from "@/components/layout/LocationHeader";
 import { CategoryBrowser } from "@/components/home/CategoryBrowser";
+import { RecentListingsSectionHeader } from "@/components/home/RecentListingsSectionHeader";
 import { RecentListings } from "@/components/listings/RecentListings";
 import { RecentlyViewed } from "@/components/listings/RecentlyViewed";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -51,12 +51,7 @@ async function RecentListingsSection({ profileLocation }: { profileLocation?: Pr
   const recent = await getRankedRecentListings({ profileLocation }, PAGE_SIZE);
   return (
     <section className="space-y-3 px-4 pb-4 pt-6 sm:px-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold lg:text-xl">{serverT("home.recentListings")}</h2>
-        <Link href="/search" className="text-sm text-primary hover:underline">
-          {serverT("home.seeAll")}
-        </Link>
-      </div>
+      <RecentListingsSectionHeader />
       <RecentListings initial={recent} />
     </section>
   );
@@ -88,7 +83,7 @@ export async function HomeContent() {
         </div>
       )}
 
-      <CategoryBrowser categories={categories} title={serverT("home.browseCategories")} />
+      <CategoryBrowser categories={categories} />
 
       <RecentlyViewed />
 
