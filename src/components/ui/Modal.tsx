@@ -9,11 +9,12 @@ export interface ModalProps {
   open: boolean;
   onClose: () => void;
   title?: string;
+  label?: string;
   children: React.ReactNode;
   sheet?: boolean;
 }
 
-export function Modal({ open, onClose, title, children, sheet = true }: ModalProps) {
+export function Modal({ open, onClose, title, label, children, sheet = true }: ModalProps) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,7 @@ export function Modal({ open, onClose, title, children, sheet = true }: ModalPro
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}
+        aria-label={!title ? label : undefined}
         className={cn(
           "relative z-10 w-full max-w-md bg-surface-modal shadow-modal transition-transform duration-200 ease-out",
           sheet ? "rounded-t-xl sm:rounded-xl" : "rounded-xl",
@@ -98,11 +100,16 @@ export function Modal({ open, onClose, title, children, sheet = true }: ModalPro
               : "translate-y-4 opacity-0",
         )}
       >
-        <div className="sticky top-0 flex items-center justify-between border-b border-border bg-surface-modal px-4 py-3">
-          <h3 id="modal-title" className="font-display text-lg font-bold">{title}</h3>
+        <div className="sticky top-0 flex items-center border-b border-border bg-surface-modal px-4 py-3">
+          {title && (
+            <h3 id="modal-title" className="font-display text-lg font-bold flex-1">{title}</h3>
+          )}
           <button
             onClick={onClose}
-            className="rounded-pill p-1 text-text-secondary hover:bg-surface-card hover:text-text-primary"
+            className={cn(
+              "rounded-pill p-1 text-text-secondary hover:bg-surface-card hover:text-text-primary",
+              !title && "ml-auto",
+            )}
             aria-label="Close"
           >
             <X size={20} />

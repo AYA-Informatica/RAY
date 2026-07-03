@@ -6,6 +6,7 @@ import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
 import { getRecentListings } from "@/services/listings";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     return ok(listing, { status: 201 });
   } catch (err) {
-    console.error("[POST listings] ERROR:", err instanceof Error ? err.message : String(err));
+    logger.error({ err }, "[POST listings] ERROR");
     return handleApiError(err);
   }
 }

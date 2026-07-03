@@ -168,7 +168,7 @@ model Listing {
 
   title        String
   description  String        @db.Text
-  price        Float
+  price        Int
   negotiable   Boolean       @default(true)
   condition    Condition
 

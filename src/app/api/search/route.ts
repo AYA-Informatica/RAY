@@ -3,6 +3,7 @@ import { searchQuerySchema } from "@/lib/validations/search.schema";
 import { searchListings } from "@/services/listings";
 import { ok, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
     const result = await searchListings(query);
     return ok(result);
   } catch (err) {
-    console.error("[GET search] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[GET search] ERROR");
     return handleApiError(err);
   }
 }

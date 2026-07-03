@@ -1,3 +1,5 @@
+const { withSentryConfig } = require("@sentry/nextjs");
+
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   // Disable in dev to avoid noisy service-worker caching during local work.
@@ -61,6 +63,10 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // next-pwa injects a webpack plugin; this empty turbopack config tells Next.js 16
+  // the coexistence is intentional and silences the "webpack config but no turbopack
+  // config" fatal error in dev (PWA is disabled in dev anyway).
+  turbopack: {},
   // Improve Fast Refresh stability
   onDemandEntries: {
     maxInactiveAge: 60 * 1000,
@@ -91,7 +97,7 @@ const nextConfig = {
       // fonts.googleapis.com + fonts.gstatic.com must be in connect-src because
       // the Workbox service worker uses fetch() for runtime font caching, and
       // fetch() is governed by connect-src, not font-src.
-      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com`,
+      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://*.ingest.de.sentry.io`,
       `font-src 'self' https://fonts.gstatic.com https://vercel.live https://assets.vercel.com`,
       `frame-src https://vercel.live`,
       `object-src 'none'`,
@@ -117,4 +123,15 @@ const nextConfig = {
   },
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = withSentryConfig(withPWA(nextConfig), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Only print Sentry build output in CI; stay quiet locally
+  silent: !process.env.CI,
+  // Upload source maps so stack traces in Sentry show original TS lines
+  widenClientFileUpload: true,
+  // Don't serve source maps to browsers in production
+  hideSourceMaps: true,
+  // Tree-shake Sentry debug logger out of the production bundle
+  bundleSizeOptimizations: { excludeDebugStatements: true },
+});

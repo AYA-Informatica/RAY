@@ -6,6 +6,7 @@ import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export async function GET(req: NextRequest) {
     const unreadCount = await getUnreadCount(user.id);
     return ok(messages, { headers: { "X-Unread-Count": String(unreadCount) } });
   } catch (err) {
-    console.error("[GET chat/messages] ERROR:", err instanceof Error ? err.message : String(err));
+    logger.error({ err }, "[GET chat/messages] ERROR");
     return handleApiError(err);
   }
 }
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     return ok(message, { status: 201 });
   } catch (err) {
-    console.error("[POST chat/messages] ERROR:", err instanceof Error ? err.message : String(err));
+    logger.error({ err }, "[POST chat/messages] ERROR");
     return handleApiError(err);
   }
 }

@@ -71,14 +71,14 @@ export function SplashContent() {
                    lg:shadow-[0_32px_80px_rgba(0,0,0,0.7)]"
       >
         {/* Wordmark + tagline */}
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <section aria-label="Welcome to RAY" className="flex flex-1 flex-col items-center justify-center text-center">
           <h1 className="font-display text-7xl font-extrabold tracking-tight sm:text-8xl lg:text-7xl">
             RAY
           </h1>
           <p className="mt-1 font-sans text-lg font-medium opacity-95">
             {t("splash.tagline")}
           </p>
-        </div>
+        </section>
 
         {/* CTA */}
         <button

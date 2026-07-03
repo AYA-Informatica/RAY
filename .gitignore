@@ -34,3 +34,8 @@ public/sw.js.map
 public/workbox-*.js
 public/workbox-*.js.map
 public/fallback-*.js
+public/fallback-*.js.map
+
+# Local test screenshots
+*.jpeg
+*.jpg

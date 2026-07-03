@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     return ok({ received: true }, { status: 201 });
   } catch (err) {
-    console.error("[POST report] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[POST report] ERROR");
     return handleApiError(err);
   }
 }

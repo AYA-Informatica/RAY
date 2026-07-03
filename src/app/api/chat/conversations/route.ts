@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { startConversationSchema } from "@/lib/validations/message.schema";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 import { getInbox } from "@/services/chat";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function GET() {
     const previews = await getInbox(user.id);
     return ok(previews);
   } catch (err) {
-    console.error("[GET conversations] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[GET conversations] ERROR");
     return handleApiError(err);
   }
 }
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     return ok(convo, { status: 201 });
   } catch (err) {
-    console.error("[POST conversations] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[POST conversations] ERROR");
     return handleApiError(err);
   }
 }

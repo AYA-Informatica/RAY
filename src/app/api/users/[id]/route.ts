@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { updateProfileSchema } from "@/lib/validations/profile.schema";
 import { sanitizeObject } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     });
     return ok({ ...user, listingsCount });
   } catch (err) {
-    console.error("[GET user] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[GET user] ERROR");
     return handleApiError(err);
   }
 }
@@ -50,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     });
     return ok(updated);
   } catch (err) {
-    console.error("[PATCH user] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[PATCH user] ERROR");
     return handleApiError(err);
   }
 }

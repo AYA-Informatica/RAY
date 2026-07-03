@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth/session";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { ok, handleApiError } from "@/lib/utils/api";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function POST() {
     const unreadCount = await getUnreadCount(authUser.id);
     return ok({ ok: true, unreadCount });
   } catch (err) {
-    console.error("[POST presence] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[POST presence] ERROR");
     return handleApiError(err);
   }
 }

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
@@ -20,8 +21,11 @@ export async function GET(req: NextRequest) {
   try {
     const secret = process.env.CRON_SECRET;
     if (secret) {
-      const auth = req.headers.get("authorization");
-      if (auth !== `Bearer ${secret}`) {
+      const provided = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
+      const safe =
+        provided.length === secret.length &&
+        timingSafeEqual(Buffer.from(provided), Buffer.from(secret));
+      if (!safe) {
         logger.warn("Rejected unauthorized cron request to expire-listings");
         return fail("Unauthorized", 401);
       }
@@ -35,7 +39,7 @@ export async function GET(req: NextRequest) {
     logger.info({ expired: result.count }, "Listing expiry sweep complete");
     return ok({ expired: result.count, ranAt: new Date().toISOString() });
   } catch (err) {
-    console.error("[CRON expire-listings] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[CRON expire-listings] ERROR");
     return handleApiError(err);
   }
 }

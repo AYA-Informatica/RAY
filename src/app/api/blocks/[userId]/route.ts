@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     });
     return ok({ blocked: Boolean(block) });
   } catch (err) {
-    console.error("[GET block] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[GET block] ERROR");
     return handleApiError(err);
   }
 }
@@ -36,7 +37,7 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
     });
     return ok({ blocked: true });
   } catch (err) {
-    console.error("[POST block] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[POST block] ERROR");
     return handleApiError(err);
   }
 }
@@ -51,7 +52,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     });
     return ok({ blocked: false });
   } catch (err) {
-    console.error("[DELETE block] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[DELETE block] ERROR");
     return handleApiError(err);
   }
 }

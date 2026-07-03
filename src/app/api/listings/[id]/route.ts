@@ -7,6 +7,7 @@ import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 import { getListing } from "@/services/listings";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +109,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
     return ok({ id });
   } catch (err) {
-    console.error("[PATCH listing] ERROR:", err instanceof Error ? err.message : String(err));
+    logger.error({ err }, "[PATCH listing] ERROR");
     return handleApiError(err);
   }
 }
@@ -141,7 +142,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
       if (paths.length > 0) {
         const { error: storageError } = await createAdminClient().storage.from(LISTINGS_BUCKET).remove(paths);
         if (storageError) {
-          console.error("[DELETE listing] storage cleanup failed:", storageError.message);
+          logger.error({ err: storageError }, "[DELETE listing] storage cleanup failed");
         }
       }
 
@@ -154,7 +155,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     `;
     return ok({ id, removed: true });
   } catch (err) {
-    console.error("[DELETE listing] ERROR:", err instanceof Error ? err.message : String(err));
+    logger.error({ err }, "[DELETE listing] ERROR");
     return handleApiError(err);
   }
 }

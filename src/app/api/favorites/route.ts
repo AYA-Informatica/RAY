@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ok, handleApiError } from "@/lib/utils/api";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET() {
     });
     return ok(favs.map((f) => f.listingId));
   } catch (err) {
-    console.error("[GET favorites] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[GET favorites] ERROR");
     return handleApiError(err);
   }
 }

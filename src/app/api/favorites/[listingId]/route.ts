@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
     });
     return ok({ favorited: true });
   } catch (err) {
-    console.error("[POST favorite] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[POST favorite] ERROR");
     return handleApiError(err);
   }
 }
@@ -39,7 +40,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     });
     return ok({ favorited: false });
   } catch (err) {
-    console.error("[DELETE favorite] ERROR:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "[DELETE favorite] ERROR");
     return handleApiError(err);
   }
 }

@@ -33,7 +33,7 @@ export function PermissionPrompt({ type, onAllow, onDismiss }: Props) {
   const { icon: Icon, title, body, allow } = COPY[type];
 
   return (
-    <Modal open onClose={onDismiss} title="">
+    <Modal open onClose={onDismiss} label={title}>
       <div className="flex flex-col items-center gap-4 pt-2 text-center">
         <div className="grid h-16 w-16 place-items-center rounded-2xl bg-primary/15">
           <Icon size={32} className="text-primary" />
