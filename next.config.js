@@ -88,14 +88,19 @@ const nextConfig = {
       `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://vercel.live`,
       `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://vercel.live`,
       `img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://images.unsplash.com https://vercel.live https://vercel.com`,
-      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com https://nominatim.openstreetmap.org`,
+      // fonts.googleapis.com + fonts.gstatic.com must be in connect-src because
+      // the Workbox service worker uses fetch() for runtime font caching, and
+      // fetch() is governed by connect-src, not font-src.
+      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com`,
       `font-src 'self' https://fonts.gstatic.com https://vercel.live https://assets.vercel.com`,
       `frame-src https://vercel.live`,
       `object-src 'none'`,
       `base-uri 'self'`,
       `form-action 'self'`,
-      `upgrade-insecure-requests`,
-    ].join("; ");
+      // upgrade-insecure-requests must be omitted in dev: it tells the browser to
+      // convert http:// → https:// for all subrequests, which breaks localhost.
+      !isDev && `upgrade-insecure-requests`,
+    ].filter(Boolean).join("; ");
 
     return [
       {

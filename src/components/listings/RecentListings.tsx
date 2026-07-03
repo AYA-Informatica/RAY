@@ -116,13 +116,13 @@ export function RecentListings({ initial }: { readonly initial: ListingCardData[
       ) : (
         <>
           <div className="space-y-3 sm:hidden">
-            {items.map((l, idx) => (
-              <ListingRow key={l.id} listing={l} priority={idx === 0} />
+            {items.map((l) => (
+              <ListingRow key={l.id} listing={l} />
             ))}
           </div>
           <div className="hidden grid-cols-3 gap-4 sm:grid lg:grid-cols-4 xl:grid-cols-5">
             {items.map((l, idx) => (
-              <ListingCard key={l.id} listing={l} priority={idx === 0} />
+              <ListingCard key={l.id} listing={l} index={idx} />
             ))}
           </div>
           {items.length === PAGE_SIZE && (

@@ -57,8 +57,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="min-h-dvh bg-background">
         <I18nProvider initialLocale={locale}>{children}</I18nProvider>
-        <SpeedInsights />
-        <Analytics />
+        {/* Only inject on Vercel — scripts 404 on localhost and in plain npm run start */}
+        {process.env.NEXT_PUBLIC_VERCEL_ENV && <SpeedInsights />}
+        {process.env.NEXT_PUBLIC_VERCEL_ENV && <Analytics />}
       </body>
     </html>
   );
