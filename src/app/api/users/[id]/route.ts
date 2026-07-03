@@ -7,18 +7,19 @@ import { ok, fail, handleApiError } from "@/lib/utils/api";
 
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /** GET /api/users/:id — public profile + active listing count. */
 export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
+    const { id } = await params;
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true, name: true, avatarUrl: true, bio: true, city: true, createdAt: true },
     });
     if (!user) return fail("User not found", 404);
     const listingsCount = await prisma.listing.count({
-      where: { userId: params.id, status: "ACTIVE" },
+      where: { userId: id, status: "ACTIVE" },
     });
     return ok({ ...user, listingsCount });
   } catch (err) {
@@ -30,8 +31,9 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 /** PATCH /api/users/:id — update own profile only. */
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
+    const { id } = await params;
     const user = await requireUser();
-    if (user.id !== params.id) return fail("Forbidden", 403);
+    if (user.id !== id) return fail("Forbidden", 403);
 
     const patch = updateProfileSchema.parse(await req.json());
 

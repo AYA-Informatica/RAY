@@ -8,7 +8,7 @@ import type { User } from "@prisma/client";
  *  Memoized per-request so multiple server components on the same page
  *  share one Supabase round-trip. */
 export const getAuthUser = cache(async () => {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error,

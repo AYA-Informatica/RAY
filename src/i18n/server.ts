@@ -7,7 +7,7 @@ import { parseLocale } from "./utils";
  * client-side I18nProvider writes on language change, falls back to "en".
  * Use this in async Server Components instead of `useI18n()`.
  */
-export function serverT(key: string): string {
-  const raw = cookies().get("ray_locale")?.value;
+export async function serverT(key: string): Promise<string> {
+  const raw = (await cookies()).get("ray_locale")?.value;
   return translate(parseLocale(raw), key);
 }

@@ -5,14 +5,15 @@ import { ChatThread } from "./ChatThread";
 
 export const metadata = { title: "Chat" };
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 /** Single conversation thread. Auth + participant-checked. */
 export default async function ChatThreadPage({ params }: Params) {
+  const { id } = await params;
   const user = await getCurrentUser();
-  if (!user) redirect(`/login?redirect=/chat/${params.id}`);
+  if (!user) redirect(`/login?redirect=/chat/${id}`);
 
-  const thread = await getThread(params.id, user.id);
+  const thread = await getThread(id, user.id);
   if (!thread) notFound();
 
   return <ChatThread thread={thread} currentUserId={user.id} />;

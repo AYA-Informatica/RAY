@@ -5,14 +5,15 @@ import { ok, fail, handleApiError } from "@/lib/utils/api";
 
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: { userId: string } };
+type Ctx = { params: Promise<{ userId: string }> };
 
 /** GET /api/blocks/:userId — is the current user blocking :userId? */
 export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
+    const { userId } = await params;
     const user = await requireUser();
     const block = await prisma.block.findUnique({
-      where: { blockerId_blockedId: { blockerId: user.id, blockedId: params.userId } },
+      where: { blockerId_blockedId: { blockerId: user.id, blockedId: userId } },
       select: { id: true },
     });
     return ok({ blocked: Boolean(block) });
@@ -25,12 +26,13 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 /** POST /api/blocks/:userId — block a user (idempotent). */
 export async function POST(_req: NextRequest, { params }: Ctx) {
   try {
+    const { userId } = await params;
     const user = await requireUser();
-    if (user.id === params.userId) return fail("You can't block yourself", 400);
+    if (user.id === userId) return fail("You can't block yourself", 400);
     await prisma.block.upsert({
-      where: { blockerId_blockedId: { blockerId: user.id, blockedId: params.userId } },
+      where: { blockerId_blockedId: { blockerId: user.id, blockedId: userId } },
       update: {},
-      create: { blockerId: user.id, blockedId: params.userId },
+      create: { blockerId: user.id, blockedId: userId },
     });
     return ok({ blocked: true });
   } catch (err) {
@@ -42,9 +44,10 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
 /** DELETE /api/blocks/:userId — unblock. */
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
+    const { userId } = await params;
     const user = await requireUser();
     await prisma.block.deleteMany({
-      where: { blockerId: user.id, blockedId: params.userId },
+      where: { blockerId: user.id, blockedId: userId },
     });
     return ok({ blocked: false });
   } catch (err) {

@@ -1,70 +1,66 @@
-const withPWA = require("next-pwa")({
+const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   // Disable in dev to avoid noisy service-worker caching during local work.
   disable: process.env.NODE_ENV === "development",
-  register: true,
-  skipWaiting: true,
-  // Don't precache the API or Next data routes.
-  buildExcludes: [/middleware-manifest\.json$/],
   // Serve /offline when a navigation request fails (user is fully offline).
   fallbacks: { document: "/offline" },
-  runtimeCaching: [
-    {
-      // Listing/avatar/chat images from Supabase Storage — cache-first, capped.
-      urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "ray-images",
-        expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
-        cacheableResponse: { statuses: [0, 200] },
+  workboxOptions: {
+    // Don't precache the API or Next data routes.
+    exclude: [/middleware-manifest\.json$/],
+    runtimeCaching: [
+      {
+        // Listing/avatar/chat images from Supabase Storage — cache-first, capped.
+        urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "ray-images",
+          expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
+          cacheableResponse: { statuses: [0, 200] },
+        },
       },
-    },
-    {
-      // Google Fonts files.
-      urlPattern: /^https:\/\/fonts\.(gstatic|googleapis)\.com\/.*/i,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "ray-fonts",
-        expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 },
-        cacheableResponse: { statuses: [0, 200] },
+      {
+        // Google Fonts files.
+        urlPattern: /^https:\/\/fonts\.(gstatic|googleapis)\.com\/.*/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "ray-fonts",
+          expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 },
+          cacheableResponse: { statuses: [0, 200] },
+        },
       },
-    },
-    {
-      // App shell / static assets — stale-while-revalidate for snappy revisits.
-      urlPattern: /\.(?:js|css|woff2?|png|jpg|jpeg|svg|webp|ico)$/i,
-      handler: "StaleWhileRevalidate",
-      options: {
-        cacheName: "ray-static",
-        expiration: { maxEntries: 120, maxAgeSeconds: 30 * 24 * 60 * 60 },
+      {
+        // App shell / static assets — stale-while-revalidate for snappy revisits.
+        urlPattern: /\.(?:js|css|woff2?|png|jpg|jpeg|svg|webp|ico)$/i,
+        handler: "StaleWhileRevalidate",
+        options: {
+          cacheName: "ray-static",
+          expiration: { maxEntries: 120, maxAgeSeconds: 30 * 24 * 60 * 60 },
+        },
       },
-    },
-    {
-      // Never cache API responses (auth, chat, search must be fresh).
-      urlPattern: /\/api\/.*/i,
-      handler: "NetworkOnly",
-      options: {},
-    },
-    {
-      // HTML pages — network-first so users get fresh content, offline fallback.
-      urlPattern: ({ request }) => request.mode === "navigate",
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "ray-pages",
-        networkTimeoutSeconds: 5,
-        expiration: { maxEntries: 60, maxAgeSeconds: 24 * 60 * 60 },
+      {
+        // Never cache API responses (auth, chat, search must be fresh).
+        urlPattern: /\/api\/.*/i,
+        handler: "NetworkOnly",
+        options: {},
       },
-    },
-  ],
+      {
+        // HTML pages — network-first so users get fresh content, offline fallback.
+        urlPattern: ({ request }) => request.mode === "navigate",
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "ray-pages",
+          networkTimeoutSeconds: 5,
+          expiration: { maxEntries: 60, maxAgeSeconds: 24 * 60 * 60 },
+        },
+      },
+    ],
+  },
 });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Disable build-time font optimization — fonts are loaded via <link> at runtime.
-  // This prevents the FontStylesheetGatheringPlugin from trying to fetch and inline
-  // Google Fonts CSS, which fails in restricted-network build environments.
-  optimizeFonts: false,
   // Improve Fast Refresh stability
   onDemandEntries: {
     maxInactiveAge: 60 * 1000,

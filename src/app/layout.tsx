@@ -35,8 +35,8 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = parseLocale(cookies().get("ray_locale")?.value);
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = parseLocale((await cookies()).get("ray_locale")?.value);
   return (
     <html
       lang={locale}

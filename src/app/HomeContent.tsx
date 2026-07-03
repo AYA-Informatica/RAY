@@ -71,7 +71,7 @@ export async function HomeContent() {
 
   return (
     <AppShell width="wide">
-      <h1 className="sr-only">{serverT("nav.home")}</h1>
+      <h1 className="sr-only">{await serverT("nav.home")}</h1>
 
       <div className="lg:hidden">
         <LocationHeader location={locationLabel} />

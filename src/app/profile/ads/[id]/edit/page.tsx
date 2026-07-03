@@ -7,14 +7,15 @@ import { EditListingForm } from "./EditListingForm";
 
 export const metadata = { title: "Edit ad" };
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 /** Edit an owned listing. Auth + ownership enforced. */
 export default async function EditListingPage({ params }: Params) {
+  const { id } = await params;
   const user = await getCurrentUser();
-  if (!user) redirect(`/login?redirect=/profile/ads/${params.id}/edit`);
+  if (!user) redirect(`/login?redirect=/profile/ads/${id}/edit`);
 
-  const listing = await getOwnedListing(params.id, user.id);
+  const listing = await getOwnedListing(id, user.id);
   if (!listing) notFound();
 
   // Serialize for the client form.

@@ -17,7 +17,7 @@ import { FavoritesProvider } from "@/components/shared/FavoritesProvider";
 import { getAuthUser } from "@/lib/auth/session";
 import { getFavoriteIds } from "@/services/favorites";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 // Disable static rendering for listing details to show real-time status
 export const dynamic = "force-dynamic";
@@ -25,7 +25,8 @@ export const revalidate = 0;
 
 /** Per-listing SEO metadata + Open Graph (Build Prompt SEO requirements). */
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const listing = await getListing(params.id);
+  const { id } = await params;
+  const listing = await getListing(id);
   if (!listing) return { title: "Listing not found" };
   const cover = listing.images[0]?.url;
   return {
@@ -48,7 +49,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function ListingDetailPage({ params }: Params) {
-  const [listing, authUser] = await Promise.all([getListing(params.id), getAuthUser()]);
+  const { id } = await params;
+  const [listing, authUser] = await Promise.all([getListing(id), getAuthUser()]);
   if (!listing) notFound();
   const favoriteIds = authUser ? await getFavoriteIds(authUser.id) : [];
 
@@ -95,8 +97,8 @@ export default async function ListingDetailPage({ params }: Params) {
 
               {/* Row 1 — qualifiers */}
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Badge tone="muted">{serverT(`condition.${listing.condition}`)}</Badge>
-                {listing.negotiable && <Badge tone="success">{serverT("common.negotiable")}</Badge>}
+                <Badge tone="muted">{await serverT(`condition.${listing.condition}`)}</Badge>
+                {listing.negotiable && <Badge tone="success">{await serverT("common.negotiable")}</Badge>}
               </div>
 
               {/* Row 2 — location · views · time (de-emphasized) */}
@@ -107,7 +109,7 @@ export default async function ListingDetailPage({ params }: Params) {
                   {listing.district}, {listing.city}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Eye size={12} /> {listing.views} {serverT("listing.views")}
+                  <Eye size={12} /> {listing.views} {await serverT("listing.views")}
                 </span>
                 <span>· {timeAgo(listing.createdAt)}</span>
               </div>
@@ -116,7 +118,7 @@ export default async function ListingDetailPage({ params }: Params) {
             {/* Dynamic category attributes */}
             {listing.attributeValues.length > 0 && (
               <section>
-                <h2 className="mb-2 font-display font-bold">{serverT("listing.details")}</h2>
+                <h2 className="mb-2 font-display font-bold">{await serverT("listing.details")}</h2>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border border-border bg-surface-card p-3">
                   {listing.attributeValues.map((av) =>
                     av.attribute ? (
@@ -132,7 +134,7 @@ export default async function ListingDetailPage({ params }: Params) {
 
             {/* Description */}
             <section>
-              <h2 className="mb-2 font-display font-bold">{serverT("listing.description")}</h2>
+              <h2 className="mb-2 font-display font-bold">{await serverT("listing.description")}</h2>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
                 {listing.description}
               </p>
@@ -145,14 +147,14 @@ export default async function ListingDetailPage({ params }: Params) {
 
             {/* Safety note + report */}
             <div className="flex items-center justify-between rounded-md bg-surface-card/50 px-3 py-2">
-              <p className="text-xs text-text-muted">{serverT("listing.safetyNote")}</p>
+              <p className="text-xs text-text-muted">{await serverT("listing.safetyNote")}</p>
               <ReportButton listingId={listing.id} />
             </div>
 
             {/* Desktop: in-flow CTA (mobile uses the sticky bar below) */}
             {!isOwner && (
               <div className="hidden lg:block">
-                <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? serverT("common.theSeller")} inline />
+                <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? await serverT("common.theSeller")} inline />
               </div>
             )}
           </div>
@@ -161,7 +163,7 @@ export default async function ListingDetailPage({ params }: Params) {
 
       {/* Mobile/tablet sticky chat CTA */}
       {!isOwner && (
-        <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? serverT("common.theSeller")} />
+        <ChatCtaBar listingId={listing.id} sellerName={listing.user.name ?? await serverT("common.theSeller")} />
       )}
     </div>
   );

@@ -4,8 +4,7 @@ import { PresenceHeartbeat } from "@/components/shared/PresenceHeartbeat";
 import { UnreadMessagesProvider } from "@/components/shared/UnreadMessagesProvider";
 import { InboxRealtimeSync } from "@/components/shared/InboxRealtimeSync";
 import { ConversationList } from "@/components/chat/ConversationList";
-import { getAuthUser } from "@/lib/auth/session";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getAuthUser, getCurrentUser } from "@/lib/auth/session";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { getInbox } from "@/services/chat";
 import { serverT } from "@/i18n/server";
@@ -48,8 +47,8 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
         {/* Desktop sidebar — hidden on mobile */}
         <aside className="hidden w-80 shrink-0 flex-col border-r border-border lg:flex xl:w-96">
           <div className="shrink-0 border-b border-border px-4 py-4">
-            <h1 className="font-display text-xl font-bold">{serverT("chat.title")}</h1>
-            <p className="mt-0.5 text-xs text-text-muted">{serverT("chat.emptySub")}</p>
+            <h1 className="font-display text-xl font-bold">{await serverT("chat.title")}</h1>
+            <p className="mt-0.5 text-xs text-text-muted">{await serverT("chat.emptySub")}</p>
           </div>
           <div className="flex-1 overflow-y-auto">
             <ConversationList conversations={conversations} currentUserId={user?.id ?? ""} />
