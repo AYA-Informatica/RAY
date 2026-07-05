@@ -9,11 +9,9 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { uploadImage } from "@/lib/storage/upload";
-import { RWANDA_CITIES } from "@/constants/locations";
+import { useLocationCascade } from "@/hooks/useLocationCascade";
 import { useI18n } from "@/i18n/I18nProvider";
 import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
-
-const isKnownCity = (name: string) => RWANDA_CITIES.some((c) => c.city.toLowerCase() === name.toLowerCase());
 
 interface Props {
   userId: string;
@@ -44,14 +42,13 @@ export function EditProfileForm({ userId, initial }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Free-text location mode for users outside the listed cities/districts.
-  const [customLocation, setCustomLocation] = useState(() => Boolean(initial.city) && !isKnownCity(initial.city));
+  // Free-text fallback for locations outside Rwanda (edge case).
+  const [customLocation, setCustomLocation] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const [permissionPrompt, setPermissionPrompt] = useState<"location" | null>(null);
 
-  const districts = RWANDA_CITIES.find((c) => c.city === city)?.districts ?? [];
-  const neighborhoods = districts.find((d) => d.name === district)?.neighborhoods ?? [];
+  const { allDistricts, loadingDistricts, sectors, loadingSectors, cityFromDistrict } = useLocationCascade(district);
 
   function detectLocation() {
     if (!navigator.geolocation) return;
@@ -72,46 +69,29 @@ export function EditProfileForm({ userId, initial }: Props) {
           if (!res.ok) throw new Error("lookup failed");
           const data = (await res.json()) as { address?: Record<string, string> };
           const addr = data.address ?? {};
-          // Nominatim returns names like "City of Kigali" / "Musanze District" —
-          // strip those wrappers before comparing against RWANDA_CITIES.
           const normalize = (raw: string) =>
             raw.replace(/^city of\s+/i, "").replace(/\s+(district|province|sector|cell)$/i, "").trim();
 
-          const rawCity = addr.city || addr.town || addr.village || addr.county || "";
-          const detectedCity = normalize(rawCity);
-          const districtCandidates = [addr.suburb, addr.city_district, addr.county, addr.state_district]
+          const candidates = [
+            addr.city, addr.town, addr.suburb, addr.city_district, addr.county, addr.state_district,
+          ]
             .filter((v): v is string => Boolean(v))
             .map(normalize);
 
-          const match = RWANDA_CITIES.find((c) => c.city.toLowerCase() === detectedCity.toLowerCase());
-          if (match) {
-            let districtMatch = match.districts.find((d) =>
-              districtCandidates.some((cand) => cand.toLowerCase() === d.name.toLowerCase()),
-            );
-            let neighborhoodMatch: string | undefined;
-            if (!districtMatch) {
-              for (const d of match.districts) {
-                const n = d.neighborhoods.find((nb) =>
-                  districtCandidates.some((cand) => cand.toLowerCase() === nb.toLowerCase()),
-                );
-                if (n) {
-                  districtMatch = d;
-                  neighborhoodMatch = n;
-                  break;
-                }
-              }
-            }
-            if (!districtMatch && match.districts.length === 1) districtMatch = match.districts[0];
+          const districtMatch = allDistricts.find((d) =>
+            candidates.some((c) => c.toLowerCase() === d.district.toLowerCase()),
+          );
 
+          if (districtMatch) {
             setCustomLocation(false);
-            setCity(match.city);
-            setDistrict(districtMatch?.name ?? "");
-            setNeighborhood(neighborhoodMatch ?? "");
+            setDistrict(districtMatch.district);
+            setCity(cityFromDistrict(districtMatch.district));
+            setNeighborhood("");
             setLocationNote(t("profileEdit.locationDetected"));
-          } else if (detectedCity) {
+          } else if (candidates.length > 0) {
             setCustomLocation(true);
-            setCity(detectedCity);
-            setDistrict(districtCandidates[0] ?? "");
+            setCity(candidates[0] ?? "");
+            setDistrict(candidates[1] ?? "");
             setNeighborhood("");
             setLocationNote(t("profileEdit.locationOutsideArea"));
           } else {
@@ -287,29 +267,32 @@ export function EditProfileForm({ userId, initial }: Props) {
           ) : (
             <>
               <Select
-                label={t("profileEdit.city")}
-                placeholder={t("filter.anyCity")}
-                value={city}
-                onChange={(e) => { setCity(e.target.value); setDistrict(""); setNeighborhood(""); }}
-                options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
+                label={t("profileEdit.district")}
+                disabled={loadingDistricts}
+                placeholder={loadingDistricts ? t("common.loading") : t("filter.anyDistrict")}
+                value={district}
+                onChange={(e) => {
+                  setDistrict(e.target.value);
+                  setCity(cityFromDistrict(e.target.value));
+                  setNeighborhood("");
+                }}
+                options={allDistricts.map((d) => ({ value: d.district, label: d.district }))}
               />
-              {districts.length > 0 && (
-                <Select
-                  label={t("profileEdit.district")}
-                  placeholder={t("filter.anyDistrict")}
-                  value={district}
-                  onChange={(e) => { setDistrict(e.target.value); setNeighborhood(""); }}
-                  options={districts.map((d) => ({ value: d.name, label: d.name }))}
-                />
-              )}
-              {neighborhoods.length > 0 && (
-                <Select
-                  label={t("profileEdit.neighborhood")}
-                  placeholder={t("filter.anyNeighborhood")}
-                  value={neighborhood}
-                  onChange={(e) => setNeighborhood(e.target.value)}
-                  options={neighborhoods.map((n) => ({ value: n, label: n }))}
-                />
+              {district && (
+                loadingSectors ? (
+                  <div className="flex items-center gap-2 text-sm text-text-muted">
+                    <Loader2 size={14} className="animate-spin" />
+                    {t("filter.anyDistrict")}…
+                  </div>
+                ) : sectors.length > 0 && (
+                  <Select
+                    label={t("profileEdit.neighborhood")}
+                    placeholder={t("filter.anyNeighborhood")}
+                    value={neighborhood}
+                    onChange={(e) => setNeighborhood(e.target.value)}
+                    options={sectors.map((s) => ({ value: s, label: s }))}
+                  />
+                )
               )}
               <button
                 type="button"

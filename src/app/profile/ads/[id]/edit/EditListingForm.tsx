@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, X, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { uploadImages } from "@/lib/storage/upload";
-import { RWANDA_CITIES } from "@/constants/locations";
+import { useLocationCascade } from "@/hooks/useLocationCascade";
 import { useI18n } from "@/i18n/I18nProvider";
 import { isAttributeVisible, type ShowIf } from "@/lib/utils/categoryAttributes";
 import type { Condition } from "@prisma/client";
@@ -104,14 +104,7 @@ export function EditListingForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const districts = useMemo(
-    () => RWANDA_CITIES.find((c) => c.city === city)?.districts ?? [],
-    [city],
-  );
-  const neighborhoods = useMemo(
-    () => districts.find((d) => d.name === district)?.neighborhoods ?? [],
-    [districts, district],
-  );
+  const { allDistricts, loadingDistricts, sectors, loadingSectors, cityFromDistrict } = useLocationCascade(district);
 
   async function handleFiles(files: FileList | null) {
     if (!files) return;
@@ -346,33 +339,34 @@ export function EditListingForm({
 
         {/* Location */}
         <Select
-          label={t("sell.city")}
-          options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
-          value={city}
-          onChange={(e) => {
-            setCity(e.target.value);
-            setDistrict("");
-            setNeighborhood("");
-          }}
-        />
-        <Select
           label={t("sell.district")}
-          placeholder={t("sell.districtPlaceholder")}
-          options={districts.map((d) => ({ value: d.name, label: d.name }))}
+          disabled={loadingDistricts}
+          placeholder={loadingDistricts ? t("common.loading") : t("sell.districtPlaceholder")}
+          autoComplete="off"
+          options={allDistricts.map((d) => ({ value: d.district, label: d.district }))}
           value={district}
           onChange={(e) => {
             setDistrict(e.target.value);
+            setCity(cityFromDistrict(e.target.value));
             setNeighborhood("");
           }}
         />
-        {neighborhoods.length > 0 && (
-          <Select
-            label={t("sell.neighborhood")}
-            placeholder={t("sell.neighborhoodPlaceholder")}
-            options={neighborhoods.map((n) => ({ value: n, label: n }))}
-            value={neighborhood}
-            onChange={(e) => setNeighborhood(e.target.value)}
-          />
+        {district && (
+          loadingSectors ? (
+            <div className="flex items-center gap-2 text-sm text-text-muted">
+              <Loader2 size={14} className="animate-spin" />
+              {t("sell.districtPlaceholder")}…
+            </div>
+          ) : sectors.length > 0 && (
+            <Select
+              label={t("sell.neighborhood")}
+              placeholder={t("sell.neighborhoodPlaceholder")}
+              autoComplete="off"
+              options={sectors.map((s) => ({ value: s, label: s }))}
+              value={neighborhood}
+              onChange={(e) => setNeighborhood(e.target.value)}
+            />
+          )
         )}
 
         {error && <p className="text-sm text-danger">{error}</p>}

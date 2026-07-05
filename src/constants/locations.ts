@@ -1,6 +1,19 @@
 /**
- * Rwanda location data — Kigali-first per go-to-market strategy.
- * Country -> City -> District -> Neighborhood granularity.
+ * Maps CSV province names to display city names used in the Listing.city field.
+ * Province is the top-level administrative unit in Rwanda; "city" in the data
+ * model is a coarse grouping at province level.
+ */
+export const PROVINCE_TO_CITY: Record<string, string> = {
+  "KIGALI CITY": "Kigali",
+  "NORTHERN PROVINCE": "Northern Province",
+  "SOUTHERN PROVINCE": "Southern Province",
+  "EASTERN PROVINCE": "Eastern Province",
+  "WESTERN PROVINCE": "Western Province",
+};
+
+/**
+ * Legacy static location data — kept for reference.
+ * All live location selection now uses the RwandaLocation DB table via /api/location/*.
  */
 export const RWANDA_CITIES = [
   {

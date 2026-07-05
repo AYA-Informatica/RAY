@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, X, Check, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +15,7 @@ import { uploadImages, isHeicFile } from "@/lib/storage/upload";
 import { safeGetItem } from "@/lib/safeStorage";
 import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
 import { cn } from "@/lib/utils/cn";
-import { RWANDA_CITIES } from "@/constants/locations";
+import { useLocationCascade } from "@/hooks/useLocationCascade";
 import { parseAttributeOptions, isAttributeVisible } from "@/lib/utils/categoryAttributes";
 import type { CategoryWithAttributes } from "@/types";
 
@@ -171,14 +171,27 @@ export function SellWizard({
     };
   }, [selectedCategory?.slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const districts = useMemo(() => {
-    const city = RWANDA_CITIES.find((c) => c.city === draft.city);
-    return city?.districts ?? [];
-  }, [draft.city]);
+  // GPS detection stores Nominatim neighborhood candidates here so the sector
+  // loading effect can try to auto-match a sector after district is set.
+  const sectorCandidatesRef = useRef<string[]>([]);
 
-  const neighborhoods = useMemo(() => {
-    return districts.find((d) => d.name === draft.district)?.neighborhoods ?? [];
-  }, [districts, draft.district]);
+  const onSectorsLoaded = useCallback(
+    (loadedSectors: string[]) => {
+      if (sectorCandidatesRef.current.length === 0) return;
+      const match = loadedSectors.find((s) =>
+        sectorCandidatesRef.current.some((c) => c.toLowerCase() === s.toLowerCase()),
+      );
+      if (match) set({ neighborhood: match });
+      sectorCandidatesRef.current = [];
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const { allDistricts, loadingDistricts, sectors, loadingSectors, cityFromDistrict } = useLocationCascade(
+    draft.district,
+    onSectorsLoaded,
+  );
 
   // Skip Specs only when the category truly has no attributes at all.
   // Previously this skipped whenever no attribute was *required*, which silently
@@ -299,48 +312,35 @@ export function SellWizard({
           const data = (await res.json()) as { address?: Record<string, string> };
           const addr = data.address ?? {};
           // Nominatim returns names like "City of Kigali" / "Musanze District" —
-          // strip those wrappers before comparing against RWANDA_CITIES.
+          // strip those wrappers before comparing against the DB district list.
           const normalize = (raw: string) =>
             raw.replace(/^city of\s+/i, "").replace(/\s+(district|province|sector|cell)$/i, "").trim();
 
-          const rawCity = addr.city || addr.town || addr.village || addr.county || "";
-          const detectedCity = normalize(rawCity);
-          const districtCandidates = [addr.suburb, addr.city_district, addr.county, addr.state_district]
+          const candidates = [
+            addr.city, addr.town, addr.suburb, addr.city_district, addr.county, addr.state_district,
+          ]
             .filter((v): v is string => Boolean(v))
             .map(normalize);
 
-          const match = RWANDA_CITIES.find((c) => c.city.toLowerCase() === detectedCity.toLowerCase());
-          if (match) {
-            let districtMatch = match.districts.find((d) =>
-              districtCandidates.some((cand) => cand.toLowerCase() === d.name.toLowerCase()),
-            );
-            let neighborhoodMatch: string | undefined;
-            if (!districtMatch) {
-              for (const d of match.districts) {
-                const n = d.neighborhoods.find((nb) =>
-                  districtCandidates.some((cand) => cand.toLowerCase() === nb.toLowerCase()),
-                );
-                if (n) {
-                  districtMatch = d;
-                  neighborhoodMatch = n;
-                  break;
-                }
-              }
-            }
-            if (!districtMatch && match.districts.length === 1) districtMatch = match.districts[0];
+          const districtMatch = allDistricts.find((d) =>
+            candidates.some((c) => c.toLowerCase() === d.district.toLowerCase()),
+          );
 
+          if (districtMatch) {
+            // Store candidates so the sector-loading effect can auto-match a sector.
+            sectorCandidatesRef.current = candidates;
             set({
-              city: match.city,
-              district: districtMatch?.name ?? "",
-              neighborhood: neighborhoodMatch ?? "",
+              district: districtMatch.district,
+              city: cityFromDistrict(districtMatch.district),
+              neighborhood: "",
               latitude,
               longitude,
             });
             setLocationNote(t("sell.locationDetected"));
-          } else if (detectedCity) {
+          } else if (candidates.length > 0) {
             set({
-              city: detectedCity,
-              district: districtCandidates[0] ?? "",
+              district: candidates[0] ?? "",
+              city: "",
               neighborhood: "",
               latitude,
               longitude,
@@ -452,10 +452,7 @@ export function SellWizard({
         return { ok: true };
       }
       case 4: {
-        // Regardless of locationMode, draft.city/district hold whatever will
-        // actually be submitted (pre-filled from profile, picked manually, or
-        // resolved via GPS) — validate those directly.
-        if (!draft.city) return { ok: false, reason: t("sell.gate.city") };
+        // city is auto-derived from district — only require district.
         if (!draft.district) return { ok: false, reason: t("sell.gate.district") };
         return { ok: true };
       }
@@ -781,30 +778,37 @@ export function SellWizard({
             {locationMode === "manual" && (
               <div className="space-y-4 pl-1">
                 <Select
-                  label={t("sell.city")}
-                  required
-                  autoComplete="off"
-                  options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
-                  value={draft.city}
-                  onChange={(e) => set({ city: e.target.value, district: "", neighborhood: "" })}
-                />
-                <Select
                   label={t("sell.district")}
                   required
                   autoComplete="off"
-                  placeholder={t("sell.districtPlaceholder")}
-                  options={districts.map((d) => ({ value: d.name, label: d.name }))}
+                  disabled={loadingDistricts}
+                  placeholder={loadingDistricts ? t("common.loading") : t("sell.districtPlaceholder")}
+                  options={allDistricts.map((d) => ({ value: d.district, label: d.district }))}
                   value={draft.district}
-                  onChange={(e) => set({ district: e.target.value, neighborhood: "" })}
+                  onChange={(e) => {
+                    set({
+                      district: e.target.value,
+                      city: cityFromDistrict(e.target.value),
+                      neighborhood: "",
+                    });
+                  }}
                 />
-                {neighborhoods.length > 0 && (
-                  <Select
-                    label={t("sell.neighborhood")}
-                    placeholder={t("sell.neighborhoodPlaceholder")}
-                    options={neighborhoods.map((n) => ({ value: n, label: n }))}
-                    value={draft.neighborhood}
-                    onChange={(e) => set({ neighborhood: e.target.value })}
-                  />
+                {draft.district && (
+                  loadingSectors ? (
+                    <div className="flex items-center gap-2 text-sm text-text-muted">
+                      <Loader2 size={14} className="animate-spin" />
+                      {t("sell.districtPlaceholder")}…
+                    </div>
+                  ) : sectors.length > 0 && (
+                    <Select
+                      label={t("sell.neighborhood")}
+                      placeholder={t("sell.neighborhoodPlaceholder")}
+                      autoComplete="off"
+                      options={sectors.map((s) => ({ value: s, label: s }))}
+                      value={draft.neighborhood}
+                      onChange={(e) => set({ neighborhood: e.target.value })}
+                    />
+                  )
                 )}
               </div>
             )}

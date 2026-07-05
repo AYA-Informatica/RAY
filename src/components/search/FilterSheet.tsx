@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Input } from "@/components/ui/Input";
 import { PriceSlider } from "./PriceSlider";
 import { DistanceSelector } from "./DistanceSelector";
-import { RWANDA_CITIES } from "@/constants/locations";
+import { useLocationCascade } from "@/hooks/useLocationCascade";
 import { useI18n } from "@/i18n/I18nProvider";
 
 /** Filters applied on the search page. Strings (not nulls) so empty = ignored. */
@@ -65,29 +65,29 @@ export function FilterSheet({
   hasLocation = false,
   locating = false,
   locationError = null,
-}: FilterSheetProps) {
+}: Readonly<FilterSheetProps>) {
   const { t } = useI18n();
   const [filters, setFilters] = useState<SearchFilters>(initial);
 
-  // Dependent location dropdowns sourced from the constants/locations.ts hierarchy.
-  const cityRow = useMemo(
-    () => RWANDA_CITIES.find((c) => c.city === filters.city),
-    [filters.city],
-  );
-  const districtRow = useMemo(
-    () => cityRow?.districts.find((d) => d.name === filters.district),
-    [cityRow, filters.district],
-  );
+  const { allDistricts, loadingDistricts, sectors, loadingSectors } = useLocationCascade(filters.district);
 
   const showBrand = category && category !== "all" && BRAND_CATEGORIES.has(category);
 
-  const locationHint = locating
-    ? t("filter.locating")
-    : locationError
-      ? t("filter.locationError")
-      : hasLocation
-        ? t("filter.locationReady")
-        : t("filter.locationHint");
+  let locationHint: string;
+  if (locating) locationHint = t("filter.locating");
+  else if (locationError) locationHint = t("filter.locationError");
+  else if (hasLocation) locationHint = t("filter.locationReady");
+  else locationHint = t("filter.locationHint");
+
+  const sectorSelect = filters.district && !loadingSectors && sectors.length > 0 ? (
+    <Select
+      label={t("filter.neighborhood")}
+      placeholder={t("filter.anyNeighborhood")}
+      value={filters.neighborhood}
+      onChange={(e) => setFilters((f) => ({ ...f, neighborhood: e.target.value }))}
+      options={sectors.map((s) => ({ value: s, label: s }))}
+    />
+  ) : null;
 
   return (
     <Modal open={open} onClose={onClose} title={t("search.filters")}>
@@ -116,34 +116,16 @@ export function FilterSheet({
         {/* Location (hyperlocal hierarchy) */}
         <div className="space-y-3">
           <Select
-            label={t("filter.city")}
-            placeholder={t("filter.anyCity")}
-            value={filters.city}
+            label={t("filter.district")}
+            disabled={loadingDistricts}
+            placeholder={loadingDistricts ? t("common.loading") : t("filter.anyDistrict")}
+            value={filters.district}
             onChange={(e) =>
-              setFilters((f) => ({ ...f, city: e.target.value, district: "", neighborhood: "" }))
+              setFilters((f) => ({ ...f, district: e.target.value, neighborhood: "" }))
             }
-            options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
+            options={allDistricts.map((d) => ({ value: d.district, label: d.district }))}
           />
-          {cityRow && (
-            <Select
-              label={t("filter.district")}
-              placeholder={t("filter.anyDistrict")}
-              value={filters.district}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, district: e.target.value, neighborhood: "" }))
-              }
-              options={cityRow.districts.map((d) => ({ value: d.name, label: d.name }))}
-            />
-          )}
-          {districtRow && districtRow.neighborhoods.length > 0 && (
-            <Select
-              label={t("filter.neighborhood")}
-              placeholder={t("filter.anyNeighborhood")}
-              value={filters.neighborhood}
-              onChange={(e) => setFilters((f) => ({ ...f, neighborhood: e.target.value }))}
-              options={districtRow.neighborhoods.map((n) => ({ value: n, label: n }))}
-            />
-          )}
+          {sectorSelect}
         </div>
 
         {/* Brand — only for categories whose attribute schema includes one */}

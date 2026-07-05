@@ -348,6 +348,27 @@ model SiteConfig {
 }
 
 // ---------------------------------------------------------------------------
+// RwandaLocation — official administrative hierarchy reference table
+// Seeded once from the Rwanda NEP village CSV (13,922 villages, 30 districts).
+// Used as a read-only lookup for location pickers and listing enrichment.
+// No FK from Listing — district name is the soft join key.
+// ---------------------------------------------------------------------------
+
+model RwandaLocation {
+  id       Int    @id @default(autoincrement())
+  province String
+  district String
+  sector   String
+  cell     String
+  village  String
+
+  @@unique([province, district, sector, cell, village])
+  @@index([district])
+  @@index([district, sector])
+  @@index([district, sector, cell])
+}
+
+// ---------------------------------------------------------------------------
 // AdminAction — audit log for every moderation action
 // ---------------------------------------------------------------------------
 
