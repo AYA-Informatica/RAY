@@ -1,6 +1,11 @@
 /** Format a price in Rwandan Francs, e.g. "Rwf 3,000,000". */
 export function formatPrice(amount: number): string {
-  return `Rwf ${new Intl.NumberFormat("en-RW").format(Math.round(amount))}`;
+  try {
+    return `Rwf ${new Intl.NumberFormat("en-RW").format(Math.round(amount))}`;
+  } catch {
+    // Fallback for environments where en-RW locale data is unavailable
+    return `Rwf ${Math.round(amount).toLocaleString()}`;
+  }
 }
 
 /**
@@ -16,10 +21,40 @@ export function toUtcIso(ts: string): string {
   return /[Zz]|[+-]\d\d:\d\d$/.test(ts) ? ts : `${ts}Z`;
 }
 
-/** Relative time, e.g. "2 hours ago", "3 days ago". */
+/** Relative time, e.g. "2 hours ago", "3 days ago". Locale-aware via Intl. */
 export function timeAgo(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
+
+  // Use Intl.RelativeTimeFormat for non-English locales (rw, fr).
+  // Detects the active locale from <html lang="…">; falls back to English.
+  if (typeof Intl !== "undefined" && Intl.RelativeTimeFormat) {
+    const locale =
+      (typeof document !== "undefined" && document.documentElement.lang) || "en";
+    if (locale !== "en") {
+      try {
+        const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+        if (seconds < 60) return rtf.format(0, "second");
+        const mins = Math.floor(seconds / 60);
+        const hrs = Math.floor(seconds / 3600);
+        const days = Math.floor(seconds / 86400);
+        const weeks = Math.floor(seconds / 604800);
+        const months = Math.floor(seconds / 2592000);
+        const years = Math.floor(seconds / 31536000);
+        if (years >= 1) return rtf.format(-years, "year");
+        if (months >= 1) return rtf.format(-months, "month");
+        if (weeks >= 1) return rtf.format(-weeks, "week");
+        if (days >= 1) return rtf.format(-days, "day");
+        if (hrs >= 1) return rtf.format(-hrs, "hour");
+        return rtf.format(-mins, "minute");
+      } catch {
+        // Locale not supported by this browser's Intl data — fall through
+      }
+    }
+  }
+
+  // English fallback
+  if (seconds < 60) return "just now";
   const units: [number, string][] = [
     [60, "second"],
     [60, "minute"],
@@ -32,14 +67,10 @@ export function timeAgo(date: Date | string): string {
   let value = seconds;
   let unit = "second";
   for (const [factor, name] of units) {
-    if (Math.abs(value) < factor) {
-      unit = name;
-      break;
-    }
+    if (Math.abs(value) < factor) { unit = name; break; }
     value = Math.floor(value / factor);
     unit = name;
   }
-  if (seconds < 60) return "just now";
   const rounded = Math.max(1, value);
   return `${rounded} ${unit}${rounded > 1 ? "s" : ""} ago`;
 }

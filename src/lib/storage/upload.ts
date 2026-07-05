@@ -7,12 +7,33 @@ export type Bucket = "listings" | "avatars" | "chat-images";
 const MAX_DIMENSION = 1600; // px — cap longest side for low-bandwidth
 const QUALITY = 0.8;
 
+/** Returns true for HEIC/HEIF files that the Canvas API cannot decode. */
+export function isHeicFile(file: File): boolean {
+  const type = file.type.toLowerCase();
+  const name = file.name.toLowerCase();
+  return (
+    type === "image/heic" ||
+    type === "image/heif" ||
+    name.endsWith(".heic") ||
+    name.endsWith(".heif")
+  );
+}
+
 /**
  * Compress an image client-side (canvas -> WebP) before upload.
  * Critical for African low-bandwidth networks (Build Prompt requirement).
+ * Throws a clear error for HEIC/HEIF files that createImageBitmap can't decode.
  */
 async function compress(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
+  if (isHeicFile(file)) {
+    throw new Error("HEIC_NOT_SUPPORTED");
+  }
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error("IMAGE_DECODE_FAILED");
+  }
   const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);

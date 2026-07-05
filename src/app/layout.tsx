@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { I18nProvider, parseLocale } from "@/i18n";
+import { AuthWatcher } from "@/components/shared/AuthWatcher";
+import { InAppBrowserBanner } from "@/components/shared/InAppBrowserBanner";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -56,7 +58,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="min-h-dvh bg-background">
+        <noscript>
+          <div style={{ padding: "1rem", textAlign: "center", background: "#111", color: "#fff" }}>
+            RAY requires JavaScript to run. Please enable JavaScript in your browser.
+          </div>
+        </noscript>
+        <InAppBrowserBanner />
         <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+        <AuthWatcher />
         {/* Only inject on Vercel — scripts 404 on localhost and in plain npm run start */}
         {process.env.NEXT_PUBLIC_VERCEL_ENV && <SpeedInsights />}
         {process.env.NEXT_PUBLIC_VERCEL_ENV && <Analytics />}

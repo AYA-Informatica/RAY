@@ -278,8 +278,8 @@ export function ChatThread({
         <div ref={endRef} />
       </main>
 
-      {/* Footer: composer + privacy note */}
-      <footer className="sticky bottom-0 border-t border-border bg-background">
+      {/* Footer: composer + privacy note — pb-safe clears the iOS home indicator */}
+      <footer className="sticky bottom-0 border-t border-border bg-background pb-safe">
         {(locationError || sendError) && (
           <p className="border-b border-border/50 px-4 py-1.5 text-center text-[11px] text-danger">
             {locationError || sendError}

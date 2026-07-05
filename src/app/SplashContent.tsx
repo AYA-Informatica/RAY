@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useI18n } from "@/i18n/I18nProvider";
+import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
 
 const VISITED_KEY = "ray_visited";
 
@@ -35,7 +36,7 @@ export function SplashContent() {
   // Check localStorage on mount (client-only).
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (localStorage.getItem(VISITED_KEY)) {
+    if (safeGetItem(VISITED_KEY)) {
       // Returning visitor whose cookie was cleared (middleware normally handles
       // the redirect before we get here). Hide immediately and navigate away.
       setVisible(false);
@@ -47,7 +48,7 @@ export function SplashContent() {
   }, [router]);
 
   function handleGetStarted() {
-    localStorage.setItem(VISITED_KEY, "1");
+    safeSetItem(VISITED_KEY, "1");
     document.cookie = "ray_visited=1; path=/; max-age=31536000; SameSite=Lax";
     setVisible(false);
     window.history.replaceState({}, "", "/home");

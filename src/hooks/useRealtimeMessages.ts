@@ -35,6 +35,16 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
     void load();
   }, [load]);
 
+  // Reload messages when the tab becomes visible again — covers both
+  // network reconnect (fix 5) and tab-focus scenarios (fix 21).
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") void load();
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [load]);
+
   useEffect(() => {
     if (!lastEvent) return;
 

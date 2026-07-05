@@ -8,6 +8,8 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   fallbacks: { document: "/offline" },
   workboxOptions: {
     // Don't precache the API or Next data routes.
+    skipWaiting: true,
+    clientsClaim: true,
     exclude: [/middleware-manifest\.json$/],
     runtimeCaching: [
       {
@@ -97,7 +99,7 @@ const nextConfig = {
       // fonts.googleapis.com + fonts.gstatic.com must be in connect-src because
       // the Workbox service worker uses fetch() for runtime font caching, and
       // fetch() is governed by connect-src, not font-src.
-      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live wss://ws-us3.pusher.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://*.ingest.de.sentry.io`,
+      `connect-src 'self' ${supabaseOrigin} https://*.supabase.co wss://*.supabase.co https://*.upstash.io https://vercel.live https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com https://*.ingest.de.sentry.io`,
       `font-src 'self' https://fonts.gstatic.com https://vercel.live https://assets.vercel.com`,
       `frame-src https://vercel.live`,
       `object-src 'none'`,

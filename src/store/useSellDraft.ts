@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Condition } from "@prisma/client";
+import { safeLocalStorage } from "@/lib/safeStorage";
 
 /** In-memory + localStorage draft for the multi-step Sell flow. */
 export interface SellDraft {
@@ -68,16 +69,7 @@ export const useSellDraft = create<SellDraftState>()(
     }),
     {
       name: "ray_sell_draft",
-      storage: createJSONStorage(() => {
-        if (typeof window === "undefined") {
-          return {
-            getItem: () => null,
-            setItem: () => undefined,
-            removeItem: () => undefined,
-          };
-        }
-        return localStorage;
-      }),
+      storage: createJSONStorage(safeLocalStorage),
       // Don't persist the step — always land at step 0 so the user
       // reviews their draft before continuing.
       partialize: (s) => ({ draft: s.draft }),

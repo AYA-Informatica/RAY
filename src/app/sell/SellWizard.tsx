@@ -11,7 +11,8 @@ import { CategorySelector } from "@/components/search/CategorySelector";
 import { PriceTag } from "@/components/listings/PriceTag";
 import { useSellDraft } from "@/store/useSellDraft";
 import { useI18n } from "@/i18n/I18nProvider";
-import { uploadImages } from "@/lib/storage/upload";
+import { uploadImages, isHeicFile } from "@/lib/storage/upload";
+import { safeGetItem } from "@/lib/safeStorage";
 import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
 import { cn } from "@/lib/utils/cn";
 import { RWANDA_CITIES } from "@/constants/locations";
@@ -132,7 +133,7 @@ export function SellWizard({
   // brand-new session — never overwrite a draft the user already started.
   useEffect(() => {
     if (typeof window === "undefined" || !profileLocation?.city) return;
-    if (localStorage.getItem("ray_sell_draft")) return;
+    if (safeGetItem("ray_sell_draft")) return;
     set({
       city: profileLocation.city,
       district: profileLocation.district,
@@ -259,11 +260,16 @@ export function SellWizard({
 
   async function handleFiles(files: FileList | null) {
     if (!files || !userId) return;
+    const allFiles = Array.from(files);
+    if (allFiles.some(isHeicFile)) {
+      setError(t("sell.heicNotSupported"));
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
       const remaining = 7 - draft.images.length;
-      const urls = await uploadImages(Array.from(files).slice(0, remaining), "listings", userId);
+      const urls = await uploadImages(allFiles.slice(0, remaining), "listings", userId);
       set({ images: [...draft.images, ...urls].slice(0, 7) });
     } catch {
       setError(t("sell.uploadFailed"));
@@ -691,12 +697,13 @@ export function SellWizard({
             <Input
               label={isNonPhysical ? t("sell.salary") : t("sell.price")}
               required={!noPriceRequired}
-              type="number"
+              type="text"
               inputMode="numeric"
+              pattern="[0-9]*"
               placeholder="0"
               leftAddon={<span className="text-sm">Rwf</span>}
               value={draft.price}
-              onChange={(e) => set({ price: e.target.value })}
+              onChange={(e) => set({ price: e.target.value.replace(/\D/g, "") })}
             />
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -776,6 +783,7 @@ export function SellWizard({
                 <Select
                   label={t("sell.city")}
                   required
+                  autoComplete="off"
                   options={RWANDA_CITIES.map((c) => ({ value: c.city, label: c.city }))}
                   value={draft.city}
                   onChange={(e) => set({ city: e.target.value, district: "", neighborhood: "" })}
@@ -783,6 +791,7 @@ export function SellWizard({
                 <Select
                   label={t("sell.district")}
                   required
+                  autoComplete="off"
                   placeholder={t("sell.districtPlaceholder")}
                   options={districts.map((d) => ({ value: d.name, label: d.name }))}
                   value={draft.district}

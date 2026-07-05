@@ -56,6 +56,42 @@
   }
 }
 
+@layer utilities {
+  /* Safe-area bottom padding for iOS notch/home-indicator clearance. */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* ─── dvh / dvh-safe ───────────────────────────────────────────────────────
+   Overrides Tailwind's generated min-h-dvh / h-dvh utilities to add a 100vh
+   fallback for Safari < 15.4 and Chrome < 108 which don't support dvh units.
+   Declared outside @layer so it wins over all layer-based rules. */
+.min-h-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.h-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ─── aspect-ratio fallback ─────────────────────────────────────────────────
+   Browsers without native aspect-ratio support (Safari < 15, Chrome < 88)
+   collapse a div to 0 height when it contains only absolutely-positioned
+   children (e.g. Next.js <Image fill />). The padding-top trick restores the
+   correct box height. */
+@supports not (aspect-ratio: 1) {
+  .aspect-\[4\/3\] {
+    height: 0;
+    padding-top: 75%;
+  }
+  .aspect-square {
+    height: 0;
+    padding-top: 100%;
+  }
+}
+
 @layer components {
   /* Skeleton shimmer used by the Skeleton component. */
   .shimmer {
