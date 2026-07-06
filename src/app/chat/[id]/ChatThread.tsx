@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils/cn";
 import { isOnline, presenceLabel, formatPrice, toUtcIso } from "@/lib/utils/format";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { ThreadHeader } from "@/services/chat";
+import { logger } from "@/lib/logger";
 
 /**
  * Chat thread: realtime messages, transaction-oriented quick replies,
@@ -85,6 +86,10 @@ export function ChatThread({
     if (blocked) return;
     setSending(true);
     setSendError(null);
+    logger.debug(
+      { conversationId: thread.conversationId, hasContent: !!payload.content, hasImage: !!payload.imageUrl, hasLocation: payload.latitude != null, hasOffer: payload.offerAmount != null },
+      "[ChatThread] sending message"
+    );
     const tempId = `temp-${Date.now()}`;
     appendOptimistic({
       id: tempId,
@@ -106,12 +111,15 @@ export function ChatThread({
       });
       const json = (await res.json()) as { data?: ChatMessage };
       if (json.data) {
+        logger.debug({ conversationId: thread.conversationId }, "[ChatThread] message sent");
         replaceMessage(tempId, json.data);
       } else {
+        logger.warn({ conversationId: thread.conversationId, status: res.status }, "[ChatThread] send returned no data");
         removeMessage(tempId);
         setSendError(t("chat.sendFailed"));
       }
-    } catch {
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[ChatThread] send threw");
       removeMessage(tempId);
       setSendError(t("chat.sendFailed"));
     } finally {
@@ -131,7 +139,8 @@ export function ChatThread({
     try {
       const url = await uploadImage(file, "chat-images", currentUserId);
       await send({ imageUrl: url });
-    } catch {
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[ChatThread] image upload failed");
       /* no bubble persists on failure */
     } finally {
       setUploading(false);
@@ -161,10 +170,12 @@ export function ChatThread({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
+        logger.debug("[ChatThread] location acquired, sending");
         void send({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
       },
       (err) => {
         setLocating(false);
+        logger.warn({ code: err.code }, "[ChatThread] geolocation failed");
         setLocationError(
           err.code === err.PERMISSION_DENIED ? t("chat.locationDenied") : t("chat.locationUnavailable"),
         );
@@ -180,9 +191,11 @@ export function ChatThread({
     setMenuOpen(false);
     const next = !blockedByMe;
     setBlockedByMe(next); // optimistic
+    logger.debug({ otherId: thread.otherId, blocking: next }, "[ChatThread] toggling block");
     try {
       await fetch(`/api/blocks/${thread.otherId}`, { method: next ? "POST" : "DELETE" });
-    } catch {
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[ChatThread] block toggle failed");
       setBlockedByMe(!next); // revert
     }
   }

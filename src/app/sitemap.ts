@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -31,8 +32,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.7,
     }));
+    logger.debug(
+      { categories: categoryRoutes.length, listings: listingRoutes.length },
+      "[Sitemap] generated"
+    );
     return [...staticRoutes, ...categoryRoutes, ...listingRoutes];
-  } catch {
+  } catch (err) {
+    logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[Sitemap] generation failed, falling back to static routes");
     return staticRoutes;
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { logger } from "@/lib/logger";
 
 /**
  * Client-side unread message count. Hydrated from the server on first
@@ -14,5 +15,8 @@ interface UnreadMessagesState {
 
 export const useUnreadMessages = create<UnreadMessagesState>((set) => ({
   count: null,
-  setCount: (n) => set({ count: n }),
+  setCount: (n) => {
+    logger.debug({ count: n }, "[useUnreadMessages] setCount called");
+    set({ count: n });
+  },
 }));

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/Card";
 import { ToastStack, useToast } from "@/components/admin/AdminToast";
+import { logger } from "@/lib/logger";
 
 type Config = { active: boolean; text: string };
 
@@ -15,20 +16,34 @@ export function AnnouncementEditor() {
   useEffect(() => {
     fetch("/api/admin/config")
       .then((r) => r.json())
-      .then((j: { data: Config }) => { setConfig(j.data); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((j: { data: Config }) => {
+        setConfig(j.data);
+        setLoading(false);
+        logger.debug({ active: j.data?.active }, "[AnnouncementEditor] config loaded");
+      })
+      .catch((err) => {
+        logger.warn({ message: err?.message }, "[AnnouncementEditor] failed to load config");
+        setLoading(false);
+      });
   }, []);
 
   async function save() {
     setSaving(true);
+    logger.debug({ active: config.active, textLength: config.text.length }, "[AnnouncementEditor] saving announcement");
     try {
       const res = await fetch("/api/admin/config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
       });
+      if (res.ok) {
+        logger.info("[AnnouncementEditor] announcement saved");
+      } else {
+        logger.warn({ status: res.status }, "[AnnouncementEditor] save failed");
+      }
       show(res.ok ? "Announcement saved" : "Save failed", res.ok ? "success" : "danger");
-    } catch {
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[AnnouncementEditor] save threw");
       show("Save failed", "danger");
     } finally {
       setSaving(false);

@@ -12,10 +12,18 @@ export async function GET(req: NextRequest) {
   const params = Object.fromEntries(req.nextUrl.searchParams.entries());
   try {
     const ip = req.headers.get("x-forwarded-for") ?? "anon";
-    if (!(await checkLimit(limiters.search, ip))) return RATE_LIMITED();
+    if (!(await checkLimit(limiters.search, ip))) {
+      logger.warn({ ip }, "[GET search] rejected: rate limited");
+      return RATE_LIMITED();
+    }
 
     const query = searchQuerySchema.parse(params);
+    logger.debug({ query }, "[GET search] request received");
     const result = await searchListings(query);
+    logger.debug(
+      { count: Array.isArray(result) ? result.length : undefined },
+      "[GET search] success",
+    );
     return ok(result);
   } catch (err) {
     logger.error({ err }, "[GET search] ERROR");

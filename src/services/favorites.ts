@@ -1,17 +1,22 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import type { ListingCardData } from "@/types";
 
 /** Listing IDs the user has favorited (for store hydration). */
 export async function getFavoriteIds(userId: string): Promise<string[]> {
+  logger.debug({ userId }, "[getFavoriteIds] called");
   const favs = await prisma.favorite.findMany({
     where: { userId },
     select: { listingId: true },
   });
-  return favs.map((f) => f.listingId);
+  const ids = favs.map((f) => f.listingId);
+  logger.debug({ userId, count: ids.length }, "[getFavoriteIds] result");
+  return ids;
 }
 
 /** Full favorited listings as cards. */
 export async function getFavoriteListings(userId: string): Promise<ListingCardData[]> {
+  logger.debug({ userId }, "[getFavoriteListings] called");
   const favs = await prisma.favorite.findMany({
     where: { userId, listing: { status: "ACTIVE" } },
     orderBy: { createdAt: "desc" },
@@ -21,6 +26,7 @@ export async function getFavoriteListings(userId: string): Promise<ListingCardDa
       },
     },
   });
+  logger.debug({ userId, count: favs.length }, "[getFavoriteListings] result");
   return favs.map((f) => ({
       id: f.listing.id,
       title: f.listing.title,

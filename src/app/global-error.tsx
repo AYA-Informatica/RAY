@@ -1,7 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
+import { logger } from "@/lib/logger";
+
 /** Last-resort error boundary wrapping the html/body. */
-export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
+export default function GlobalError({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => {
+    logger.error({ message: error.message }, "Global error boundary triggered");
+  }, [error]);
+
   return (
     <html lang="en">
       <body style={{ background: "#111111", color: "#FFFFFF", fontFamily: "system-ui, sans-serif" }}>

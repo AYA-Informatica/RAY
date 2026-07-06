@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 /** Conversion-boosting quick replies (verbatim from the spec). */
 const QUICK_REPLIES = [
   "Is this available?",
@@ -15,7 +17,10 @@ export function QuickReplies({ onPick }: { onPick: (text: string) => void }) {
       {QUICK_REPLIES.map((q) => (
         <button
           key={q}
-          onClick={() => onPick(q)}
+          onClick={() => {
+            logger.debug({ text: q }, "[QuickReplies] quick reply picked");
+            onPick(q);
+          }}
           className="shrink-0 rounded-pill border border-border bg-surface-card px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
         >
           {q}

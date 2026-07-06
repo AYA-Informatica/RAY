@@ -12,6 +12,7 @@ import { useLocationCascade } from "@/hooks/useLocationCascade";
 import { useI18n } from "@/i18n/I18nProvider";
 import { isAttributeVisible, type ShowIf } from "@/lib/utils/categoryAttributes";
 import type { Condition } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 interface EditAttribute {
   id: string;
@@ -113,8 +114,10 @@ export function EditListingForm({
     try {
       const remaining = 7 - images.length;
       const urls = await uploadImages(Array.from(files).slice(0, remaining), "listings", userId);
+      logger.debug({ listingId: initial.id, uploaded: urls.length }, "[EditListingForm] images uploaded");
       setImages((prev) => [...prev, ...urls].slice(0, 7));
-    } catch {
+    } catch (err) {
+      logger.warn({ listingId: initial.id, message: err instanceof Error ? err.message : String(err) }, "[EditListingForm] image upload failed");
       setError(t("sell.uploadFailed"));
     } finally {
       setUploading(false);
@@ -124,6 +127,7 @@ export function EditListingForm({
   async function save() {
     setSaving(true);
     setError(null);
+    logger.debug({ listingId: initial.id }, "[EditListingForm] saving listing");
     try {
       const res = await fetch(`/api/listings/${initial.id}`, {
         method: "PATCH",
@@ -148,6 +152,7 @@ export function EditListingForm({
         }),
       });
       if (res.status === 401) {
+        logger.debug({ listingId: initial.id }, "[EditListingForm] unauthenticated, redirecting to login");
         router.replace("/login?redirect=/profile/ads");
         return;
       }
@@ -155,9 +160,11 @@ export function EditListingForm({
         const j = (await res.json()) as { error?: { message?: string } };
         throw new Error(j.error?.message ?? t("sell.postError"));
       }
+      logger.info({ listingId: initial.id }, "[EditListingForm] listing updated");
       router.push("/profile/ads");
       router.refresh();
     } catch (e) {
+      logger.warn({ listingId: initial.id, message: e instanceof Error ? e.message : String(e) }, "[EditListingForm] save failed");
       setError(e instanceof Error ? e.message : t("sell.postError"));
       setSaving(false);
     }

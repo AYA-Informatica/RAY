@@ -4,6 +4,7 @@ import { Globe } from "lucide-react";
 import { useI18n } from "@/i18n/I18nProvider";
 import { LOCALES, LOCALE_LABELS } from "@/i18n/dictionaries";
 import { cn } from "@/lib/utils/cn";
+import { logger } from "@/lib/logger";
 
 const LOCALE_SHORT: Record<string, string> = { en: "EN", rw: "RW", fr: "FR" };
 
@@ -18,7 +19,10 @@ export function LanguageToggle({ className }: { className?: string }) {
         {LOCALES.map((l) => (
           <button
             key={l}
-            onClick={() => setLocale(l)}
+            onClick={() => {
+              logger.debug({ from: locale, to: l }, "[LanguageToggle] locale switched");
+              setLocale(l);
+            }}
             aria-label={LOCALE_LABELS[l]}
             aria-pressed={locale === l}
             className={cn(

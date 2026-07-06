@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 /**
  * Safe redirect: only allow paths that start with "/" and contain no
@@ -28,8 +29,10 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      logger.debug({ redirect }, "[AuthCallback] session exchange succeeded");
       return NextResponse.redirect(`${origin}${redirect}`);
     }
+    logger.warn({ message: error.message }, "[AuthCallback] session exchange failed");
   }
   return NextResponse.redirect(`${origin}/login?error=auth`);
 }

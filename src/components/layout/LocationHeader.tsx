@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MapPin, Heart } from "lucide-react";
 import { useI18n } from "@/i18n/I18nProvider";
 import { LOCALES, type Locale } from "@/i18n/dictionaries";
+import { logger } from "@/lib/logger";
 
 const LOCALE_LABEL: Record<Locale, string> = { en: "ENG", rw: "KINY", fr: "FR" };
 
@@ -12,7 +13,9 @@ export function LocationHeader({ location = "Rwanda" }: { location?: string }) {
 
   function cycleLocale() {
     const idx = LOCALES.indexOf(locale as Locale);
-    setLocale(LOCALES[(idx + 1) % LOCALES.length] as Locale);
+    const next = LOCALES[(idx + 1) % LOCALES.length] as Locale;
+    logger.debug({ from: locale, to: next }, "[LocationHeader] locale switched");
+    setLocale(next);
   }
 
   return (

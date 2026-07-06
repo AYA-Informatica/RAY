@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { serverT } from "@/i18n/server";
 import { LoginForm } from "./LoginForm";
+import { logger } from "@/lib/logger";
 
 export default async function LoginPage() {
+  logger.debug("[LoginPage] rendering");
   const tagline = await serverT("splash.tagline");
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 lg:bg-background">

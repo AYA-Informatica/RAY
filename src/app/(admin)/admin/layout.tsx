@@ -5,20 +5,30 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { isStaff } from "@/lib/permissions/roles";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export const metadata = { title: "Admin" };
 
 /** Admin shell. Server-gated to staff (admin/moderator) only. */
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  logger.debug("[AdminLayout] rendering");
   const user = await getCurrentUser();
-  if (!user) redirect("/login?redirect=/admin");
-  if (!isStaff(user)) redirect("/home");
+  if (!user) {
+    logger.debug("[AdminLayout] no user, redirecting to login");
+    redirect("/login?redirect=/admin");
+  }
+  if (!isStaff(user)) {
+    logger.warn({ userId: user.id }, "[AdminLayout] non-staff user denied admin access");
+    redirect("/home");
+  }
 
   // Pass open-report count to the nav so the Reports tab shows a badge.
   let openReports = 0;
   try {
     openReports = await prisma.report.count({ where: { resolved: false } });
-  } catch { /* fall back to 0 */ }
+  } catch (err) {
+    logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[AdminLayout] failed to load open report count");
+  }
 
   return (
     <div className="min-h-dvh bg-background">

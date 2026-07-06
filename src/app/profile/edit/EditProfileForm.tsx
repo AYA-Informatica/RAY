@@ -12,6 +12,7 @@ import { uploadImage } from "@/lib/storage/upload";
 import { useLocationCascade } from "@/hooks/useLocationCascade";
 import { useI18n } from "@/i18n/I18nProvider";
 import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
+import { logger } from "@/lib/logger";
 
 interface Props {
   userId: string;
@@ -58,6 +59,7 @@ export function EditProfileForm({ userId, initial }: Props) {
   function doDetectLocation() {
     setDetecting(true);
     setLocationNote(null);
+    logger.debug("[EditProfileForm] detecting location");
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
@@ -83,27 +85,32 @@ export function EditProfileForm({ userId, initial }: Props) {
           );
 
           if (districtMatch) {
+            logger.debug({ district: districtMatch.district }, "[EditProfileForm] location matched a known district");
             setCustomLocation(false);
             setDistrict(districtMatch.district);
             setCity(cityFromDistrict(districtMatch.district));
             setNeighborhood("");
             setLocationNote(t("profileEdit.locationDetected"));
           } else if (candidates.length > 0) {
+            logger.debug("[EditProfileForm] location outside known districts, using custom location");
             setCustomLocation(true);
             setCity(candidates[0] ?? "");
             setDistrict(candidates[1] ?? "");
             setNeighborhood("");
             setLocationNote(t("profileEdit.locationOutsideArea"));
           } else {
+            logger.warn("[EditProfileForm] reverse geocode returned no usable candidates");
             setLocationNote(t("profileEdit.locationFailed"));
           }
-        } catch {
+        } catch (err) {
+          logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[EditProfileForm] location detection failed");
           setLocationNote(t("profileEdit.locationFailed"));
         } finally {
           setDetecting(false);
         }
       },
-      () => {
+      (err) => {
+        logger.warn({ code: err.code }, "[EditProfileForm] geolocation permission/error");
         setLocationNote(t("profileEdit.locationFailed"));
         setDetecting(false);
       },
@@ -116,8 +123,10 @@ export function EditProfileForm({ userId, initial }: Props) {
     setError(null);
     try {
       const url = await uploadImage(file, "avatars", userId);
+      logger.debug("[EditProfileForm] avatar uploaded");
       setAvatarUrl(url);
-    } catch {
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[EditProfileForm] avatar upload failed");
       setError("Avatar upload failed. Try again.");
     } finally {
       setUploading(false);
@@ -125,9 +134,14 @@ export function EditProfileForm({ userId, initial }: Props) {
   }
 
   async function save() {
-    if (name.trim().length < 1) { setError("Name is required."); return; }
+    if (name.trim().length < 1) {
+      logger.warn("[EditProfileForm] validation rejected: empty name");
+      setError("Name is required.");
+      return;
+    }
     setSaving(true);
     setError(null);
+    logger.debug({ userId }, "[EditProfileForm] saving profile");
     try {
       const res = await fetch(`/api/users/${userId}`, {
         method: "PATCH",
@@ -145,9 +159,11 @@ export function EditProfileForm({ userId, initial }: Props) {
         const j = (await res.json()) as { error?: { message?: string } };
         throw new Error(j.error?.message ?? "Could not save.");
       }
+      logger.info({ userId }, "[EditProfileForm] profile updated");
       router.push("/profile");
       router.refresh();
     } catch (e) {
+      logger.warn({ userId, message: e instanceof Error ? e.message : String(e) }, "[EditProfileForm] save failed");
       setError(e instanceof Error ? e.message : "Could not save changes.");
       setSaving(false);
     }

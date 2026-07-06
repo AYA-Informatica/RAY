@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 /** Returns the Supabase auth user or null. Never throws.
  *  Memoized per-request so multiple server components on the same page
@@ -14,6 +15,7 @@ export const getAuthUser = cache(async () => {
     error,
   } = await supabase.auth.getUser();
   if (error) console.error("[session] getAuthUser error:", error.message);
+  logger.debug({ hasUser: Boolean(user) }, "[session] getAuthUser resolved");
   return user;
 });
 
@@ -26,8 +28,12 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   if (!authUser) return null;
   try {
     const existing = await prisma.user.findUnique({ where: { id: authUser.id } });
-    if (existing) return existing;
+    if (existing) {
+      logger.debug({ userId: authUser.id }, "[session] getCurrentUser found existing row");
+      return existing;
+    }
     // Row missing — create it from OAuth metadata (trigger race or missing trigger).
+    logger.debug({ userId: authUser.id }, "[session] getCurrentUser row missing — creating from OAuth metadata");
     const meta = authUser.user_metadata ?? {};
     const user = await prisma.user.create({
       data: {
@@ -47,8 +53,14 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 /** Throws "Unauthorized" if no session — use to guard protected API routes. */
 export async function requireUser(): Promise<User> {
   const user = await getCurrentUser();
-  if (!user) throw new AuthError("Unauthorized");
-  if (user.isBanned) throw new AuthError("Account suspended");
+  if (!user) {
+    logger.warn("[session] requireUser rejected — no session");
+    throw new AuthError("Unauthorized");
+  }
+  if (user.isBanned) {
+    logger.warn({ userId: user.id }, "[session] requireUser rejected — account suspended");
+    throw new AuthError("Account suspended");
+  }
   return user;
 }
 

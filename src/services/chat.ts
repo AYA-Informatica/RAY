@@ -55,6 +55,7 @@ function isHiddenFor(
 
 /** Build the inbox preview list for a user. */
 export async function getInbox(userId: string): Promise<ConversationPreview[]> {
+  logger.debug({ userId }, "[getInbox] called");
   const convos = await prisma.conversation.findMany({
     where: { OR: [{ buyerId: userId }, { sellerId: userId }] },
     orderBy: { updatedAt: "desc" },
@@ -62,7 +63,10 @@ export async function getInbox(userId: string): Promise<ConversationPreview[]> {
   });
 
   const visible = convos.filter((c) => !isHiddenFor(c, userId));
-  if (visible.length === 0) return [];
+  if (visible.length === 0) {
+    logger.debug({ userId, count: 0 }, "[getInbox] result");
+    return [];
+  }
 
   const unreadCounts = await prisma.message.groupBy({
     by: ["conversationId"],
@@ -75,6 +79,7 @@ export async function getInbox(userId: string): Promise<ConversationPreview[]> {
   });
   const unreadMap = new Map(unreadCounts.map((r) => [r.conversationId, r._count.id]));
 
+  logger.debug({ userId, count: visible.length }, "[getInbox] result");
   return visible.map((c) => toPreview(c, userId, unreadMap.get(c.id) ?? 0));
 }
 
@@ -87,16 +92,27 @@ export async function getConversationPreview(
   conversationId: string,
   userId: string,
 ): Promise<ConversationPreview | null> {
+  logger.debug({ conversationId, userId }, "[getConversationPreview] called");
   const c = await prisma.conversation.findUnique({
     where: { id: conversationId },
     include: inboxInclude,
   });
-  if (!c) return null;
-  if (c.buyerId !== userId && c.sellerId !== userId) return null;
-  if (isHiddenFor(c, userId)) return null;
+  if (!c) {
+    logger.debug({ conversationId, userId }, "[getConversationPreview] not found");
+    return null;
+  }
+  if (c.buyerId !== userId && c.sellerId !== userId) {
+    logger.debug({ conversationId, userId }, "[getConversationPreview] not a participant");
+    return null;
+  }
+  if (isHiddenFor(c, userId)) {
+    logger.debug({ conversationId, userId }, "[getConversationPreview] hidden for user");
+    return null;
+  }
   const unread = await prisma.message.count({
     where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
   });
+  logger.debug({ conversationId, userId, unread }, "[getConversationPreview] result");
   return toPreview(c, userId, unread);
 }
 
@@ -123,6 +139,7 @@ export async function getThread(
   conversationId: string,
   userId: string,
 ): Promise<ThreadHeader | null> {
+  logger.debug({ conversationId, userId }, "[getThread] called");
   const c = await prisma.conversation.findUnique({
     where: { id: conversationId },
     include: {
@@ -131,8 +148,14 @@ export async function getThread(
       seller: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
     },
   });
-  if (!c) return null;
-  if (c.buyerId !== userId && c.sellerId !== userId) return null;
+  if (!c) {
+    logger.debug({ conversationId, userId }, "[getThread] not found");
+    return null;
+  }
+  if (c.buyerId !== userId && c.sellerId !== userId) {
+    logger.debug({ conversationId, userId }, "[getThread] not a participant");
+    return null;
+  }
   const other = c.buyerId === userId ? c.seller : c.buyer;
 
   const blocks = await prisma.block.findMany({
@@ -147,6 +170,7 @@ export async function getThread(
   const blockedByMe = blocks.some((b) => b.blockerId === userId);
   const blockedByOther = blocks.some((b) => b.blockerId === other.id);
 
+  logger.debug({ conversationId, userId, blockedByMe, blockedByOther }, "[getThread] result");
   return {
     conversationId: c.id,
     listingId: c.listingId,
@@ -170,12 +194,16 @@ export async function getThread(
  * Non-critical metric — errors are logged but do not crash the detail page.
  */
 export async function getSellerResponseTime(sellerId: string): Promise<number | undefined> {
+  logger.debug({ sellerId }, "[getSellerResponseTime] called");
   try {
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const convIds = await prisma.conversation
       .findMany({ where: { sellerId, updatedAt: { gte: since } }, select: { id: true } })
       .then((rows) => rows.map((r) => r.id));
-    if (convIds.length === 0) return undefined;
+    if (convIds.length === 0) {
+      logger.debug({ sellerId }, "[getSellerResponseTime] no recent conversations");
+      return undefined;
+    }
 
     const messages = await prisma.message.findMany({
       where: { conversationId: { in: convIds } },
@@ -204,12 +232,17 @@ export async function getSellerResponseTime(sellerId: string): Promise<number | 
       );
     }
 
-    if (intervals.length === 0) return undefined;
+    if (intervals.length === 0) {
+      logger.debug({ sellerId }, "[getSellerResponseTime] no reply data");
+      return undefined;
+    }
     intervals.sort((a, b) => a - b);
     const mid = Math.floor(intervals.length / 2);
-    return intervals.length % 2 === 0
+    const result = intervals.length % 2 === 0
       ? Math.round((intervals[mid - 1]! + intervals[mid]!) / 2)
       : intervals[mid]!;
+    logger.debug({ sellerId, responseTimeMins: result }, "[getSellerResponseTime] result");
+    return result;
   } catch (err) {
     logger.error({ sellerId, error: err instanceof Error ? err.message : String(err) }, "getSellerResponseTime failed");
     return undefined;

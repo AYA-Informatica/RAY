@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 /**
  * Lightweight i18n. English · Kinyarwanda · French.
  * Flat key-value dictionaries; translate() falls back to English then the key.
@@ -1332,6 +1334,9 @@ export const dictionaries: Record<Locale, Dict> = { en, rw, fr };
  *  Supports `{name}` placeholders via optional `params`. */
 export function translate(locale: Locale, key: string, params?: Record<string, string>): string {
   let text = dictionaries[locale][key] ?? dictionaries.en[key] ?? key;
+  if (text === key && dictionaries.en[key] === undefined) {
+    logger.warn({ locale, key }, "[translate] missing translation key");
+  }
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       text = text.replace(`{${k}}`, v);

@@ -16,6 +16,7 @@ import { MapPin, Eye } from "lucide-react";
 import { FavoritesProvider } from "@/components/shared/FavoritesProvider";
 import { getAuthUser } from "@/lib/auth/session";
 import { getFavoriteIds } from "@/services/favorites";
+import { logger } from "@/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,7 +28,10 @@ export const revalidate = 0;
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
   const listing = await getListing(id);
-  if (!listing) return { title: "Listing not found" };
+  if (!listing) {
+    logger.debug({ listingId: id }, "[ListingDetailPage] generateMetadata: listing not found");
+    return { title: "Listing not found" };
+  }
   const cover = listing.images[0]?.url;
   return {
     title: listing.title,
@@ -50,8 +54,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function ListingDetailPage({ params }: Params) {
   const { id } = await params;
+  logger.debug({ listingId: id }, "[ListingDetailPage] rendering");
   const [listing, authUser] = await Promise.all([getListing(id), getAuthUser()]);
-  if (!listing) notFound();
+  if (!listing) {
+    logger.debug({ listingId: id }, "[ListingDetailPage] listing not found");
+    notFound();
+  }
   const favoriteIds = authUser ? await getFavoriteIds(authUser.id) : [];
 
   const isRental = listing.category.slug === "rentals";

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils/cn";
 import { useLocationCascade } from "@/hooks/useLocationCascade";
 import { parseAttributeOptions, isAttributeVisible } from "@/lib/utils/categoryAttributes";
 import type { CategoryWithAttributes } from "@/types";
+import { logger } from "@/lib/logger";
 
 interface SellCategory {
   id: string;
@@ -250,12 +251,19 @@ export function SellWizard({
     if (step < STEP_COUNT - 1) {
       const target = step + 1;
       // Specs are now step 2 — skip forward to Details (3) when no attributes exist.
-      if (target === 2 && skipSpecs) setStep(3);
+      if (target === 2 && skipSpecs) {
+        logger.debug({ from: step, to: 3 }, "[SellWizard] step advance (skipping specs)");
+        setStep(3);
+      }
       // Location is step 4 — skip to Review (5) when profile location is pre-filled.
-      else if (target === 4 && skipLocation) setStep(5);
+      else if (target === 4 && skipLocation) {
+        logger.debug({ from: step, to: 5 }, "[SellWizard] step advance (skipping location)");
+        setStep(5);
+      }
       else {
         // Auto-generate a title from specs when advancing from Specs → Details.
         if (step === 2) tryAutoTitle();
+        logger.debug({ from: step, to: target }, "[SellWizard] step advance");
         setStep(target);
       }
     }
@@ -283,8 +291,10 @@ export function SellWizard({
     try {
       const remaining = 7 - draft.images.length;
       const urls = await uploadImages(allFiles.slice(0, remaining), "listings", userId);
+      logger.debug({ uploaded: urls.length }, "[SellWizard] images uploaded");
       set({ images: [...draft.images, ...urls].slice(0, 7) });
-    } catch {
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[SellWizard] image upload failed");
       setError(t("sell.uploadFailed"));
     } finally {
       setUploading(false);
@@ -300,6 +310,7 @@ export function SellWizard({
   function doDetectLocation() {
     setDetectingLocation(true);
     setLocationNote(null);
+    logger.debug("[SellWizard] detecting location");
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -327,6 +338,7 @@ export function SellWizard({
           );
 
           if (districtMatch) {
+            logger.debug({ district: districtMatch.district }, "[SellWizard] location matched a known district");
             // Store candidates so the sector-loading effect can auto-match a sector.
             sectorCandidatesRef.current = candidates;
             set({
@@ -338,6 +350,7 @@ export function SellWizard({
             });
             setLocationNote(t("sell.locationDetected"));
           } else if (candidates.length > 0) {
+            logger.debug("[SellWizard] location outside known districts, using custom location");
             set({
               district: candidates[0] ?? "",
               city: "",
@@ -347,15 +360,18 @@ export function SellWizard({
             });
             setLocationNote(t("profileEdit.locationOutsideArea"));
           } else {
+            logger.warn("[SellWizard] reverse geocode returned no usable candidates");
             setLocationNote(t("profileEdit.locationFailed"));
           }
-        } catch {
+        } catch (err) {
+          logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[SellWizard] location detection failed");
           setLocationNote(t("profileEdit.locationFailed"));
         } finally {
           setDetectingLocation(false);
         }
       },
-      () => {
+      (err) => {
+        logger.warn({ code: err.code }, "[SellWizard] geolocation permission/error");
         setLocationNote(t("profileEdit.locationFailed"));
         setDetectingLocation(false);
       },
@@ -364,11 +380,13 @@ export function SellWizard({
 
   async function submit() {
     if (!userId) {
+      logger.debug("[SellWizard] submit blocked: not authenticated");
       router.replace("/login?redirect=/sell");
       return;
     }
     setSubmitting(true);
     setError(null);
+    logger.debug({ categoryId: draft.categoryId, imageCount: draft.images.length }, "[SellWizard] submitting listing");
     try {
       // Derive the global condition enum when the category owns its own condition
       // attribute (Beauty, Bikes, Construction, Kitchen, Machinery) so the seller
@@ -405,6 +423,7 @@ export function SellWizard({
         }),
       });
       if (res.status === 401) {
+        logger.debug("[SellWizard] submit unauthenticated, redirecting to login");
         router.replace("/login?redirect=/sell");
         return;
       }
@@ -412,9 +431,11 @@ export function SellWizard({
         const j = (await res.json()) as { error?: { message?: string } };
         throw new Error(j.error?.message ?? t("sell.postError"));
       }
+      logger.info({ categoryId: draft.categoryId }, "[SellWizard] listing posted");
       reset();
       router.push("/profile/ads?posted=1");
     } catch (e) {
+      logger.warn({ message: e instanceof Error ? e.message : String(e) }, "[SellWizard] submit failed");
       setError(e instanceof Error ? e.message : t("sell.postError"));
       setSubmitting(false);
     }
@@ -938,10 +959,14 @@ export function SellWizard({
 async function fetchSchema(slug: string): Promise<CategoryWithAttributes | null> {
   try {
     const res = await fetch(`/api/categories/${slug}`);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      logger.warn({ slug, status: res.status }, "[SellWizard] failed to fetch category schema");
+      return null;
+    }
     const { data } = (await res.json()) as { data: CategoryWithAttributes };
     return data;
-  } catch {
+  } catch (err) {
+    logger.warn({ slug, message: err instanceof Error ? err.message : String(err) }, "[SellWizard] fetchSchema threw");
     return null;
   }
 }

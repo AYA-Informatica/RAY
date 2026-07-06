@@ -25,8 +25,13 @@ function storagePathFromUrl(url: string): string | null {
 export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params;
+    logger.debug({ listingId: id }, "[GET listing] request received");
     const listing = await getListing(id);
-    if (!listing) return fail("Listing not found", 404);
+    if (!listing) {
+      logger.warn({ listingId: id }, "[GET listing] rejected: not found");
+      return fail("Listing not found", 404);
+    }
+    logger.debug({ listingId: id }, "[GET listing] success");
     return ok(listing);
   } catch (err) {
     return handleApiError(err);
@@ -38,18 +43,25 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params;
     const user = await requireUser();
+    logger.debug({ userId: user.id, listingId: id }, "[PATCH listing] request received");
 
     const existing = await prisma.listing.findFirst({
       where: { id, userId: user.id },
       select: { id: true, expiresAt: true },
     });
-    if (!existing) return fail("Listing not found", 404);
+    if (!existing) {
+      logger.warn({ userId: user.id, listingId: id }, "[PATCH listing] rejected: not found");
+      return fail("Listing not found", 404);
+    }
 
     const body = await req.json();
     const patch = updateListingSchema.parse(body);
     const { images, attributes, ...scalars } = patch;
 
-    if (images && images.length > 7) return fail("Maximum 7 photos", 422);
+    if (images && images.length > 7) {
+      logger.warn({ userId: user.id, listingId: id }, "[PATCH listing] rejected: too many photos");
+      return fail("Maximum 7 photos", 422);
+    }
 
     // For simple status changes, just update status directly
     if (Object.keys(scalars).length === 1 && scalars.status) {
@@ -61,12 +73,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
           UPDATE "Listing" SET "status" = ${scalars.status as string}::"ListingStatus", "expiresAt" = ${newExpiresAt}, "updatedAt" = NOW()
           WHERE "id" = ${id}
         `;
+        logger.debug({ userId: user.id, listingId: id, status: scalars.status }, "[PATCH listing] success");
         return ok({ id });
       }
       await prisma.$executeRaw`
         UPDATE "Listing" SET "status" = ${scalars.status as string}::"ListingStatus", "updatedAt" = NOW()
         WHERE "id" = ${id}
       `;
+      logger.debug({ userId: user.id, listingId: id, status: scalars.status }, "[PATCH listing] success");
       return ok({ id });
     }
 
@@ -107,6 +121,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       }
     });
 
+    logger.debug({ userId: user.id, listingId: id }, "[PATCH listing] success");
     return ok({ id });
   } catch (err) {
     logger.error({ err }, "[PATCH listing] ERROR");
@@ -120,11 +135,15 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params;
     const user = await requireUser();
+    logger.debug({ userId: user.id, listingId: id }, "[DELETE listing] request received");
     const existing = await prisma.listing.findFirst({
       where: { id, userId: user.id },
       select: { id: true, images: { select: { url: true } } },
     });
-    if (!existing) return fail("Listing not found", 404);
+    if (!existing) {
+      logger.warn({ userId: user.id, listingId: id }, "[DELETE listing] rejected: not found");
+      return fail("Listing not found", 404);
+    }
 
     const url = new URL(req.url);
     const permanent = url.searchParams.get("permanent") === "true";
@@ -146,6 +165,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
         }
       }
 
+      logger.info({ userId: user.id, listingId: id }, "[DELETE listing] permanently deleted");
       return ok({ id, deleted: true });
     }
 
@@ -153,6 +173,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
       UPDATE "Listing" SET "status" = 'REMOVED', "updatedAt" = NOW()
       WHERE "id" = ${id}
     `;
+    logger.debug({ userId: user.id, listingId: id }, "[DELETE listing] success");
     return ok({ id, removed: true });
   } catch (err) {
     logger.error({ err }, "[DELETE listing] ERROR");

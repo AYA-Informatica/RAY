@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PROVINCE_TO_CITY } from "@/constants/locations";
+import { logger } from "@/lib/logger";
 
 export interface DistrictRow {
   district: string;
@@ -35,10 +36,16 @@ export function useLocationCascade(
   const [loadingSectors, setLoadingSectors] = useState(false);
 
   useEffect(() => {
+    logger.debug({}, "[useLocationCascade] loading districts");
     fetch("/api/location/districts")
       .then((r) => r.json())
-      .then((j: { data: DistrictRow[] }) => setAllDistricts(j.data))
-      .catch(() => {})
+      .then((j: { data: DistrictRow[] }) => {
+        logger.debug({ count: j.data.length }, "[useLocationCascade] districts loaded");
+        setAllDistricts(j.data);
+      })
+      .catch(() => {
+        logger.debug({}, "[useLocationCascade] districts load failed");
+      })
       .finally(() => setLoadingDistricts(false));
   }, []);
 
@@ -47,14 +54,19 @@ export function useLocationCascade(
       setSectors([]);
       return;
     }
+    logger.debug({ district }, "[useLocationCascade] loading sectors");
     setLoadingSectors(true);
     fetch(`/api/location/sectors?district=${encodeURIComponent(district)}`)
       .then((r) => r.json())
       .then((j: { data: string[] }) => {
+        logger.debug({ district, count: j.data.length }, "[useLocationCascade] sectors loaded");
         setSectors(j.data);
         onSectorsLoaded?.(j.data);
       })
-      .catch(() => setSectors([]))
+      .catch(() => {
+        logger.debug({ district }, "[useLocationCascade] sectors load failed");
+        setSectors([]);
+      })
       .finally(() => setLoadingSectors(false));
     // onSectorsLoaded is intentionally omitted — it's a callback ref pattern,
     // callers should wrap it in useCallback if they need stable identity.

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { logger } from "@/lib/logger";
 
 /**
  * Sticky "Chat with Seller" bar on the listing detail page.
@@ -24,6 +25,7 @@ export function ChatCtaBar({
 
   async function startChat() {
     setLoading(true);
+    logger.debug({ listingId }, "[ChatCtaBar] start chat requested");
     try {
       const res = await fetch("/api/chat/conversations", {
         method: "POST",
@@ -31,16 +33,20 @@ export function ChatCtaBar({
         body: JSON.stringify({ listingId }),
       });
       if (res.status === 401) {
+        logger.debug({ listingId }, "[ChatCtaBar] unauthenticated, redirecting to login");
         router.push(`/login?redirect=/listing/${listingId}`);
         return;
       }
       const json = (await res.json()) as { data?: { id: string } };
       if (json.data?.id) {
+        logger.debug({ listingId, conversationId: json.data.id }, "[ChatCtaBar] conversation ready");
         router.push(`/chat/${json.data.id}`);
         return;
       }
+      logger.warn({ listingId, status: res.status }, "[ChatCtaBar] start chat returned no conversation");
       setLoading(false);
-    } catch {
+    } catch (err) {
+      logger.error({ listingId, err }, "[ChatCtaBar] start chat failed");
       setLoading(false);
     }
   }

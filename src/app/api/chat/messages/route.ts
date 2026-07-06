@@ -41,10 +41,17 @@ export async function GET(req: NextRequest) {
   const conversationId = req.nextUrl.searchParams.get("conversationId");
   try {
     const user = await requireUser();
-    if (!conversationId) return fail("conversationId required", 400);
+    if (!conversationId) {
+      logger.warn({ userId: user.id }, "[GET chat/messages] rejected: conversationId required");
+      return fail("conversationId required", 400);
+    }
+    logger.debug({ userId: user.id, conversationId }, "[GET chat/messages] request received");
 
     const participant = await assertParticipant(conversationId, user.id);
-    if (!participant) return fail("Forbidden", 403);
+    if (!participant) {
+      logger.warn({ userId: user.id, conversationId }, "[GET chat/messages] rejected: forbidden");
+      return fail("Forbidden", 403);
+    }
 
     const messages = await prisma.message.findMany({
       where: { conversationId },
@@ -58,6 +65,10 @@ export async function GET(req: NextRequest) {
     });
 
     const unreadCount = await getUnreadCount(user.id);
+    logger.debug(
+      { userId: user.id, conversationId, count: messages.length, unreadCount },
+      "[GET chat/messages] success",
+    );
     return ok(messages, { headers: { "X-Unread-Count": String(unreadCount) } });
   } catch (err) {
     logger.error({ err }, "[GET chat/messages] ERROR");
@@ -69,13 +80,30 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
-    if (!(await checkLimit(limiters.chatSend, user.id))) return RATE_LIMITED();
+    if (!(await checkLimit(limiters.chatSend, user.id))) {
+      logger.warn({ userId: user.id }, "[POST chat/messages] rejected: rate limited");
+      return RATE_LIMITED();
+    }
 
     const data = sendMessageSchema.parse(await req.json());
+    logger.debug(
+      { userId: user.id, conversationId: data.conversationId },
+      "[POST chat/messages] request received",
+    );
     const convo = await assertParticipant(data.conversationId, user.id);
-    if (!convo) return fail("Forbidden", 403);
+    if (!convo) {
+      logger.warn(
+        { userId: user.id, conversationId: data.conversationId },
+        "[POST chat/messages] rejected: forbidden",
+      );
+      return fail("Forbidden", 403);
+    }
 
     if (await isBlockedBetween(user.id, convo.otherId)) {
+      logger.warn(
+        { userId: user.id, conversationId: data.conversationId },
+        "[POST chat/messages] rejected: blocked",
+      );
       return fail("You can't message this user.", 403, "BLOCKED");
     }
 
@@ -98,6 +126,10 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
+    logger.debug(
+      { userId: user.id, conversationId: data.conversationId, messageId: message.id },
+      "[POST chat/messages] success",
+    );
     return ok(message, { status: 201 });
   } catch (err) {
     logger.error({ err }, "[POST chat/messages] ERROR");
@@ -113,22 +145,43 @@ export async function PATCH(req: NextRequest) {
   try {
     const user = await requireUser();
     const data = respondOfferSchema.parse(await req.json());
+    logger.debug(
+      { userId: user.id, messageId: data.messageId, status: data.status },
+      "[PATCH chat/messages] request received",
+    );
 
     const message = await prisma.message.findUnique({
       where: { id: data.messageId },
       include: { conversation: { select: { sellerId: true, buyerId: true } } },
     });
-    if (!message) return fail("Message not found", 404);
+    if (!message) {
+      logger.warn({ userId: user.id, messageId: data.messageId }, "[PATCH chat/messages] rejected: not found");
+      return fail("Message not found", 404);
+    }
 
-    if (message.conversation.sellerId !== user.id) return fail("Forbidden", 403);
+    if (message.conversation.sellerId !== user.id) {
+      logger.warn({ userId: user.id, messageId: data.messageId }, "[PATCH chat/messages] rejected: forbidden");
+      return fail("Forbidden", 403);
+    }
 
     const result = await prisma.$executeRaw`
       UPDATE "Message" SET "offerStatus" = ${data.status}
       WHERE id = ${data.messageId} AND "offerStatus" = 'pending'
     `;
-    if (result === 0) return fail("Offer already responded to", 400);
+    if (result === 0) {
+      logger.warn(
+        { userId: user.id, messageId: data.messageId },
+        "[PATCH chat/messages] rejected: offer already responded to",
+      );
+      return fail("Offer already responded to", 400);
+    }
+    logger.info(
+      { userId: user.id, messageId: data.messageId, status: data.status },
+      "[PATCH chat/messages] success",
+    );
     return ok({ id: data.messageId, offerStatus: data.status });
   } catch (err) {
+    logger.error({ err }, "[PATCH chat/messages] ERROR");
     return handleApiError(err);
   }
 }

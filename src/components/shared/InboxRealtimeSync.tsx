@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useInboxRealtime } from "@/store/useInboxRealtime";
 import { toUtcIso } from "@/lib/utils/format";
+import { logger } from "@/lib/logger";
 
 /**
  * Single shared Supabase Realtime subscription for the inbox. Renders once
@@ -18,6 +19,7 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
   const emit = useInboxRealtime((s) => s.emit);
 
   useEffect(() => {
+    logger.debug({ userId }, "[InboxRealtimeSync] subscribing to inbox realtime channel");
     const supabase = createClient();
     const topic = `user:${userId}`;
     const fullTopic = `realtime:${topic}`;
@@ -36,6 +38,7 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
       channel
         .on("broadcast", { event: "INSERT" }, (payload) => {
           const data = payload.payload as { table: string; record: Record<string, unknown> };
+          logger.debug({ table: data.table }, "[InboxRealtimeSync] broadcast INSERT received");
           if (data.table === "Message") {
             const m = data.record as {
               id: string;
@@ -58,6 +61,7 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
         })
         .on("broadcast", { event: "UPDATE" }, (payload) => {
           const data = payload.payload as { table: string; record: Record<string, unknown> };
+          logger.debug({ table: data.table }, "[InboxRealtimeSync] broadcast UPDATE received");
           if (data.table === "Message") {
             const m = data.record as {
               id: string;
@@ -79,7 +83,9 @@ export function InboxRealtimeSync({ userId }: { userId: string }) {
             emit({ type: "listing_status", listingId: l.id, status: l.status, expiresAt: toUtcIso(l.expiresAt) });
           }
         })
-        .subscribe();
+        .subscribe((status) => {
+          logger.debug({ userId, status }, "[InboxRealtimeSync] channel subscription status");
+        });
     });
 
     return () => {

@@ -48,7 +48,9 @@ function toCard(l: RawListing, origin?: { lat: number; lng: number }): ListingCa
 
 /** Home feed — newest active listings. */
 export async function getRecentListings(limit = 12): Promise<ListingCardData[]> {
+  logger.debug({ limit }, "[getRecentListings] called");
   const rows = await queryListings({}, limit, 0);
+  logger.debug({ limit, count: rows.length }, "[getRecentListings] result");
   return rows.map((r) => toCard(r));
 }
 
@@ -104,6 +106,7 @@ export async function getRankedRecentListings(
   limit = 12,
 ): Promise<ListingCardData[]> {
   const { origin, profileLocation } = opts;
+  logger.debug({ hasOrigin: !!origin, hasProfileLocation: !!profileLocation, limit }, "[getRankedRecentListings] called");
   const rows = await queryListings({}, RECENT_RANKING_POOL_SIZE, 0);
   const now = Date.now();
 
@@ -123,11 +126,14 @@ export async function getRankedRecentListings(
   });
 
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, limit).map((s) => s.card);
+  const result = scored.slice(0, limit).map((s) => s.card);
+  logger.debug({ pool: rows.length, count: result.length }, "[getRankedRecentListings] result");
+  return result;
 }
 
 /** Full search with filters + location-aware ranking. */
 export async function searchListings(q: SearchQuery): Promise<Paginated<ListingCardData>> {
+  logger.debug({ q: q.q, category: q.category, city: q.city, page: q.page, pageSize: q.pageSize }, "[searchListings] called");
   const where: Record<string, unknown> = {};
   if (q.q) {
     const { categorySlugs, extraTerms } = expandSearchQuery(q.q);
@@ -216,6 +222,7 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
 
     const total = items.length;
     const paged = items.slice(skip, skip + q.pageSize);
+    logger.debug({ total, returned: paged.length, geo: true }, "[searchListings] result");
     return { items: paged, page: q.page, pageSize: q.pageSize, total, hasMore: skip + paged.length < total };
   }
 
@@ -224,6 +231,7 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
     prisma.listing.count({ where: { status: "ACTIVE", ...where } }),
   ]);
   const items = rows.map((r) => toCard(r));
+  logger.debug({ total, returned: items.length, geo: false }, "[searchListings] result");
   return { items, page: q.page, pageSize: q.pageSize, total, hasMore: skip + rows.length < total };
 }
 
@@ -241,12 +249,16 @@ const listingDetailInclude = {
  *  this for the same id, and without caching that doubles the view-count
  *  increment and the concurrent-query load on the connection pool. */
 export const getListing = cache(async (id: string): Promise<ListingDetailData | null> => {
+  logger.debug({ id }, "[getListing] called");
   try {
     const authUser = await getAuthUser();
 
     // Single fetch — then run view increment + seller stats in one parallel batch.
     const l = await prisma.listing.findUnique({ where: { id }, include: listingDetailInclude });
-    if (!l) return null;
+    if (!l) {
+      logger.debug({ id }, "[getListing] not found");
+      return null;
+    }
 
     const isOwner = authUser?.id === l.userId;
     const [listingsCount, responseTimeMins] = await Promise.all([
@@ -258,6 +270,7 @@ export const getListing = cache(async (id: string): Promise<ListingDetailData | 
         : prisma.listing.update({ where: { id }, data: { views: { increment: 1 } }, select: { id: true } }),
     ]);
 
+    logger.debug({ id, isOwner, viewIncremented: !isOwner }, "[getListing] result");
     return { ...l, user: { ...l.user, listingsCount, responseTimeMins } };
   } catch (err) {
     // P2025 = record not found — valid 404, not a bug
@@ -270,6 +283,7 @@ export const getListing = cache(async (id: string): Promise<ListingDetailData | 
 /** Listings owned by a user (active, sold, expired, flagged), for the My Ads management screen.
  * Excludes REMOVED listings by default (user deleted them). */
 export async function getUserListings(userId: string, includeRemoved = false): Promise<ListingCardData[]> {
+  logger.debug({ userId, includeRemoved }, "[getUserListings] called");
   const where: { userId: string; status?: { not: "REMOVED" } } = { userId };
   if (!includeRemoved) {
     where.status = { not: "REMOVED" };
@@ -279,6 +293,7 @@ export async function getUserListings(userId: string, includeRemoved = false): P
     orderBy: { createdAt: "desc" },
     include: { category: true, images: { orderBy: { order: "asc" }, take: 1 } },
   });
+  logger.debug({ userId, count: rows.length }, "[getUserListings] result");
   return rows.map((r) => ({
     id: r.id,
     title: r.title,
@@ -298,7 +313,8 @@ export async function getUserListings(userId: string, includeRemoved = false): P
 
 /** A single listing owned by the user, for editing (returns null if not owner). */
 export async function getOwnedListing(id: string, userId: string) {
-  return prisma.listing.findFirst({
+  logger.debug({ id, userId }, "[getOwnedListing] called");
+  const listing = await prisma.listing.findFirst({
     where: { id, userId },
     include: {
       category: { include: { attributes: { orderBy: { order: "asc" } } } },
@@ -306,4 +322,6 @@ export async function getOwnedListing(id: string, userId: string) {
       attributeValues: { include: { attribute: true } },
     },
   });
+  logger.debug({ id, userId, found: !!listing }, "[getOwnedListing] result");
+  return listing;
 }

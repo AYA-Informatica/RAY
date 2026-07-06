@@ -12,6 +12,7 @@ import { FilterSheet, EMPTY_FILTERS, type SearchFilters } from "@/components/sea
 import { useI18n } from "@/i18n/I18nProvider";
 import { formatResultCount } from "@/lib/utils/format";
 import type { ListingCardData, Paginated } from "@/types";
+import { logger } from "@/lib/logger";
 
 interface SearchCategory {
   slug: string;
@@ -71,9 +72,11 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
     setShowLocationPrompt(false);
     setLocating(true);
     setLocationError(null);
+    logger.debug("[SearchClient] requesting location for radius filter");
     navigator.geolocation.getCurrentPosition(
       (pos) => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocating(false); },
       (err) => {
+        logger.warn({ code: err.code }, "[SearchClient] geolocation failed");
         setLocationError(err.code === err.PERMISSION_DENIED ? "permission denied" : "unavailable");
         setLocating(false);
         setFilters((f) => ({ ...f, radius: 0 }));
@@ -102,8 +105,10 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
     try {
       const res = await fetch(`/api/search?${sp.toString()}`);
       const json = (await res.json()) as { data?: Paginated<ListingCardData> };
+      logger.debug({ query, category, total: json.data?.total ?? 0 }, "[SearchClient] search completed");
       setResult(json.data ?? null);
-    } catch {
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[SearchClient] search request failed");
       setResult(null);
     } finally {
       setLoading(false);

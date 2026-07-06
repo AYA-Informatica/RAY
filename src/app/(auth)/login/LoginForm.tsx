@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/I18nProvider";
+import { logger } from "@/lib/logger";
 
 export function LoginForm() {
   const params = useSearchParams();
@@ -21,6 +22,7 @@ export function LoginForm() {
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
+    logger.debug({ redirect }, "[LoginForm] initiating Google sign-in");
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOAuth({
@@ -30,7 +32,8 @@ export function LoginForm() {
         },
       });
       if (error) throw error;
-    } catch {
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[LoginForm] sign-in failed");
       setError(t("auth.signInError"));
       setLoading(false);
     }

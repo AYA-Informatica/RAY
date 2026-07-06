@@ -1,7 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 /** Singleton Prisma client. Prevents exhausting DB connections during dev HMR. */
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+const reused = Boolean(globalForPrisma.prisma);
+logger.debug({ reused }, "[prisma] client resolved");
 
 export const prisma =
   globalForPrisma.prisma ??

@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { AdminActionButton } from "@/components/admin/AdminActionButton";
 import { ToastStack, useToast } from "@/components/admin/AdminToast";
 import { timeAgo } from "@/lib/utils/format";
+import { logger } from "@/lib/logger";
 
 type Report = {
   id: string;
@@ -21,8 +22,12 @@ type Report = {
 
 async function fetchReports(): Promise<Report[]> {
   const res = await fetch("/api/admin/reports", { cache: "no-store" });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    logger.warn({ status: res.status }, "[AdminReports] failed to fetch reports");
+    return [];
+  }
   const json = await res.json() as { data: Report[] };
+  logger.debug({ count: json.data?.length ?? 0 }, "[AdminReports] reports fetched");
   return json.data ?? [];
 }
 
@@ -51,6 +56,7 @@ export default function AdminReports() {
   });
 
   function refresh() {
+    logger.debug("[AdminReports] refreshing reports");
     startTransition(() => {
       void fetchReports().then(setReports);
     });
@@ -124,14 +130,14 @@ export default function AdminReports() {
                     label="Remove listing"
                     tone="danger"
                     confirm={`Remove "${r.listing.title}" from the marketplace?`}
-                    onDone={(ok) => { show(ok ? "Listing removed" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                    onDone={(ok) => { logger.debug({ reportId: r.id, listingId: r.listing?.id, ok }, "[AdminReports] remove listing action done"); show(ok ? "Listing removed" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                   />
                 )}
                 <AdminActionButton
                   payload={{ action: "resolveReport", reportId: r.id, outcome: "no_action" }}
                   label="Not a violation"
                   tone="default"
-                  onDone={(ok) => { show(ok ? "Report resolved — no action taken" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                  onDone={(ok) => { logger.debug({ reportId: r.id, ok }, "[AdminReports] resolve report action done"); show(ok ? "Report resolved — no action taken" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                 />
               </div>
             </Card>

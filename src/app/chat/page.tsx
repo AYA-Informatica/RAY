@@ -5,15 +5,18 @@ import { ConversationList } from "@/components/chat/ConversationList";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getInbox } from "@/services/chat";
 import { serverT } from "@/i18n/server";
+import { logger } from "@/lib/logger";
 
 export const metadata = { title: "Messages" };
 
 /** Messages inbox. Auth required. */
 export default async function ChatInboxPage() {
+  logger.debug("[ChatInboxPage] rendering");
   const user = await getCurrentUser();
   if (!user) redirect("/login?redirect=/chat");
 
   const conversations = await getInbox(user.id);
+  logger.debug({ conversationCount: conversations.length }, "[ChatInboxPage] inbox loaded");
 
   return (
     <>

@@ -5,6 +5,7 @@ import { Check, CheckCheck, MapPin, Tag, ThumbsUp, ThumbsDown, Loader2, X, Downl
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { timeAgo, formatPrice } from "@/lib/utils/format";
+import { logger } from "@/lib/logger";
 
 export interface ChatMessage {
   id: string;
@@ -64,6 +65,7 @@ export function MessageBubble({
   async function downloadImage(url: string) {
     if (downloading) return;
     setDownloading(true);
+    logger.debug({ messageId: message.id }, "[MessageBubble] image download started");
     try {
       const res = await fetch(url);
       const blob = await res.blob();
@@ -75,7 +77,9 @@ export function MessageBubble({
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
-    } catch {
+      logger.debug({ messageId: message.id }, "[MessageBubble] image download finished");
+    } catch (err) {
+      logger.warn({ messageId: message.id, err }, "[MessageBubble] image download failed, opening in new tab");
       window.open(url, "_blank");
     } finally {
       setDownloading(false);
@@ -208,6 +212,7 @@ function OfferCard({
 
   async function respond(s: "accepted" | "declined") {
     setResponding(true);
+    logger.debug({ messageId: message.id, status: s }, "[MessageBubble] offer response submitted");
     try {
       await fetch("/api/chat/messages", {
         method: "PATCH",
@@ -215,6 +220,9 @@ function OfferCard({
         body: JSON.stringify({ messageId: message.id, status: s }),
       });
       onRespond?.(message.id, s);
+    } catch (err) {
+      logger.warn({ messageId: message.id, status: s, err }, "[MessageBubble] offer response failed");
+      throw err;
     } finally {
       setResponding(false);
     }

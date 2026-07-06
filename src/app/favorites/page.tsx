@@ -6,15 +6,18 @@ import { FavoritesGrid } from "@/components/listings/FavoritesGrid";
 import { FavoritesProvider } from "@/components/shared/FavoritesProvider";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getFavoriteListings } from "@/services/favorites";
+import { logger } from "@/lib/logger";
 
 export const metadata = { title: "Favourites" };
 
 /** Saved listings (favorites). Auth required. */
 export default async function FavoritesPage() {
+  logger.debug("[FavoritesPage] rendering");
   const user = await getCurrentUser();
   if (!user) redirect("/login?redirect=/favorites");
 
   const listings = await getFavoriteListings(user.id);
+  logger.debug({ count: listings.length }, "[FavoritesPage] favorites loaded");
 
   return (
     <AppShell width="wide">

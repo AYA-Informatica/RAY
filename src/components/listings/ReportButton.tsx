@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { useI18n } from "@/i18n/I18nProvider";
+import { logger } from "@/lib/logger";
 
 /** One-tap report (Safety UX). Files to /api/reports — does NOT auto-remove. */
 export function ReportButton({ listingId }: { listingId: string }) {
@@ -27,6 +28,7 @@ export function ReportButton({ listingId }: { listingId: string }) {
 
   async function submit() {
     setStatus("sending");
+    logger.debug({ listingId, reason }, "[ReportButton] report submitted");
     try {
       const res = await fetch("/api/reports", {
         method: "POST",
@@ -34,12 +36,15 @@ export function ReportButton({ listingId }: { listingId: string }) {
         body: JSON.stringify({ reason, details, listingId }),
       });
       if (res.status === 401) {
+        logger.debug({ listingId }, "[ReportButton] unauthenticated, redirecting to login");
         window.location.href = `/login?redirect=/listing/${listingId}`;
         return;
       }
       if (!res.ok) throw new Error("Report failed");
+      logger.debug({ listingId, reason }, "[ReportButton] report succeeded");
       setStatus("done");
-    } catch {
+    } catch (err) {
+      logger.warn({ listingId, reason, err }, "[ReportButton] report failed");
       setStatus("idle");
     }
   }

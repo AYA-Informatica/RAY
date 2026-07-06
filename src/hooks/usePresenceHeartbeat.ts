@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useUnreadMessages } from "@/store/useUnreadMessages";
+import { logger } from "@/lib/logger";
 
 /**
  * Pings /api/presence on mount and every 60s while the tab is visible,
@@ -14,11 +15,13 @@ export function usePresenceHeartbeat() {
 
     const beat = async () => {
       if (!active || document.visibilityState !== "visible") return;
+      logger.debug({}, "[usePresenceHeartbeat] beat");
       try {
         const res = await fetch("/api/presence", { method: "POST" });
         if (!active) return;
         // Session gone — stop hammering the server.
         if (res.status === 401 || res.status === 403) {
+          logger.debug({ status: res.status }, "[usePresenceHeartbeat] session gone, stopping");
           active = false;
           clearInterval(timer);
           document.removeEventListener("visibilitychange", handleVisibility);
@@ -30,6 +33,7 @@ export function usePresenceHeartbeat() {
         }
       } catch {
         // Network error — fine, just skip this beat.
+        logger.debug({}, "[usePresenceHeartbeat] beat failed, skipping");
       }
     };
 

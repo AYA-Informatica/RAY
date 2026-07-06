@@ -13,7 +13,9 @@ export const dynamic = "force-dynamic";
 /** GET /api/listings — recent active listings (public). */
 export async function GET() {
   try {
+    logger.debug({}, "[GET listings] request received");
     const items = await getRecentListings(20);
+    logger.debug({ count: items.length }, "[GET listings] success");
     return ok(items);
   } catch (err) {
     return handleApiError(err);
@@ -24,9 +26,16 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
-    if (!(await checkLimit(limiters.listingCreate, user.id))) return RATE_LIMITED();
+    if (!(await checkLimit(limiters.listingCreate, user.id))) {
+      logger.warn({ userId: user.id }, "[POST listings] rejected: rate limited");
+      return RATE_LIMITED();
+    }
 
     const body = await req.json() as Record<string, unknown>;
+    logger.debug(
+      { userId: user.id, repostFromId: body.repostFromId },
+      "[POST listings] request received",
+    );
 
     // Repost: clone an expired/removed listing owned by this user.
     if (typeof body.repostFromId === "string") {
@@ -62,14 +71,30 @@ export async function POST(req: NextRequest) {
           select: { id: true },
         });
       });
-      if (newListing === null) return fail("Listing not found or not yours", 404);
-      if (newListing === "ALREADY_ACTIVE") return fail("This listing is already active", 400);
+      if (newListing === null) {
+        logger.warn(
+          { userId: user.id, repostFromId: body.repostFromId },
+          "[POST listings] rejected: repost source not found or not owned",
+        );
+        return fail("Listing not found or not yours", 404);
+      }
+      if (newListing === "ALREADY_ACTIVE") {
+        logger.warn(
+          { userId: user.id, repostFromId: body.repostFromId },
+          "[POST listings] rejected: repost source already active",
+        );
+        return fail("This listing is already active", 400);
+      }
+      logger.info({ userId: user.id, listingId: newListing.id }, "[POST listings] reposted");
       return ok(newListing, { status: 201 });
     }
 
     const data = createListingSchema.parse(body);
 
-    if (data.images.length > 7) return fail("Maximum 7 photos", 422);
+    if (data.images.length > 7) {
+      logger.warn({ userId: user.id, imageCount: data.images.length }, "[POST listings] rejected: too many photos");
+      return fail("Maximum 7 photos", 422);
+    }
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
@@ -100,6 +125,7 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
 
+    logger.info({ userId: user.id, listingId: listing.id }, "[POST listings] created");
     return ok(listing, { status: 201 });
   } catch (err) {
     logger.error({ err }, "[POST listings] ERROR");

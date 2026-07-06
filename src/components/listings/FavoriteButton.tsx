@@ -3,6 +3,7 @@
 import { Heart } from "lucide-react";
 import { useFavorites } from "@/store/useFavorites";
 import { cn } from "@/lib/utils/cn";
+import { logger } from "@/lib/logger";
 
 export function FavoriteButton({ listingId, className }: { listingId: string; className?: string }) {
   const has = useFavorites((s) => s.ids.has(listingId));
@@ -12,6 +13,7 @@ export function FavoriteButton({ listingId, className }: { listingId: string; cl
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        logger.debug({ listingId, next: !has }, "[FavoriteButton] favorite toggled");
         void toggle(listingId);
       }}
       aria-label={has ? "Remove from favorites" : "Save to favorites"}

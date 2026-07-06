@@ -17,9 +17,16 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
-    if (!(await checkLimit(limiters.report, user.id))) return RATE_LIMITED();
+    if (!(await checkLimit(limiters.report, user.id))) {
+      logger.warn({ userId: user.id }, "[POST report] rejected: rate limited");
+      return RATE_LIMITED();
+    }
 
     const data = createReportSchema.parse(await req.json());
+    logger.debug(
+      { userId: user.id, listingId: data.listingId, reason: data.reason },
+      "[POST report] request received",
+    );
 
     await prisma.report.create({
       data: {
@@ -38,6 +45,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    logger.debug({ userId: user.id, listingId: data.listingId }, "[POST report] success");
     return ok({ received: true }, { status: 201 });
   } catch (err) {
     logger.error({ err }, "[POST report] ERROR");

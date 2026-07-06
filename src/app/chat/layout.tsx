@@ -8,6 +8,7 @@ import { getAuthUser, getCurrentUser } from "@/lib/auth/session";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { getInbox } from "@/services/chat";
 import { serverT } from "@/i18n/server";
+import { logger } from "@/lib/logger";
 
 /**
  * Chat shell — replaces the generic AppShell for the /chat route tree.
@@ -20,11 +21,13 @@ import { serverT } from "@/i18n/server";
  *   Sidebar stays visible while navigating between conversations.
  */
 export default async function ChatLayout({ children }: { children: React.ReactNode }) {
+  logger.debug("[ChatLayout] rendering");
   const authUser = await getAuthUser();
   const unread = authUser ? await getUnreadCount(authUser.id) : 0;
 
   const user = await getCurrentUser();
   const conversations = user ? await getInbox(user.id) : [];
+  logger.debug({ hasUser: !!user, unread, conversationCount: conversations.length }, "[ChatLayout] data loaded");
 
   return (
     <ChatMobileFrame unreadMessages={unread}>

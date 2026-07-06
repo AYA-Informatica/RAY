@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { translate } from "./dictionaries";
 import { parseLocale } from "./utils";
+import { logger } from "@/lib/logger";
 
 /**
  * Server-Component translate. Reads the `ray_locale` cookie that the
@@ -9,5 +10,7 @@ import { parseLocale } from "./utils";
  */
 export async function serverT(key: string): Promise<string> {
   const raw = (await cookies()).get("ray_locale")?.value;
-  return translate(parseLocale(raw), key);
+  const locale = parseLocale(raw);
+  logger.debug({ locale, key }, "[serverT] called");
+  return translate(locale, key);
 }

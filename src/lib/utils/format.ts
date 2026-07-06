@@ -1,9 +1,12 @@
+import { logger } from "@/lib/logger";
+
 /** Format a price in Rwandan Francs, e.g. "Rwf 3,000,000". */
 export function formatPrice(amount: number): string {
   try {
     return `Rwf ${new Intl.NumberFormat("en-RW").format(Math.round(amount))}`;
   } catch {
     // Fallback for environments where en-RW locale data is unavailable
+    logger.debug("[format] formatPrice en-RW locale unavailable — using toLocaleString fallback");
     return `Rwf ${Math.round(amount).toLocaleString()}`;
   }
 }

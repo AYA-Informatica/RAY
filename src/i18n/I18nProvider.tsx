@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { translate, type Locale } from "./dictionaries";
+import { logger } from "@/lib/logger";
 
 interface I18nContextValue {
   locale: Locale;
@@ -24,6 +25,7 @@ export function I18nProvider({
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   const setLocale = useCallback((l: Locale) => {
+    logger.debug({ locale: l }, "[I18nProvider] setLocale called");
     setLocaleState(l);
     // Update the html[lang] attribute immediately so screen readers
     // announce content in the correct language without waiting for SSR.

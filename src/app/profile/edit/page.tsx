@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell } from "@/components/layout/AppShell";
 import { EditProfileForm } from "./EditProfileForm";
+import { logger } from "@/lib/logger";
 
 export const metadata = { title: "Edit Profile" };
 
 export default async function EditProfilePage() {
+  logger.debug("[EditProfilePage] rendering");
   const user = await getCurrentUser();
   if (!user) redirect("/login?redirect=/profile/edit");
 

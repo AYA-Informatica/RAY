@@ -4,14 +4,21 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/i18n/I18nProvider";
+import { logger } from "@/lib/logger";
 
 /** Signs out via Supabase and returns to the splash. */
 export function LogoutButton() {
   const router = useRouter();
   const { t } = useI18n();
   async function logout() {
+    logger.debug({}, "[LogoutButton] logout requested");
     const supabase = createClient();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      logger.warn({ err: error.message }, "[LogoutButton] sign out failed");
+    } else {
+      logger.debug({}, "[LogoutButton] sign out succeeded");
+    }
     router.push("/");
     router.refresh();
   }

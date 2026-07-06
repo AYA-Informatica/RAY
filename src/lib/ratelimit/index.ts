@@ -34,5 +34,10 @@ export async function checkLimit(
 ): Promise<boolean> {
   if (!limiter) return true;
   const { success } = await limiter.limit(identifier);
+  if (!success) {
+    logger.warn({ identifier }, "[ratelimit] checkLimit blocked");
+  } else {
+    logger.debug({ identifier }, "[ratelimit] checkLimit allowed");
+  }
   return success;
 }

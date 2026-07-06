@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 
 /** Returns the name of the detected in-app browser, or null if not in one. */
 function detectInAppBrowser(): string | null {
@@ -24,7 +25,9 @@ export function InAppBrowserBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    setApp(detectInAppBrowser());
+    const detected = detectInAppBrowser();
+    if (detected) logger.debug({ app: detected }, "[InAppBrowserBanner] in-app browser detected");
+    setApp(detected);
   }, []);
 
   if (!app || dismissed) return null;
@@ -47,7 +50,10 @@ export function InAppBrowserBanner() {
         for the best experience.
       </span>
       <button
-        onClick={() => setDismissed(true)}
+        onClick={() => {
+          logger.debug({ app }, "[InAppBrowserBanner] banner dismissed");
+          setDismissed(true);
+        }}
         aria-label="Dismiss"
         className="shrink-0 font-bold opacity-70 hover:opacity-100"
       >

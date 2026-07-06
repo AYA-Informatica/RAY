@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useI18n } from "@/i18n/I18nProvider";
 import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
+import { logger } from "@/lib/logger";
 
 const VISITED_KEY = "ray_visited";
 
@@ -39,15 +40,18 @@ export function SplashContent() {
     if (safeGetItem(VISITED_KEY)) {
       // Returning visitor whose cookie was cleared (middleware normally handles
       // the redirect before we get here). Hide immediately and navigate away.
+      logger.debug("[SplashContent] returning visitor detected, redirecting to /home");
       setVisible(false);
       router.replace("/home");
     } else {
       // First visit — already visible. Warm up /home in the background.
+      logger.debug("[SplashContent] first visit, showing splash");
       router.prefetch("/home");
     }
   }, [router]);
 
   function handleGetStarted() {
+    logger.debug("[SplashContent] Get Started clicked");
     safeSetItem(VISITED_KEY, "1");
     document.cookie = "ray_visited=1; path=/; max-age=31536000; SameSite=Lax";
     setVisible(false);

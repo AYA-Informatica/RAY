@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 const noopStorage = {
   getItem: (_key: string): null => null,
   setItem: (_key: string, _value: string): void => undefined,
@@ -19,6 +21,7 @@ export function safeLocalStorage(): Storage {
     localStorage.removeItem("__ray_probe__");
     return localStorage;
   } catch {
+    logger.debug("[safeStorage] safeLocalStorage blocked — falling back to noop");
     return noopStorage as unknown as Storage;
   }
 }

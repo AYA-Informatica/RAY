@@ -4,10 +4,13 @@ import { Card } from "@/components/ui/Card";
 import { getAdminStats } from "@/services/admin";
 import { AnnouncementEditor } from "./AnnouncementEditor";
 import { CategoryHealthTable } from "./CategoryHealthTable";
+import { logger } from "@/lib/logger";
 
 /** Admin overview — key moderation/analytics-foundation counts. */
 export default async function AdminOverview() {
+  logger.debug("[AdminOverview] rendering");
   const stats = await getAdminStats();
+  logger.debug({ users: stats.users, listings: stats.listings, openReports: stats.openReports }, "[AdminOverview] stats loaded");
   const cards = [
     { label: "Total Users", value: stats.users, icon: Users, tone: "text-text-primary" },
     { label: "Active Listings", value: stats.listings, icon: ListChecks, tone: "text-success" },

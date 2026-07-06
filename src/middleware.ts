@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { logger } from "@/lib/logger";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
@@ -18,9 +19,11 @@ const PROTECTED_PREFIXES = ["/sell", "/chat", "/favorites", "/profile", "/admin"
 export async function middleware(request: NextRequest) {
   try {
     const { pathname } = request.nextUrl;
+    logger.debug({ method: request.method, pathname }, "[middleware] request");
 
     // Redirect returning visitors from landing → home feed without any auth call.
     if (pathname === "/" && request.cookies.get("ray_visited")?.value === "1") {
+      logger.debug({ pathname }, "[middleware] redirect returning visitor to /home");
       const rUrl = request.nextUrl.clone();
       rUrl.pathname = "/home";
       return NextResponse.redirect(rUrl);
@@ -39,7 +42,10 @@ export async function middleware(request: NextRequest) {
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) return response;
+    if (!url || !key) {
+      logger.warn({ pathname }, "[middleware] Supabase env vars missing — skipping auth gate");
+      return response;
+    }
 
     const supabase = createServerClient(url, key, { // NOSONAR S1874 — uses getAll/setAll (non-deprecated overload); SonarLint resolves to any and misidentifies it
       cookies: {
@@ -69,10 +75,12 @@ export async function middleware(request: NextRequest) {
           : "/home";
       rUrl.pathname = safe;
       rUrl.search = "";
+      logger.debug({ redirectTo: safe }, "[middleware] authed user redirected off /login");
       return NextResponse.redirect(rUrl);
     }
 
     if (needsAuth && !user) {
+      logger.warn({ pathname }, "[middleware] blocked unauthenticated request to protected route");
       const rUrl = request.nextUrl.clone();
       rUrl.pathname = "/login";
       rUrl.searchParams.set("redirect", pathname);
@@ -80,7 +88,8 @@ export async function middleware(request: NextRequest) {
     }
 
     return response;
-  } catch {
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : err }, "[middleware] unexpected error — passing request through");
     return NextResponse.next();
   }
 }

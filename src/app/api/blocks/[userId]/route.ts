@@ -13,10 +13,12 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
     const { userId } = await params;
     const user = await requireUser();
+    logger.debug({ userId: user.id, targetId: userId }, "[GET block] request received");
     const block = await prisma.block.findUnique({
       where: { blockerId_blockedId: { blockerId: user.id, blockedId: userId } },
       select: { id: true },
     });
+    logger.debug({ userId: user.id, targetId: userId, blocked: Boolean(block) }, "[GET block] success");
     return ok({ blocked: Boolean(block) });
   } catch (err) {
     logger.error({ err }, "[GET block] ERROR");
@@ -29,12 +31,17 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
   try {
     const { userId } = await params;
     const user = await requireUser();
-    if (user.id === userId) return fail("You can't block yourself", 400);
+    logger.debug({ userId: user.id, targetId: userId }, "[POST block] request received");
+    if (user.id === userId) {
+      logger.warn({ userId: user.id }, "[POST block] rejected: cannot block self");
+      return fail("You can't block yourself", 400);
+    }
     await prisma.block.upsert({
       where: { blockerId_blockedId: { blockerId: user.id, blockedId: userId } },
       update: {},
       create: { blockerId: user.id, blockedId: userId },
     });
+    logger.info({ userId: user.id, targetId: userId }, "[POST block] success");
     return ok({ blocked: true });
   } catch (err) {
     logger.error({ err }, "[POST block] ERROR");
@@ -47,9 +54,11 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     const { userId } = await params;
     const user = await requireUser();
+    logger.debug({ userId: user.id, targetId: userId }, "[DELETE block] request received");
     await prisma.block.deleteMany({
       where: { blockerId: user.id, blockedId: userId },
     });
+    logger.info({ userId: user.id, targetId: userId }, "[DELETE block] success");
     return ok({ blocked: false });
   } catch (err) {
     logger.error({ err }, "[DELETE block] ERROR");

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { AdminActionButton } from "@/components/admin/AdminActionButton";
 import { ToastStack, useToast } from "@/components/admin/AdminToast";
 import { formatPrice, timeAgo } from "@/lib/utils/format";
+import { logger } from "@/lib/logger";
 
 // ── Types (mirrors what getModerationListings returns) ──────────────────────
 type Report = {
@@ -45,8 +46,12 @@ const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "muted"> = 
 // ── Data fetching (server action via client fetch) ──────────────────────────
 async function fetchListings(): Promise<Listing[]> {
   const res = await fetch("/api/admin/listings", { cache: "no-store" });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    logger.warn({ status: res.status }, "[AdminListings] failed to fetch listings");
+    return [];
+  }
   const json = await res.json() as { data: Listing[] };
+  logger.debug({ count: json.data?.length ?? 0 }, "[AdminListings] listings fetched");
   return json.data ?? [];
 }
 
@@ -78,6 +83,7 @@ export default function AdminListings() {
   });
 
   function refresh() {
+    logger.debug("[AdminListings] refreshing listings");
     startTransition(() => {
       void fetchListings().then(setListings);
     });
@@ -152,14 +158,14 @@ export default function AdminListings() {
                         payload={{ action: "unfeatureListing", listingId: l.id }}
                         label="Unfeature"
                         tone="default"
-                        onDone={(ok) => { show(ok ? "Listing unfeatured" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                        onDone={(ok) => { logger.debug({ listingId: l.id, ok }, "[AdminListings] unfeature action done"); show(ok ? "Listing unfeatured" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                       />
                     ) : (
                       <AdminActionButton
                         payload={{ action: "featureListing", listingId: l.id }}
                         label="Feature ★"
                         tone="success"
-                        onDone={(ok) => { show(ok ? "Listing featured" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                        onDone={(ok) => { logger.debug({ listingId: l.id, ok }, "[AdminListings] feature action done"); show(ok ? "Listing featured" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                       />
                     )}
                     {l.status === "REMOVED" ? (
@@ -167,7 +173,7 @@ export default function AdminListings() {
                         payload={{ action: "restoreListing", listingId: l.id }}
                         label="Restore"
                         tone="success"
-                        onDone={(ok) => { show(ok ? "Listing restored" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                        onDone={(ok) => { logger.debug({ listingId: l.id, ok }, "[AdminListings] restore action done"); show(ok ? "Listing restored" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                       />
                     ) : (
                       <AdminActionButton
@@ -175,7 +181,7 @@ export default function AdminListings() {
                         label="Remove"
                         tone="danger"
                         confirm={`Remove "${l.title}"? It will be hidden from the marketplace.`}
-                        onDone={(ok) => { show(ok ? "Listing removed" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                        onDone={(ok) => { logger.debug({ listingId: l.id, ok }, "[AdminListings] remove action done"); show(ok ? "Listing removed" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                       />
                     )}
                     {hasReports && (
@@ -212,14 +218,14 @@ export default function AdminListings() {
                             payload={{ action: "resolveReport", reportId: r.id, outcome: "no_action" }}
                             label="Not a violation"
                             tone="default"
-                            onDone={(ok) => { show(ok ? "Report resolved — no action taken" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                            onDone={(ok) => { logger.debug({ reportId: r.id, ok }, "[AdminListings] resolve report action done"); show(ok ? "Report resolved — no action taken" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                           />
                           <AdminActionButton
                             payload={{ action: "removeListing", listingId: l.id }}
                             label="Remove & resolve"
                             tone="danger"
                             confirm="Remove the listing and mark all open reports as resolved?"
-                            onDone={(ok) => { show(ok ? "Listing removed and reports resolved" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                            onDone={(ok) => { logger.debug({ listingId: l.id, ok }, "[AdminListings] remove & resolve action done"); show(ok ? "Listing removed and reports resolved" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                           />
                         </div>
                       </div>

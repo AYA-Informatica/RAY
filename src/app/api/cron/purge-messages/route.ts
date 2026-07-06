@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    logger.debug({}, "[CRON purge-messages] request received");
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 30);
 
@@ -68,6 +69,7 @@ export async function GET(req: NextRequest) {
       ranAt: new Date().toISOString(),
     });
   } catch (err) {
+    logger.error({ err }, "[CRON purge-messages] ERROR");
     return handleApiError(err);
   }
 }

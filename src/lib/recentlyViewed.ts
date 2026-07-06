@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 
 const KEY = "ray_recently_viewed";
 const MAX = 8;
@@ -22,7 +23,10 @@ export function recordView(item: RecentItem) {
     const deduped = current.filter((r) => r.id !== item.id);
     const updated = [item, ...deduped].slice(0, MAX);
     localStorage.setItem(KEY, JSON.stringify(updated));
-  } catch { /* storage blocked */ }
+    logger.debug({ id: item.id, count: updated.length }, "[recentlyViewed] recordView stored");
+  } catch {
+    logger.debug({ id: item.id }, "[recentlyViewed] recordView storage blocked");
+  }
 }
 
 /** Returns the recently viewed list (browser only, avoids SSR mismatch). */
@@ -31,8 +35,12 @@ export function useRecentlyViewed(): RecentItem[] {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
-      setItems(raw ? (JSON.parse(raw) as RecentItem[]) : []);
-    } catch { /* no-op */ }
+      const parsed: RecentItem[] = raw ? (JSON.parse(raw) as RecentItem[]) : [];
+      setItems(parsed);
+      logger.debug({ count: parsed.length }, "[recentlyViewed] useRecentlyViewed loaded");
+    } catch {
+      logger.debug("[recentlyViewed] useRecentlyViewed storage blocked");
+    }
   }, []);
   return items;
 }

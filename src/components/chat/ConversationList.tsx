@@ -9,6 +9,7 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { Badge } from "@/components/ui/Badge";
 import { STATUS_TONE, STATUS_KEY } from "@/lib/listings/status";
 import { useInboxRealtime } from "@/store/useInboxRealtime";
+import { logger } from "@/lib/logger";
 
 export interface ConversationPreview {
   id: string;
@@ -48,6 +49,7 @@ export function ConversationList({
   // only delivers postgres_changes to one of several duplicate subscriptions.
   useEffect(() => {
     if (!lastEvent) return;
+    logger.debug({ type: lastEvent.type }, "[ConversationList] realtime event received");
 
     /** Fetch and prepend a conversation that isn't in the list yet (no-op if already present). */
     function addConversationIfMissing(conversationId: string) {
@@ -57,11 +59,12 @@ export function ConversationList({
           .then((r) => r.json())
           .then((json: { data?: ConversationPreview }) => {
             if (!json.data) return;
+            logger.debug({ conversationId }, "[ConversationList] new conversation fetched and prepended");
             setConversations((cur) =>
               cur.some((c) => c.id === conversationId) ? cur : [json.data!, ...cur],
             );
           })
-          .catch(() => null);
+          .catch((err) => logger.warn({ conversationId, err }, "[ConversationList] failed to fetch new conversation"));
         return prev;
       });
     }
@@ -150,6 +153,7 @@ export function ConversationList({
     if (selected.size === 0) return;
     if (!window.confirm(t("chat.deleteConfirm"))) return;
     const ids = Array.from(selected);
+    logger.debug({ count: ids.length }, "[ConversationList] hiding conversations");
     setConversations((prev) => prev.filter((c) => !selected.has(c.id)));
     setSelected(new Set());
     setSelectMode(false);
@@ -159,8 +163,9 @@ export function ConversationList({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationIds: ids }),
       });
-    } catch {
+    } catch (err) {
       // best-effort — conversation stays hidden locally even if the request fails
+      logger.warn({ count: ids.length, err }, "[ConversationList] hide conversations request failed");
     }
   }
 

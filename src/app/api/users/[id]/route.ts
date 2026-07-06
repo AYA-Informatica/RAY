@@ -14,14 +14,19 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params;
+    logger.debug({ userId: id }, "[GET user] request received");
     const user = await prisma.user.findUnique({
       where: { id },
       select: { id: true, name: true, avatarUrl: true, bio: true, city: true, createdAt: true },
     });
-    if (!user) return fail("User not found", 404);
+    if (!user) {
+      logger.warn({ userId: id }, "[GET user] rejected: not found");
+      return fail("User not found", 404);
+    }
     const listingsCount = await prisma.listing.count({
       where: { userId: id, status: "ACTIVE" },
     });
+    logger.debug({ userId: id, listingsCount }, "[GET user] success");
     return ok({ ...user, listingsCount });
   } catch (err) {
     logger.error({ err }, "[GET user] ERROR");
@@ -34,9 +39,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params;
     const user = await requireUser();
-    if (user.id !== id) return fail("Forbidden", 403);
+    if (user.id !== id) {
+      logger.warn({ userId: user.id, targetId: id }, "[PATCH user] rejected: forbidden");
+      return fail("Forbidden", 403);
+    }
 
     const patch = updateProfileSchema.parse(await req.json());
+    logger.debug({ userId: user.id }, "[PATCH user] request received");
 
     const { avatarUrl, ...textFields } = patch;
     const data = {
@@ -49,6 +58,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       data,
       select: { id: true, name: true, bio: true, avatarUrl: true, city: true, district: true },
     });
+    logger.debug({ userId: user.id }, "[PATCH user] success");
     return ok(updated);
   } catch (err) {
     logger.error({ err }, "[PATCH user] ERROR");

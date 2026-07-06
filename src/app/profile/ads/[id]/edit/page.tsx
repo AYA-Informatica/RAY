@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getOwnedListing } from "@/services/listings";
 import { parseAttributeOptions } from "@/lib/utils/categoryAttributes";
 import { EditListingForm } from "./EditListingForm";
+import { logger } from "@/lib/logger";
 
 export const metadata = { title: "Edit ad" };
 
@@ -12,11 +13,15 @@ type Params = { params: Promise<{ id: string }> };
 /** Edit an owned listing. Auth + ownership enforced. */
 export default async function EditListingPage({ params }: Params) {
   const { id } = await params;
+  logger.debug({ listingId: id }, "[EditListingPage] rendering");
   const user = await getCurrentUser();
   if (!user) redirect(`/login?redirect=/profile/ads/${id}/edit`);
 
   const listing = await getOwnedListing(id, user.id);
-  if (!listing) notFound();
+  if (!listing) {
+    logger.debug({ listingId: id, userId: user.id }, "[EditListingPage] listing not found or not owned");
+    notFound();
+  }
 
   // Serialize for the client form.
   const initial = {

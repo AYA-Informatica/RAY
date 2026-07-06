@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
+import { logger } from "@/lib/logger";
 
 /** Swipeable image gallery for the item detail page.
  *  Uses CSS scroll-snap so touch swipe, mouse drag, and keyboard all work natively.
@@ -96,7 +97,10 @@ export function ListingGallery({ images, title }: { images: string[]; title: str
           {images.map((_, i) => (
             <button
               key={i}
-              onClick={() => scrollTo(i)}
+              onClick={() => {
+                logger.debug({ index: i }, "[ListingGallery] dot navigation clicked");
+                scrollTo(i);
+              }}
               aria-label={`View photo ${i + 1}`}
               className={cn(
                 "h-1.5 rounded-pill transition-all duration-200",

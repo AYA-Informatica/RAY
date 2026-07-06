@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useUnreadMessages } from "@/store/useUnreadMessages";
 import { useInboxRealtime } from "@/store/useInboxRealtime";
+import { logger } from "@/lib/logger";
 
 /**
  * Hydrates the unread-messages store with the server-computed count on mount,
@@ -23,6 +24,7 @@ export function UnreadMessagesProvider({ initialCount, userId }: { initialCount:
     if (!lastEvent) return;
     if (lastEvent.type === "message_insert" && lastEvent.senderId !== userId) {
       const current = useUnreadMessages.getState().count ?? 0;
+      logger.debug({ from: current, to: current + 1 }, "[UnreadMessagesProvider] unread count bumped");
       useUnreadMessages.getState().setCount(current + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

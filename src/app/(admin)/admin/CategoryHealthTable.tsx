@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { logger } from "@/lib/logger";
 
 type Row = {
   id: string;
@@ -20,8 +21,15 @@ export function CategoryHealthTable() {
   useEffect(() => {
     fetch("/api/admin/categories")
       .then((r) => r.json())
-      .then((j: { data: Row[] }) => { setRows(j.data ?? []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((j: { data: Row[] }) => {
+        setRows(j.data ?? []);
+        setLoading(false);
+        logger.debug({ count: j.data?.length ?? 0 }, "[CategoryHealthTable] categories loaded");
+      })
+      .catch((err) => {
+        logger.warn({ message: err?.message }, "[CategoryHealthTable] failed to load categories");
+        setLoading(false);
+      });
   }, []);
 
   return (

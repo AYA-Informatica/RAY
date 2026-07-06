@@ -7,6 +7,7 @@ import { Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { timeAgo } from "@/lib/utils/format";
+import { logger } from "@/lib/logger";
 
 type AuditEntry = {
   id: string;
@@ -68,8 +69,15 @@ export default function AuditPage() {
   useEffect(() => {
     fetch("/api/admin/audit")
       .then((r) => r.json())
-      .then((j: { data: AuditEntry[] }) => { setEntries(j.data ?? []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((j: { data: AuditEntry[] }) => {
+        setEntries(j.data ?? []);
+        setLoading(false);
+        logger.debug({ count: j.data?.length ?? 0 }, "[AuditPage] entries loaded");
+      })
+      .catch((err) => {
+        logger.warn({ message: err?.message }, "[AuditPage] failed to load entries");
+        setLoading(false);
+      });
   }, []);
 
   const filtered = actionFilter

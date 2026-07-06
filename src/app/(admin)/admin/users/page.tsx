@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { AdminActionButton } from "@/components/admin/AdminActionButton";
 import { ToastStack, useToast } from "@/components/admin/AdminToast";
 import { timeAgo } from "@/lib/utils/format";
+import { logger } from "@/lib/logger";
 
 type User = {
   id: string;
@@ -22,8 +23,12 @@ type User = {
 
 async function fetchUsers(): Promise<User[]> {
   const res = await fetch("/api/admin/users", { cache: "no-store" });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    logger.warn({ status: res.status }, "[AdminUsers] failed to fetch users");
+    return [];
+  }
   const json = await res.json() as { data: User[] };
+  logger.debug({ count: json.data?.length ?? 0 }, "[AdminUsers] users fetched");
   return json.data ?? [];
 }
 
@@ -50,6 +55,7 @@ export default function AdminUsers() {
   });
 
   function refresh() {
+    logger.debug("[AdminUsers] refreshing users");
     startTransition(() => {
       void fetchUsers().then(setUsers);
     });
@@ -110,7 +116,7 @@ export default function AdminUsers() {
                     payload={{ action: "unbanUser", userId: u.id }}
                     label="Unban"
                     tone="success"
-                    onDone={(ok) => { show(ok ? "User unbanned" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                    onDone={(ok) => { logger.debug({ userId: u.id, ok }, "[AdminUsers] unban action done"); show(ok ? "User unbanned" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                   />
                 ) : (
                   <AdminActionButton
@@ -118,7 +124,7 @@ export default function AdminUsers() {
                     label="Ban"
                     tone="danger"
                     confirm={`Ban ${u.email}? They won't be able to post or chat.`}
-                    onDone={(ok) => { show(ok ? "User banned" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
+                    onDone={(ok) => { logger.debug({ userId: u.id, ok }, "[AdminUsers] ban action done"); show(ok ? "User banned" : "Action failed", ok ? "success" : "danger"); if (ok) refresh(); }}
                   />
                 )}
               </div>

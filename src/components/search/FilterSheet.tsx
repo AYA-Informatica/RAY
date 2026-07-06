@@ -9,6 +9,7 @@ import { PriceSlider } from "./PriceSlider";
 import { DistanceSelector } from "./DistanceSelector";
 import { useLocationCascade } from "@/hooks/useLocationCascade";
 import { useI18n } from "@/i18n/I18nProvider";
+import { logger } from "@/lib/logger";
 
 /** Filters applied on the search page. Strings (not nulls) so empty = ignored. */
 export interface SearchFilters {
@@ -154,12 +155,32 @@ export function FilterSheet({
         />
 
         <div className="flex gap-3 pt-2">
-          <Button variant="secondary" fullWidth onClick={() => setFilters(EMPTY_FILTERS)}>
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => {
+              logger.debug({}, "[FilterSheet] filters reset");
+              setFilters(EMPTY_FILTERS);
+            }}
+          >
             {t("filter.reset")}
           </Button>
           <Button
             fullWidth
             onClick={() => {
+              logger.debug(
+                {
+                  condition: filters.condition,
+                  minPrice: filters.minPrice,
+                  maxPrice: filters.maxPrice,
+                  radius: filters.radius,
+                  city: filters.city,
+                  district: filters.district,
+                  neighborhood: filters.neighborhood,
+                  brand: filters.brand,
+                },
+                "[FilterSheet] filter applied",
+              );
               onApply(filters);
               onClose();
             }}

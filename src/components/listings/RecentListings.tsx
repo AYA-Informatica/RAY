@@ -10,6 +10,7 @@ import { ListingRow, ListingCard } from "@/components/listings/ListingCard";
 import { PermissionPrompt } from "@/components/shared/PermissionPrompt";
 import { useI18n } from "@/i18n/I18nProvider";
 import type { ListingCardData } from "@/types";
+import { logger } from "@/lib/logger";
 
 const PAGE_SIZE = 15;
 
@@ -44,9 +45,12 @@ export function RecentListings({ initial }: { readonly initial: ListingCardData[
       fetch(`/api/listings/recent?lat=${lat}&lng=${lng}`)
         .then((res) => res.json())
         .then((json) => {
-          if (!cancelled && Array.isArray(json?.data?.items)) setItems(json.data.items);
+          if (!cancelled && Array.isArray(json?.data?.items)) {
+            logger.debug({ count: json.data.items.length }, "[RecentListings] re-ranked by GPS proximity");
+            setItems(json.data.items);
+          }
         })
-        .catch(() => {});
+        .catch((err) => logger.warn({ err }, "[RecentListings] proximity re-rank fetch failed"));
     }
 
     function requestPosition() {
@@ -62,6 +66,7 @@ export function RecentListings({ initial }: { readonly initial: ListingCardData[
         .query({ name: "geolocation" })
         .then((status) => {
           if (cancelled) return;
+          logger.debug({ state: status.state }, "[RecentListings] geolocation permission state");
           if (status.state === "granted") requestPosition();
           else if (status.state === "prompt") setShowLocationPrompt(true);
           // "denied" — keep the server-rendered order (profile-location ranked, if set).
@@ -77,6 +82,7 @@ export function RecentListings({ initial }: { readonly initial: ListingCardData[
   }, [isSplashPage]);
 
   function handleAllowLocation() {
+    logger.debug({}, "[RecentListings] location permission allowed by user");
     setShowLocationPrompt(false);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -85,7 +91,7 @@ export function RecentListings({ initial }: { readonly initial: ListingCardData[
           .then((json) => {
             if (Array.isArray(json?.data?.items)) setItems(json.data.items);
           })
-          .catch(() => {});
+          .catch((err) => logger.warn({ err }, "[RecentListings] re-rank fetch after allow failed"));
       },
       () => {},
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60_000 },

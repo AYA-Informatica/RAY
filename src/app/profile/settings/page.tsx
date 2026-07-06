@@ -3,10 +3,12 @@ import { AppShell } from "@/components/layout/AppShell";
 import { LanguageToggle } from "@/components/shared/LanguageToggle";
 import { SubPageHeader } from "../SubPageHeader";
 import { getCurrentUser } from "@/lib/auth/session";
+import { logger } from "@/lib/logger";
 
 export const metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
+  logger.debug("[SettingsPage] rendering");
   const user = await getCurrentUser();
   if (!user) redirect("/login?redirect=/profile/settings");
 

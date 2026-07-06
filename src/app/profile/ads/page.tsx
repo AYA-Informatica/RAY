@@ -5,6 +5,7 @@ import { MyAdsHeader } from "./MyAdsHeader";
 import { MyAdsEmpty } from "./MyAdsEmpty";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getUserListings } from "@/services/listings";
+import { logger } from "@/lib/logger";
 
 export const metadata = { title: "My Ads" };
 
@@ -14,10 +15,12 @@ export const revalidate = 0;
 
 /** Seller's own listings with management actions. Auth required. */
 export default async function MyAdsPage() {
+  logger.debug("[MyAdsPage] rendering");
   const user = await getCurrentUser();
   if (!user) redirect("/login?redirect=/profile/ads");
 
   const listings = await getUserListings(user.id);
+  logger.debug({ count: listings.length }, "[MyAdsPage] listings loaded");
 
   return (
     <AppShell>

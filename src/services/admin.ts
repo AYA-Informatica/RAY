@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 /** Dashboard counts for the admin overview. */
 export async function getAdminStats() {
+  logger.debug({}, "[getAdminStats] called");
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
@@ -13,6 +15,7 @@ export async function getAdminStats() {
     prisma.report.count({ where: { resolved: false } }),
     prisma.user.count({ where: { createdAt: { gte: oneWeekAgo } } }),
   ]);
+  logger.debug({ users, listings, featured, flagged, openReports, newUsers }, "[getAdminStats] result");
   return { users, listings, featured, flagged, openReports, newUsers };
 }
 
@@ -20,6 +23,7 @@ const MODERATION_PRIORITY: Record<string, number> = { FLAGGED: 0, REMOVED: 1, AC
 
 /** Recent listings for moderation (flagged first), with thumbnail + reports. */
 export async function getModerationListings() {
+  logger.debug({}, "[getModerationListings] called");
   const rows = await prisma.listing.findMany({
     orderBy: { createdAt: "desc" },
     take: 500,
@@ -48,14 +52,17 @@ export async function getModerationListings() {
       _count: { select: { reports: true } },
     },
   });
-  return rows.sort(
+  const sorted = rows.sort(
     (a, b) => (MODERATION_PRIORITY[a.status] ?? 5) - (MODERATION_PRIORITY[b.status] ?? 5),
   );
+  logger.debug({ count: sorted.length }, "[getModerationListings] result");
+  return sorted;
 }
 
 /** Open reports with their target listing. */
 export async function getOpenReports() {
-  return prisma.report.findMany({
+  logger.debug({}, "[getOpenReports] called");
+  const reports = await prisma.report.findMany({
     where: { resolved: false },
     orderBy: { createdAt: "desc" },
     take: 500,
@@ -64,10 +71,13 @@ export async function getOpenReports() {
       listing: { select: { id: true, title: true, status: true } },
     },
   });
+  logger.debug({ count: reports.length }, "[getOpenReports] result");
+  return reports;
 }
 
 /** Category health stats — total listings, new this week, flagged count. */
 export async function getCategoryHealth() {
+  logger.debug({}, "[getCategoryHealth] called");
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
@@ -99,7 +109,7 @@ export async function getCategoryHealth() {
     ]),
   );
 
-  return categories.map((c) => ({
+  const result = categories.map((c) => ({
     id: c.id,
     name: c.name,
     icon: c.icon ?? "📦",
@@ -107,11 +117,14 @@ export async function getCategoryHealth() {
     week: weekMap[c.id]?.week ?? 0,
     flagged: weekMap[c.id]?.flagged ?? 0,
   }));
+  logger.debug({ count: result.length }, "[getCategoryHealth] result");
+  return result;
 }
 
 /** All users for management. */
 export async function getManagedUsers() {
-  return prisma.user.findMany({
+  logger.debug({}, "[getManagedUsers] called");
+  const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
     take: 500,
     select: {
@@ -125,10 +138,13 @@ export async function getManagedUsers() {
       _count: { select: { listings: true } },
     },
   });
+  logger.debug({ count: users.length }, "[getManagedUsers] result");
+  return users;
 }
 
 /** District-level user and listing density for admin geographic view. */
 export async function getGeographicStats() {
+  logger.debug({}, "[getGeographicStats] called");
   const [usersByDistrict, listingsByDistrict, topNeighborhoods] = await Promise.all([
     prisma.$queryRaw<{ district: string; count: bigint }[]>`
       SELECT district, COUNT(*)::bigint AS count
@@ -157,7 +173,7 @@ export async function getGeographicStats() {
     `,
   ]);
 
-  return {
+  const result = {
     usersByDistrict: usersByDistrict.map((r) => ({ district: r.district, count: Number(r.count) })),
     listingsByDistrict: listingsByDistrict.map((r) => ({ district: r.district, count: Number(r.count) })),
     topNeighborhoods: topNeighborhoods.map((r) => ({
@@ -166,10 +182,20 @@ export async function getGeographicStats() {
       count: Number(r.count),
     })),
   };
+  logger.debug(
+    {
+      districts: result.usersByDistrict.length,
+      listingDistricts: result.listingsByDistrict.length,
+      neighborhoods: result.topNeighborhoods.length,
+    },
+    "[getGeographicStats] result",
+  );
+  return result;
 }
 
 /** Week-over-week new users and listings for the last 12 weeks. */
 export async function getGrowthStats() {
+  logger.debug({}, "[getGrowthStats] called");
   const twelveWeeksAgo = new Date();
   twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
 
@@ -190,14 +216,17 @@ export async function getGrowthStats() {
     `,
   ]);
 
-  return {
+  const result = {
     userWeeks: userWeeks.map((r) => ({ week: r.week.toISOString().slice(0, 10), count: Number(r.count) })),
     listingWeeks: listingWeeks.map((r) => ({ week: r.week.toISOString().slice(0, 10), count: Number(r.count) })),
   };
+  logger.debug({ userWeeks: result.userWeeks.length, listingWeeks: result.listingWeeks.length }, "[getGrowthStats] result");
+  return result;
 }
 
 /** Platform engagement metrics. */
 export async function getEngagementStats() {
+  logger.debug({}, "[getEngagementStats] called");
   const [totalConversations, totalMessages, viewStats, listingsWithInquiries] = await Promise.all([
     prisma.conversation.count(),
     prisma.message.count(),
@@ -221,7 +250,7 @@ export async function getEngagementStats() {
     ? Math.round((listingsWithNoInquiries / totalActiveListings) * 100)
     : 0;
 
-  return {
+  const result = {
     totalConversations,
     totalMessages,
     totalViews: viewStats._sum.views ?? 0,
@@ -231,4 +260,6 @@ export async function getEngagementStats() {
     listingsWithNoInquiries,
     deadStockPct,
   };
+  logger.debug(result, "[getEngagementStats] result");
+  return result;
 }

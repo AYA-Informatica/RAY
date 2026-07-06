@@ -1,13 +1,23 @@
 import { Card } from "@/components/ui/Card";
 import { getGeographicStats, getGrowthStats, getEngagementStats } from "@/services/admin";
+import { logger } from "@/lib/logger";
 
 /** Analytics — geographic distribution, growth trends, and engagement metrics. */
 export default async function AnalyticsPage() {
+  logger.debug("[AnalyticsPage] rendering");
   const [geo, growth, engagement] = await Promise.all([
     getGeographicStats(),
     getGrowthStats(),
     getEngagementStats(),
   ]);
+  logger.debug(
+    {
+      districts: geo.usersByDistrict.length,
+      growthWeeks: growth.userWeeks.length,
+      totalConversations: engagement.totalConversations,
+    },
+    "[AnalyticsPage] stats loaded"
+  );
 
   const userMax = geo.usersByDistrict[0]?.count ?? 1;
   const listingMax = geo.listingsByDistrict[0]?.count ?? 1;

@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { logger } from "@/lib/logger";
 
 export type InboxRealtimeEvent =
   | { type: "conversation_insert"; conversationId: string; buyerId: string; sellerId: string }
@@ -47,5 +48,8 @@ interface InboxRealtimeState {
 export const useInboxRealtime = create<InboxRealtimeState>((set) => ({
   lastEvent: null,
   seq: 0,
-  emit: (event) => set((s) => ({ lastEvent: event, seq: s.seq + 1 })),
+  emit: (event) => {
+    logger.debug({ type: event.type }, "[useInboxRealtime] emit called");
+    set((s) => ({ lastEvent: event, seq: s.seq + 1 }));
+  },
 }));

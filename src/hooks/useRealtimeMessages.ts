@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { ChatMessage } from "@/components/chat/MessageBubble";
 import { useUnreadMessages } from "@/store/useUnreadMessages";
 import { useInboxRealtime } from "@/store/useInboxRealtime";
+import { logger } from "@/lib/logger";
 
 /**
  * Loads the initial page of messages over the API, then listens for live
@@ -18,10 +19,12 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
   const seq = useInboxRealtime((s) => s.seq);
 
   const load = useCallback(async () => {
+    logger.debug({ conversationId }, "[useRealtimeMessages] loading messages");
     try {
       const res = await fetch(`/api/chat/messages?conversationId=${conversationId}`);
       const json = (await res.json()) as { data?: ChatMessage[] };
       setMessages(json.data ?? []);
+      logger.debug({ conversationId, count: json.data?.length ?? 0 }, "[useRealtimeMessages] messages loaded");
       const unreadHeader = res.headers.get("X-Unread-Count");
       if (unreadHeader !== null) {
         useUnreadMessages.getState().setCount(Number(unreadHeader));
@@ -47,6 +50,7 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
 
   useEffect(() => {
     if (!lastEvent) return;
+    logger.debug({ type: lastEvent.type, conversationId }, "[useRealtimeMessages] realtime event received");
 
     switch (lastEvent.type) {
       case "message_insert": {

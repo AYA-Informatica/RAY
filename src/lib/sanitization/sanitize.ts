@@ -7,16 +7,25 @@
  * Uses a regex rather than isomorphic-dompurify/JSDOM because JSDOM
  * fails to initialise in Vercel's serverless runtime environment.
  */
+import { logger } from "@/lib/logger";
+
 export function sanitizeText(input: string): string {
   // 1st pass: strip raw tags
   // 2nd: decode common HTML entities so the 3rd pass can catch tags that
   //      arrived encoded (e.g. &lt;script&gt; → <script> → stripped)
   // 3rd pass: strip any tags that survived encoding
-  return input
+  const result = input
     .replace(/<[^>]*>/g, "")
     .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&amp;/gi, "&")
     .replace(/<[^>]*>/g, "")
     .trim();
+  if (result.length !== input.length) {
+    logger.debug(
+      { inputLength: input.length, outputLength: result.length },
+      "[sanitize] sanitizeText stripped content",
+    );
+  }
+  return result;
 }
 
 /** Sanitize all string fields of a plain object, recursing into nested objects. */
@@ -29,5 +38,6 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
       out[k] = sanitizeObject(v as Record<string, unknown>);
     }
   }
+  logger.debug({ keys: Object.keys(out).length }, "[sanitize] sanitizeObject processed");
   return out as T;
 }

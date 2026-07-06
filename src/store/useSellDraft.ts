@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Condition } from "@prisma/client";
 import { safeLocalStorage } from "@/lib/safeStorage";
+import { logger } from "@/lib/logger";
 
 /** In-memory + localStorage draft for the multi-step Sell flow. */
 export interface SellDraft {
@@ -62,10 +63,18 @@ export const useSellDraft = create<SellDraftState>()(
     (set) => ({
       draft: { ...empty },
       step: 0,
-      set: (patch) =>
-        set((s) => ({ draft: { ...s.draft, ...patch, savedAt: Date.now() } })),
-      setStep: (step) => set({ step }),
-      reset: () => set({ draft: { ...empty }, step: 0 }),
+      set: (patch) => {
+        logger.debug({ fields: Object.keys(patch) }, "[useSellDraft] set called");
+        set((s) => ({ draft: { ...s.draft, ...patch, savedAt: Date.now() } }));
+      },
+      setStep: (step) => {
+        logger.debug({ step }, "[useSellDraft] setStep called");
+        set({ step });
+      },
+      reset: () => {
+        logger.debug({}, "[useSellDraft] reset called");
+        set({ draft: { ...empty }, step: 0 });
+      },
     }),
     {
       name: "ray_sell_draft",
@@ -79,6 +88,7 @@ export const useSellDraft = create<SellDraftState>()(
         if (!state) return;
         const { savedAt } = state.draft;
         if (savedAt && Date.now() - savedAt > DRAFT_TTL_MS) {
+          logger.debug({ savedAt }, "[useSellDraft] draft expired, resetting on rehydrate");
           state.reset();
         }
       },

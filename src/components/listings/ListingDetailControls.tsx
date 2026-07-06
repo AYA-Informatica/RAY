@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Share2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 /**
  * Back + Share controls overlaid on the listing gallery.
@@ -23,12 +24,14 @@ export function ListingDetailControls({
     if (navigator.share) {
       try {
         await navigator.share({ title, url });
+        logger.debug({ listingId }, "[ListingDetailControls] native share completed");
       } catch {
         /* user dismissed the share sheet — no-op */
       }
     } else {
       try {
         await navigator.clipboard.writeText(url);
+        logger.debug({ listingId }, "[ListingDetailControls] share link copied to clipboard");
       } catch { /* clipboard blocked */ }
     }
   }

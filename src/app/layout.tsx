@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { I18nProvider, parseLocale } from "@/i18n";
 import { AuthWatcher } from "@/components/shared/AuthWatcher";
 import { InAppBrowserBanner } from "@/components/shared/InAppBrowserBanner";
+import { logger } from "@/lib/logger";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -39,6 +40,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = parseLocale((await cookies()).get("ray_locale")?.value);
+  logger.debug({ locale }, "[RootLayout] rendering");
   return (
     <html
       lang={locale}

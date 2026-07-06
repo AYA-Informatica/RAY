@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 /**
  * CategoryAttribute.options is a Json column. For plain SELECT attributes it's
  * a flat string array (e.g. ["Laptop", "TV", ...]). For attributes that should
@@ -12,6 +14,7 @@ export function parseAttributeOptions(raw: unknown): { values: string[]; showIf?
     const o = raw as { values?: string[]; showIf?: ShowIf };
     return { values: o.values ?? [], showIf: o.showIf };
   }
+  logger.debug("[categoryAttributes] parseAttributeOptions received unexpected shape, defaulting to empty");
   return { values: [] };
 }
 
@@ -29,5 +32,10 @@ export function isAttributeVisible<A extends { id: string; key: string; options?
   const dependsOn = allAttrs.find((a) => a.key === showIf.key);
   if (!dependsOn) return true;
   const current = values[dependsOn.id];
-  return current != null && showIf.in.includes(current);
+  const visible = current != null && showIf.in.includes(current);
+  logger.debug(
+    { attrId: attr.id, dependsOnKey: showIf.key, visible },
+    "[categoryAttributes] isAttributeVisible evaluated",
+  );
+  return visible;
 }

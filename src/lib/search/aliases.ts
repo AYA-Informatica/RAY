@@ -15,6 +15,7 @@
  */
 
 import { dictionaries } from "@/i18n/dictionaries";
+import { logger } from "@/lib/logger";
 
 export interface SearchExpansion {
   /** Category slugs to OR-include in the query. */
@@ -176,5 +177,9 @@ export function expandSearchQuery(query: string): SearchExpansion {
     if (word.length >= 3) applyCategoryMap(word, result);
   }
 
+  logger.debug(
+    { wordCount: words.length, categoryMatches: result.categorySlugs.length, termMatches: result.extraTerms.length },
+    "[aliases] expandSearchQuery expanded",
+  );
   return result;
 }

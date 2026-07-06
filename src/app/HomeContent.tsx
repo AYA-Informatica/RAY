@@ -13,6 +13,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { serverT } from "@/i18n/server";
 import { prisma } from "@/lib/prisma";
 import type { ProfileLocation } from "@/services/listings";
+import { logger } from "@/lib/logger";
 
 const getAnnouncement = unstable_cache(
   async () => {
@@ -49,6 +50,7 @@ function ListingsSkeleton() {
 
 async function RecentListingsSection({ profileLocation }: { profileLocation?: ProfileLocation }) {
   const recent = await getRankedRecentListings({ profileLocation }, PAGE_SIZE);
+  logger.debug({ count: recent.length }, "[HomeContent] recent listings loaded");
   return (
     <section className="space-y-3 px-4 pb-4 pt-6 sm:px-6">
       <RecentListingsSectionHeader />
@@ -58,11 +60,16 @@ async function RecentListingsSection({ profileLocation }: { profileLocation?: Pr
 }
 
 export async function HomeContent() {
+  logger.debug("[HomeContent] rendering");
   const [user, categories, announcement] = await Promise.all([
     getCurrentUser(),
     getCategories(),
     getAnnouncement(),
   ]);
+  logger.debug(
+    { hasUser: !!user, categoryCount: categories.length, announcementActive: !!announcement?.active },
+    "[HomeContent] data loaded"
+  );
 
   const locationLabel = user?.city ?? "Rwanda";
   const profileLocation: ProfileLocation | undefined = user

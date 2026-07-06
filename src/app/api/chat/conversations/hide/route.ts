@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { hideConversationsSchema } from "@/lib/validations/message.schema";
 import { ok, handleApiError } from "@/lib/utils/api";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,10 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
     const { conversationIds } = hideConversationsSchema.parse(await req.json());
+    logger.debug(
+      { userId: user.id, count: conversationIds.length },
+      "[POST conversations/hide] request received",
+    );
     const now = new Date();
 
     // `updatedAt` is `@updatedAt` (auto-bumped on any row update) and drives
@@ -35,6 +40,7 @@ export async function POST(req: NextRequest) {
       ),
     );
 
+    logger.debug({ userId: user.id, hidden: convos.length }, "[POST conversations/hide] success");
     return ok({ hidden: convos.length });
   } catch (err) {
     return handleApiError(err);

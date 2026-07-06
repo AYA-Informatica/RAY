@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { HomeContent } from "./HomeContent";
 import { SplashContent } from "./SplashContent";
+import { logger } from "@/lib/logger";
 
 export const metadata = { title: "RAY — Buy & Sell Anything Near You" };
 
@@ -17,6 +18,7 @@ export const metadata = { title: "RAY — Buy & Sell Anything Near You" };
  * the page appear frozen for 2–5 s on cold start.
  */
 export default function RootPage() {
+  logger.debug("[RootPage] rendering");
   return (
     <div className="relative">
       {/* Suspense lets the splash stream instantly; feed fills in behind it */}

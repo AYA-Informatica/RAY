@@ -17,11 +17,13 @@ export async function POST() {
     const authUser = await getAuthUser();
     if (!authUser) return ok({ ok: true });
 
+    logger.debug({ userId: authUser.id }, "[POST presence] request received");
     prisma.user.update({
       where: { id: authUser.id },
       data: { lastSeenAt: new Date() },
     }).catch(() => {});
     const unreadCount = await getUnreadCount(authUser.id);
+    logger.debug({ userId: authUser.id, unreadCount }, "[POST presence] success");
     return ok({ ok: true, unreadCount });
   } catch (err) {
     logger.error({ err }, "[POST presence] ERROR");

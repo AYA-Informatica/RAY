@@ -12,6 +12,7 @@ import { useI18n } from "@/i18n/I18nProvider";
 import { timeAgo } from "@/lib/utils/format";
 import { STATUS_TONE, STATUS_KEY } from "@/lib/listings/status";
 import type { ListingCardData } from "@/types";
+import { logger } from "@/lib/logger";
 
 export function MyAdCard({ listing }: { listing: ListingCardData }) {
   const router = useRouter();
@@ -27,19 +28,22 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
     const prevStatus = status;
     setStatus(next);
     setBusy(true);
-    
+    logger.debug({ listingId: listing.id, next }, "[MyAdCard] status change requested");
+
     try {
       const res = await fetch(`/api/listings/${listing.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: next }),
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error?.message || "Failed to update status");
       }
+      logger.debug({ listingId: listing.id, next }, "[MyAdCard] status change succeeded");
     } catch (err) {
+      logger.warn({ listingId: listing.id, next, err }, "[MyAdCard] status change failed");
       setStatus(prevStatus);
       setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
@@ -51,25 +55,29 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
     if (busy || isReposting) return; // Prevent double-click
     setIsReposting(true);
     setBusy(true);
+    logger.debug({ listingId: listing.id }, "[MyAdCard] repost requested");
     try {
       const res = await fetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ repostFromId: listing.id }),
       });
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
+        logger.warn({ listingId: listing.id, status: res.status }, "[MyAdCard] repost failed");
         setError(errorData.error?.message || t("common.error"));
         setIsReposting(false);
         setBusy(false);
         return;
       }
-      
+
       const { data } = (await res.json()) as { data: { id: string } };
+      logger.debug({ listingId: listing.id, newListingId: data.id }, "[MyAdCard] repost succeeded");
       // Navigate to new listing - keep busy state to prevent further clicks
       router.push(`/listing/${data.id}`);
-    } catch {
+    } catch (err) {
+      logger.error({ listingId: listing.id, err }, "[MyAdCard] repost threw");
       setIsReposting(false);
       setBusy(false);
       setError(t("common.error"));
@@ -79,18 +87,21 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
   async function remove() {
     if (!window.confirm(t("myAds.deleteConfirm"))) return;
     setBusy(true);
-    
+    logger.debug({ listingId: listing.id }, "[MyAdCard] delete requested");
+
     try {
       // Permanent delete - removes from database entirely
-      const res = await fetch(`/api/listings/${listing.id}?permanent=true`, { 
-        method: "DELETE" 
+      const res = await fetch(`/api/listings/${listing.id}?permanent=true`, {
+        method: "DELETE"
       });
-      
+
       if (!res.ok) throw new Error("Failed to delete");
 
+      logger.debug({ listingId: listing.id }, "[MyAdCard] delete succeeded");
       // Optimistic removal
       setIsDeleted(true);
-    } catch {
+    } catch (err) {
+      logger.warn({ listingId: listing.id, err }, "[MyAdCard] delete failed");
       setBusy(false);
       setError(t("common.error"));
     }

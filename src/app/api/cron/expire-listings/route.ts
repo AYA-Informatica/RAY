@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    logger.debug({}, "[CRON expire-listings] request received");
     const result = await prisma.listing.updateMany({
       where: { status: "ACTIVE", expiresAt: { lt: new Date() } },
       data: { status: "EXPIRED" },

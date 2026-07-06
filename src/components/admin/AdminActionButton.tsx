@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
+import { logger } from "@/lib/logger";
 
 type AdminAction =
   | { action: "removeListing"; listingId: string }
@@ -45,15 +46,23 @@ export function AdminActionButton({ payload, label, tone = "default", confirm, o
           ? { action: payload.action, reportId: payload.reportId }
           : { ...payload };
 
+      logger.debug({ action: payload.action }, "[AdminActionButton] action submitted");
+
       const res = await fetch("/api/admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const success = res.ok;
+      if (success) {
+        logger.debug({ action: payload.action }, "[AdminActionButton] action succeeded");
+      } else {
+        logger.warn({ action: payload.action, status: res.status }, "[AdminActionButton] action failed");
+      }
       onDone?.(success, label);
       if (success) router.refresh();
-    } catch {
+    } catch (err) {
+      logger.error({ action: payload.action, err }, "[AdminActionButton] action threw");
       onDone?.(false, label);
     } finally {
       setLoading(false);
