@@ -12,6 +12,9 @@ out
 # local MCP server config (may contain DB credentials)
 .mcp.json
 .claude/
+
+# contains live secrets (Supabase service role key, DB URL, Upstash token, cron secret) — never commit
+VERCEL_ENV_SETUP.md
 .DS_Store
 prisma/*.db
 
