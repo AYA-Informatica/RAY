@@ -12,7 +12,7 @@ This repository is the **MVP foundation**: user accounts (Google Sign-In), posti
 
 | Layer | Choice |
 | --- | --- |
-| Framework | Next.js 14 (App Router), React 18, TypeScript (strict) |
+| Framework | Next.js 16 (App Router, webpack build), React 18, TypeScript (strict) |
 | Styling | Tailwind CSS — dark-mode native, fixed brand tokens |
 | Motion | Framer Motion |
 | State | Zustand |
@@ -165,7 +165,7 @@ prisma/          schema.prisma · setup.sql · seed.ts
 
 ## Internationalization
 
-English + Kinyarwanda, switchable in **Profile → Language** (or Settings). A typed dictionary (`src/i18n/dictionaries.ts`) with a cookie-backed `I18nProvider`; the server layout reads the cookie for SSR. French is a future expansion (add an `fr` dictionary and locale).
+English, Kinyarwanda, and French — switchable in **Profile → Language** (or Settings). A typed dictionary (`src/i18n/dictionaries.ts`, ~350 keys per locale) with a cookie-backed `I18nProvider`; the server layout reads the `ray_locale` cookie for SSR. Server components use `await serverT(key)`; client components use `useI18n().t(key)`.
 
 ## Listing expiry (Vercel Cron)
 

@@ -108,8 +108,8 @@ Applied to both `/api/cron/expire-listings` and `/api/cron/purge-messages`.
 
 | Item | Notes |
 |---|---|
-| ESLint 8 → 9 + `eslint-config-next@16` | Blocked on peer dep — ESLint 9 has breaking config format changes |
-| Replace `console.error` with `pino` logger in API routes | ~15 routes still use `console.error` directly |
-| Error tracking (Sentry / LogRocket) | Add `@sentry/nextjs` after launch |
+| ESLint 8 → 9 + `eslint-config-next@16` | Blocked on peer dep — `eslint-config-next@16.2.10` requires `eslint >= 9.0.0`, which is a breaking config format migration (flat config) |
+| ~~Replace `console.error` with `pino` logger in API routes~~ ✅ mostly DONE | Only 3 raw `console.error` calls remain, and none are in API routes anymore: `src/lib/auth/session.ts` (×2), `src/lib/chat/getUnreadCount.ts` (×1). Every route/service now uses `logger` |
+| ~~Error tracking (Sentry / LogRocket)~~ ✅ DONE | `@sentry/nextjs` installed; wired into `instrumentation.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts` |
 | Automated functional tests (Playwright) | Auth flow, listing creation, search, chat |
 | Lighthouse audit (target > 90 across all metrics) | Run after DNS + CDN settle |

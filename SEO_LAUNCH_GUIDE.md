@@ -21,7 +21,7 @@
 
 1. Go to https://search.google.com/search-console
 2. Click "Add property"
-3. Choose "URL prefix" and enter `https://ray-production.vercel.app` (or your custom domain)
+3. Choose "URL prefix" and enter `https://www.raymarkets.co` (or your custom domain)
 4. Verify ownership — easiest method is "HTML tag":
    - Google gives you a `<meta name="google-site-verification" content="..." />` tag
    - Add it to `src/app/layout.tsx` inside the `metadata` export:
@@ -113,8 +113,8 @@ Priority targets for RAY in Rwanda/East Africa:
 
 | Resource | URL |
 |----------|-----|
-| Your sitemap | `https://ray-production.vercel.app/sitemap.xml` |
-| Your robots.txt | `https://ray-production.vercel.app/robots.txt` |
+| Your sitemap | `https://www.raymarkets.co/sitemap.xml` |
+| Your robots.txt | `https://www.raymarkets.co/robots.txt` |
 | Google Search Console | https://search.google.com/search-console |
 | Rich Results Test | https://search.google.com/test/rich-results |
 | PageSpeed Insights | https://pagespeed.web.dev |

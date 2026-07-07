@@ -518,22 +518,22 @@ The following issues were identified during the audit and fixed:
 - [ ] Any error that prevents core functionality (signup, listing creation, chat) — manual testing required
 - [x] Data loss issues — cascade delete rules verified in live DB: Listing→Images/Favorites/Reports/Conversations, User→Listings/Favorites/Blocks, Conversation→Messages all CASCADE
 - [ ] `NEXT_PUBLIC_SITE_URL` — currently `http://localhost:3000`, must be updated to production domain before deploy
-- [ ] `crypto.timingSafeEqual()` for cron secret comparison — currently uses `===` string compare (timing attack surface, low priority for internal cron)
+- [x] `crypto.timingSafeEqual()` for cron secret comparison — both `/api/cron/expire-listings` and `/api/cron/purge-messages` now use `crypto.timingSafeEqual()` instead of `===`
 
 ---
 
 ## Nice to Have Before Launch
 
-- [ ] OAuth consent screen branding (show "RAY" instead of Supabase domain)
-- [ ] Custom domain instead of vercel.app (DNS: point `raymarkets.co` to Vercel)
+- [x] OAuth consent screen branding (show "RAY" instead of Supabase domain) — done 2026-07-03, app name/logo/domain submitted for Google verification
+- [x] Custom domain instead of vercel.app (DNS: point `raymarkets.co` to Vercel) — live, see `CUSTOM_DOMAIN_SETUP.md`
 - [ ] Analytics/monitoring setup (Vercel Analytics already installed; add Google Analytics if needed)
-- [ ] Error tracking (Sentry, LogRocket)
+- [x] Error tracking (Sentry, LogRocket) — `@sentry/nextjs` installed and wired into `instrumentation.ts`/`instrumentation-client.ts`
 - [ ] Automated tests (Playwright, Vitest)
 - [ ] Lighthouse score > 90 (Performance, Accessibility, Best Practices, SEO)
 - [ ] Enable Fluid Compute in Vercel dashboard (reduces cold starts)
-- [ ] ESLint 8 → 9 upgrade + `eslint-config-next@16` (deferred — requires peer dep resolution)
-- [ ] Replace `console.error` with `logger.error` (Pino) in ~15 API routes
-- [ ] `price` field migration: Float → Int (RWF is always an integer)
+- [ ] ESLint 8 → 9 upgrade + `eslint-config-next@16` (deferred — requires peer dep resolution, `eslint-config-next@16` needs `eslint >= 9.0.0`)
+- [x] Replace `console.error` with `logger.error` (Pino) — down to 3 remaining call sites (`src/lib/auth/session.ts` ×2, `src/lib/chat/getUnreadCount.ts` ×1), none in API routes anymore
+- [x] `price` field migration: Float → Int (RWF is always an integer) — done 2026-07-03, `price Int` in `schema.prisma`
 
 ---
 

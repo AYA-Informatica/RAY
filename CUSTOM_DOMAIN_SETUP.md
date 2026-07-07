@@ -1,5 +1,7 @@
 # RAY — Custom Domain Setup Guide
 
+> ✅ **Already executed** — `raymarkets.co` is live on Vercel, OAuth redirects and `NEXT_PUBLIC_SITE_URL`/`ALLOWED_ORIGINS` are updated (see `PENDING_FIXES.md`). This guide is kept as historical reference / for setting up a future additional domain.
+
 ## Overview
 
 This guide walks you through buying a custom domain and connecting it to your Vercel deployment. We use the **DNS Records method** (not nameservers) so you retain full control at Hostinger for future email setup.
