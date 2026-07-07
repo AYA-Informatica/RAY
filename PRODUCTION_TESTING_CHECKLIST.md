@@ -13,11 +13,11 @@
 - [ ] Upload profile avatar image
 - [ ] Verify profile changes persist after refresh
 - [ ] Test authentication on mobile browser
-- [x] On `/profile/edit`, tap "Detect my location" and allow location access
-  - [x] If you're in Kigali/Musanze/Rubavu/Huye, City/District/Neighborhood dropdowns should auto-fill and show "Location detected"
-  - [x] If you're outside those areas, City/District/Neighborhood should switch to free-text fields pre-filled with your detected location, with a note that it's outside the listed areas
-  - [x] "My city isn't listed" link should manually switch to free-text fields without using GPS
-  - [x] "Choose from the list instead" link should switch back to the dropdowns
+- [ ] On `/profile/edit`, tap "Detect my location" and allow location access
+  - [ ] If you're in Kigali/Musanze/Rubavu/Huye, City/District/Neighborhood dropdowns should auto-fill and show "Location detected"
+  - [ ] If you're outside those areas, City/District/Neighborhood should switch to free-text fields pre-filled with your detected location, with a note that it's outside the listed areas
+  - [ ] "My city isn't listed" link should manually switch to free-text fields without using GPS
+  - [ ] "Choose from the list instead" link should switch back to the dropdowns
 - [ ] Visit `/profile/settings` — verify language toggle (EN/RW/FR pill group) works and persists
 
 **Profile sub-pages to verify exist and render:**
@@ -69,13 +69,13 @@
   - [ ] "Detect my location" — uses GPS and shows "Location detected" on success
 - [ ] Verify a new listing's location pre-fills from your profile location on a fresh session (clear `ray_sell_draft` from localStorage first)
 - [ ] Test sell wizard draft persistence — partially fill wizard, close tab, reopen `/sell` — should restore previous progress (draft TTL is 48 hours; check `savedAt` in `ray_sell_draft` localStorage key)
-- [x] Mark a listing as sold
-- [x] Reactivate a sold listing
+- [ ] Mark a listing as sold
+- [ ] Reactivate a sold listing
 - [ ] Edit an existing listing (verify "Other" free-text also works in the edit form)
 - [ ] Repost a listing from `/profile/ads` — "Repost" action on an expired/sold listing should clone it as a new draft
 - [ ] Delete a listing
-- [x] Verify listing expiry after 30 days (check database `expiresAt` field)
-- [x] Test repost functionality (clone expired listing)
+- [ ] Verify listing expiry after 30 days (check database `expiresAt` field)
+- [ ] Test repost functionality (clone expired listing)
 
 **Expected Behavior:**
 - Wizard should complete in under 60 seconds
@@ -89,18 +89,18 @@
 
 ### 3. Search & Discovery
 
-- [x] Browse home page and view recent listings — `getRecentListings()` verified against live DB, returns newest-first active listings with all card fields
-- [x] Verify "Recently Viewed" horizontal strip appears on `/home` after visiting listing detail pages (stored in `ray_recently_viewed` localStorage, max 8 items)
-- [x] Search for listings by keyword — `searchListings({ q })` verified, case-insensitive multi-token match on title/description with alias expansion
-- [x] Filter by category (test category tabs) — verified, returns only listings in the selected category slug
-- [x] Filter by location (city/district/neighborhood) — verified, each level filters correctly against live data
-- [x] Filter by price range — verified, `minPrice`/`maxPrice` correctly include/exclude listings
-- [x] Filter by condition (New, Like New, Good, Fair, Used) — verified, filtered count matches raw DB count
-- [x] Test distance filter (requires location permission) — `searchListings({ lat, lng, radius })` verified: haversine distance computed correctly, radius filter excludes far listings, results sorted nearest-first. UI permission prompt itself (`PermissionPrompt` + `navigator.geolocation`) not exercised by this automated check.
-- [x] Click on a listing to view details — verified `getListing(id)` resolves the listing by id and increments view count, except when the viewer is the listing's own owner (verified against live DB: owner view leaves `views` unchanged, other/anonymous viewers increment it)
-- [x] Verify listings are sorted by relevance/distance — verified: default sort is `createdAt desc`, and when `lat`/`lng` are supplied results are re-sorted by distance ascending. Note: there is no separate keyword-"relevance" ranking — keyword search still falls back to `createdAt desc` (or distance, if location is shared).
-- [x] Test search with no results — verified, returns `items: []`, `total: 0`, `hasMore: false`, which renders `EmptyState`
-- [x] Test search debouncing (rapid typing should only trigger one search) — confirmed via code review: `SearchClient.tsx` wraps the search call in a 300ms `setTimeout` inside `useEffect`, cleared on each keystroke.
+- [ ] Browse home page and view recent listings — `getRecentListings()` verified against live DB, returns newest-first active listings with all card fields
+- [ ] Verify "Recently Viewed" horizontal strip appears on `/home` after visiting listing detail pages (stored in `ray_recently_viewed` localStorage, max 8 items)
+- [ ] Search for listings by keyword — `searchListings({ q })` verified, case-insensitive multi-token match on title/description with alias expansion
+- [ ] Filter by category (test category tabs) — verified, returns only listings in the selected category slug
+- [ ] Filter by location (city/district/neighborhood) — verified, each level filters correctly against live data
+- [ ] Filter by price range — verified, `minPrice`/`maxPrice` correctly include/exclude listings
+- [ ] Filter by condition (New, Like New, Good, Fair, Used) — verified, filtered count matches raw DB count
+- [ ] Test distance filter (requires location permission) — `searchListings({ lat, lng, radius })` verified: haversine distance computed correctly, radius filter excludes far listings, results sorted nearest-first. UI permission prompt itself (`PermissionPrompt` + `navigator.geolocation`) not exercised by this automated check.
+- [ ] Click on a listing to view details — verified `getListing(id)` resolves the listing by id and increments view count, except when the viewer is the listing's own owner (verified against live DB: owner view leaves `views` unchanged, other/anonymous viewers increment it)
+- [ ] Verify listings are sorted by relevance/distance — verified: default sort is `createdAt desc`, and when `lat`/`lng` are supplied results are re-sorted by distance ascending. Note: there is no separate keyword-"relevance" ranking — keyword search still falls back to `createdAt desc` (or distance, if location is shared).
+- [ ] Test search with no results — verified, returns `items: []`, `total: 0`, `hasMore: false`, which renders `EmptyState`
+- [ ] Test search debouncing (rapid typing should only trigger one search) — confirmed via code review: `SearchClient.tsx` wraps the search call in a 300ms `setTimeout` inside `useEffect`, cleared on each keystroke.
 - [ ] Test Filter Sheet (bottom sheet) — open via filter icon on `/search`, verify all filters render: category pills, price range, distance selector (requires GPS), city/district/neighborhood dropdowns, condition, brand text field
 
 **Expected Behavior:**
@@ -115,11 +115,11 @@
 
 ### 4. Favorites
 
-- [x] Add a listing to favorites (heart icon) — verified against live DB: `POST /api/favorites/:listingId` → `prisma.favorite.upsert()` creates the row (idempotent on re-add)
-- [x] View favorites page (`/favorites`) — `getFavoriteListings(userId)` verified, returns only `ACTIVE` favorited listings as cards, ordered newest-first
-- [x] Remove a listing from favorites — verified against live DB: `DELETE /api/favorites/:listingId` → `prisma.favorite.deleteMany()` removes the row (idempotent on re-remove). Live-tested on `/favorites`: unfavoriting a card now removes it from the grid immediately (added `FavoritesGrid` client component that filters by the live `useFavorites` store, falling back to "No favourites yet" when empty)
-- [x] Verify favorites persist after logout/login — confirmed: favorites are stored in the `Favorite` table keyed by `userId`, independent of session state, so they persist across logins
-- [x] Test optimistic UI updates (heart should toggle immediately) — confirmed via code (`useFavorites.toggle()` flips the local `ids` Set synchronously before the `fetch`, reverting only on error/401) and live: clicking "Save to favorites" while signed out fired the request, got `401`, and redirected to `/login?redirect=...` as designed
+- [ ] Add a listing to favorites (heart icon) — verified against live DB: `POST /api/favorites/:listingId` → `prisma.favorite.upsert()` creates the row (idempotent on re-add)
+- [ ] View favorites page (`/favorites`) — `getFavoriteListings(userId)` verified, returns only `ACTIVE` favorited listings as cards, ordered newest-first
+- [ ] Remove a listing from favorites — verified against live DB: `DELETE /api/favorites/:listingId` → `prisma.favorite.deleteMany()` removes the row (idempotent on re-remove). Live-tested on `/favorites`: unfavoriting a card now removes it from the grid immediately (added `FavoritesGrid` client component that filters by the live `useFavorites` store, falling back to "No favourites yet" when empty)
+- [ ] Verify favorites persist after logout/login — confirmed: favorites are stored in the `Favorite` table keyed by `userId`, independent of session state, so they persist across logins
+- [ ] Test optimistic UI updates (heart should toggle immediately) — confirmed via code (`useFavorites.toggle()` flips the local `ids` Set synchronously before the `fetch`, reverting only on error/401) and live: clicking "Save to favorites" while signed out fired the request, got `401`, and redirected to `/login?redirect=...` as designed
 
 **Expected Behavior:**
 - Heart icon should toggle red/gray instantly (optimistic update) — confirmed, `FavoriteButton` reads `has` from the store and applies `fill-primary text-primary` immediately on toggle
@@ -133,20 +133,20 @@
 
 ### 5. Chat & Messaging
 
-- [x] Send a message to a seller from listing page — live-tested: clicked "Chat with Youugi" on the Rose Perfume listing → `POST /api/chat/conversations` upserted a conversation and redirected to `/chat/cmqa7ta980001vby3lmlfrw4u`
-- [x] Receive and reply to messages — live-tested sending/replying (typed message appears in the thread instantly via optimistic update). Receiving as the other party wasn't live-tested (would need a second account); rendering uses the same `MessageBubble` path, code-verified
-- [x] Send an image in chat — live-tested: uploaded `icon-512.png` via the image picker → rendered as "Shared photo" in the thread (uploads to the `chat-images` bucket via `uploadImage()`)
-- [x] Share location in chat — live-tested twice (once with default headless geolocation, once with a CDP-set coordinate) → both rendered as "Shared location" links to `https://maps.google.com/?q=<lat>,<lng>`
-- [x] Use quick replies ("Is this available?", "Last price?", etc.) — live-tested: "Quick replies" button revealed all 5 canned replies; clicking "Last price?" sent it as a message
-- [~] Test read receipts (checkmark icons) — partially verified: sent messages render a single checkmark (unread). Couldn't observe the switch to the double checkmark (read) live since that requires the seller's account to open the thread; `isRead` flip via `POST /api/chat/messages/read` is code-verified
-- [x] Make a price offer (buyer) — live-tested: "Make an offer" → entered `15000` → "Send offer" → offer card rendered "Your offer — Rwf 15,000 — Waiting for seller's response…". Also confirmed live that the "Make an offer" control is hidden entirely on a conversation where the current user is the seller
+- [ ] Send a message to a seller from listing page — live-tested: clicked "Chat with Youugi" on the Rose Perfume listing → `POST /api/chat/conversations` upserted a conversation and redirected to `/chat/cmqa7ta980001vby3lmlfrw4u`
+- [ ] Receive and reply to messages — live-tested sending/replying (typed message appears in the thread instantly via optimistic update). Receiving as the other party wasn't live-tested (would need a second account); rendering uses the same `MessageBubble` path, code-verified
+- [ ] Send an image in chat — live-tested: uploaded `icon-512.png` via the image picker → rendered as "Shared photo" in the thread (uploads to the `chat-images` bucket via `uploadImage()`)
+- [ ] Share location in chat — live-tested twice (once with default headless geolocation, once with a CDP-set coordinate) → both rendered as "Shared location" links to `https://maps.google.com/?q=<lat>,<lng>`
+- [ ] Use quick replies ("Is this available?", "Last price?", etc.) — live-tested: "Quick replies" button revealed all 5 canned replies; clicking "Last price?" sent it as a message
+- [ ] Test read receipts (checkmark icons) — partially verified: sent messages render a single checkmark (unread). Couldn't observe the switch to the double checkmark (read) live since that requires the seller's account to open the thread; `isRead` flip via `POST /api/chat/messages/read` is code-verified
+- [ ] Make a price offer (buyer) — live-tested: "Make an offer" → entered `15000` → "Send offer" → offer card rendered "Your offer — Rwf 15,000 — Waiting for seller's response…". Also confirmed live that the "Make an offer" control is hidden entirely on a conversation where the current user is the seller
 - [ ] Accept/decline a price offer (seller) — not live-tested (requires logging in as the seller). Code-verified: `PATCH /api/chat/messages` checks the responder is the conversation's seller and the offer is `pending` before setting `offerStatus`
-- [~] Verify offer status updates (pending/accepted/declined) — `pending` state live-verified (offer card + "Waiting for seller's response…"); `accepted`/`declined` color-coded card states in `MessageBubble` are code-verified only
-- [x] Block a user — live-tested: "More options" → "Block user" → composer replaced with "You blocked this user. Unblock to continue." + Unblock button
-- [x] Unblock a user — live-tested: "Unblock" restored the normal composer (text input, share location, quick replies, offer)
-- [~] Verify blocked users can't send messages — UI-verified for the blocking user (composer disabled while blocked). Server-side bidirectional enforcement (`isBlockedBetween()` in `POST /api/chat/messages`, checked both directions) is code-verified; not live-tested from the blocked counterpart's account
+- [ ] Verify offer status updates (pending/accepted/declined) — `pending` state live-verified (offer card + "Waiting for seller's response…"); `accepted`/`declined` color-coded card states in `MessageBubble` are code-verified only
+- [ ] Block a user — live-tested: "More options" → "Block user" → composer replaced with "You blocked this user. Unblock to continue." + Unblock button
+- [ ] Unblock a user — live-tested: "Unblock" restored the normal composer (text input, share location, quick replies, offer)
+- [ ] Verify blocked users can't send messages — UI-verified for the blocking user (composer disabled while blocked). Server-side bidirectional enforcement (`isBlockedBetween()` in `POST /api/chat/messages`, checked both directions) is code-verified; not live-tested from the blocked counterpart's account
 - [ ] Test realtime message delivery (messages appear instantly) — not live-tested (needs two concurrent sessions). Code-verified: `useRealtimeMessages` subscribes to Supabase `postgres_changes` INSERT on `Message` filtered by `conversationId`
-- [x] Test presence indicator (online dot + "last seen") — live-verified: listing and chat headers show "Last seen X ago" (e.g. "Last seen 1 day ago"), driven by `User.lastSeenAt`
+- [ ] Test presence indicator (online dot + "last seen") — live-verified: listing and chat headers show "Last seen X ago" (e.g. "Last seen 1 day ago"), driven by `User.lastSeenAt`
 - [ ] Test hiding a conversation from inbox — `POST /api/chat/conversations/hide` should remove it from the visible inbox without deleting messages; a new message from the other party should make it re-appear
 - [ ] Test `InboxRealtimeSync` (private broadcast channel) — a new message arriving on a second device/tab should update the unread badge in the bottom nav without a page refresh
 
@@ -171,7 +171,7 @@
 - [ ] File 3 reports on the same listing (from different accounts if possible)
 - [ ] Check if listing gets flagged after 3+ reports (`status = 'FLAGGED'`)
 - [ ] Test admin dashboard access (`/admin`)
-  - [x] Verify only users with `role = 'ADMIN'` or `role = 'MODERATOR'` can access — middleware now checks role and redirects non-staff to `/home`
+  - [ ] Verify only users with `role = 'ADMIN'` or `role = 'MODERATOR'` can access — middleware now checks role and redirects non-staff to `/home`
   - [ ] View dashboard statistics
   - [ ] Browse flagged listings
   - [ ] Remove a listing
@@ -218,19 +218,19 @@
 
 ### 8. UI/UX & Responsiveness
 
-- [x] Test on mobile portrait (< 640px) — 2-col grid, 5-tab bottom nav, no top nav, dark bg confirmed at 390×844
-- [x] Test on mobile landscape — 3-col grid at 844×390, bottom nav shown, top nav hidden
-- [x] Test on tablet (768px - 1024px) — 3-col grid at 768×1024, bottom nav shown, top nav hidden
-- [x] Test on desktop (1024px+) — 4-col grid at 1024px, top nav visible, bottom nav hidden
-- [x] Test on wide desktop (1280px+) — 5-col grid confirmed at 1280×800
-- [x] Verify bottom nav shows on touch devices and hides on mouse+keyboard at 1024px+ (`mouse-lg:hidden`) — confirmed: `display:none` at 1280px, `display:block` below 1024px
-- [x] Verify top nav shows on mouse+keyboard devices at 1024px+ (`mouse-lg:block`) — confirmed: `display:block` at 1280px, `display:none` below 1024px
-- [x] Test dark mode rendering (RAY is dark-mode only) — all pages render dark bg (`#111111`) confirmed across all breakpoints
+- [ ] Test on mobile portrait (< 640px) — 2-col grid, 5-tab bottom nav, no top nav, dark bg confirmed at 390×844
+- [ ] Test on mobile landscape — 3-col grid at 844×390, bottom nav shown, top nav hidden
+- [ ] Test on tablet (768px - 1024px) — 3-col grid at 768×1024, bottom nav shown, top nav hidden
+- [ ] Test on desktop (1024px+) — 4-col grid at 1024px, top nav visible, bottom nav hidden
+- [ ] Test on wide desktop (1280px+) — 5-col grid confirmed at 1280×800
+- [ ] Verify bottom nav shows on touch devices and hides on mouse+keyboard at 1024px+ (`mouse-lg:hidden`) — confirmed: `display:none` at 1280px, `display:block` below 1024px
+- [ ] Verify top nav shows on mouse+keyboard devices at 1024px+ (`mouse-lg:block`) — confirmed: `display:block` at 1280px, `display:none` below 1024px
+- [ ] Test dark mode rendering (RAY is dark-mode only) — all pages render dark bg (`#111111`) confirmed across all breakpoints
 - [ ] Check all buttons and links work
-- [x] Verify loading states show properly (skeletons, spinners) — 17 shimmer skeleton elements captured on throttled home page load; category grid and listing card skeletons both visible
-- [x] Test error pages (visit `/nonexistent` for 404) — branded 404 page renders correctly with "Back to home" CTA
-- [x] Test listing detail page on mobile (sticky chat bar) — `fixed bottom-0 lg:hidden` "Chat with..." bar confirmed at 390px
-- [x] Test listing detail page on desktop (inline chat CTA) — sticky bar `display:none` at 1280px; inline `lg:grid-cols-2` layout with inline CTA confirmed
+- [ ] Verify loading states show properly (skeletons, spinners) — 17 shimmer skeleton elements captured on throttled home page load; category grid and listing card skeletons both visible
+- [ ] Test error pages (visit `/nonexistent` for 404) — branded 404 page renders correctly with "Back to home" CTA
+- [ ] Test listing detail page on mobile (sticky chat bar) — `fixed bottom-0 lg:hidden` "Chat with..." bar confirmed at 390px
+- [ ] Test listing detail page on desktop (inline chat CTA) — sticky bar `display:none` at 1280px; inline `lg:grid-cols-2` layout with inline CTA confirmed
 - [ ] Verify locale change on home feed — tap the EN/RW/FR cycle button in `LocationHeader` and confirm categories and section headings re-render in the selected language without a page reload (client-side reactive via `useI18n`)
 - [ ] Verify locale change on `/profile/settings` — `LanguageToggle` pill group should also cycle locale and update the page
 
@@ -247,12 +247,12 @@
 ### 9. Performance & PWA
 
 - [ ] Install as PWA (Add to Home Screen) on mobile
-- [x] Test offline behavior (disconnect network, browse cached pages) — offline fallback page implemented at `/offline` with branded UI and retry button; `@ducanh2912/next-pwa` configured with `fallbacks: { document: "/offline" }`
-- [x] Check image loading and caching (images should load from cache on revisit) — `ray-images` cache configured: CacheFirst for Supabase Storage images, max 200 entries, 7-day expiry
+- [ ] Test offline behavior (disconnect network, browse cached pages) — offline fallback page implemented at `/offline` with branded UI and retry button; `@ducanh2912/next-pwa` configured with `fallbacks: { document: "/offline" }`
+- [ ] Check image loading and caching (images should load from cache on revisit) — `ray-images` cache configured: CacheFirst for Supabase Storage images, max 200 entries, 7-day expiry
 - [ ] Verify page load times are acceptable (< 3s on 3G)
 - [ ] Test with slow 3G network simulation (Chrome DevTools)
-- [x] Check service worker registration (`/sw.js` should exist) — verified in `next.config.js`: `dest: "public"`, service worker at `/sw.js`
-- [x] Verify manifest is accessible (`/manifest.json`) — manifest present with correct name, icons (192×192 + 512×512 maskable), standalone display, theme colors
+- [ ] Check service worker registration (`/sw.js` should exist) — verified in `next.config.js`: `dest: "public"`, service worker at `/sw.js`
+- [ ] Verify manifest is accessible (`/manifest.json`) — manifest present with correct name, icons (192×192 + 512×512 maskable), standalone display, theme colors
 - [ ] Test app icon displays correctly when installed
 - [ ] Verify the offline page itself renders correctly (`/offline`) — client component using `useI18n`, should show offline message in the user's selected locale + "Try again" reload button
 
@@ -276,22 +276,22 @@
 
 ### 10. Security
 
-- [x] Try accessing protected routes without login — verified via middleware: `/sell`, `/chat`, `/favorites`, `/profile`, `/admin` all redirect to `/login?redirect=...`
-- [x] Admin role gate — enforced in admin layout server component (`isStaff()` check, redirects non-staff to `/home`)
-- [x] Ban check — enforced at API layer (`requireUser()` throws "Account suspended" for banned users) AND middleware redirects banned users from protected routes
-- [x] Verify unauthenticated users can't edit/delete listings — `DELETE /api/listings/:id` and `PATCH /api/listings/:id` without auth → HTTP 401
+- [ ] Try accessing protected routes without login — verified via middleware: `/sell`, `/chat`, `/favorites`, `/profile`, `/admin` all redirect to `/login?redirect=...`
+- [ ] Admin role gate — enforced in admin layout server component (`isStaff()` check, redirects non-staff to `/home`)
+- [ ] Ban check — enforced at API layer (`requireUser()` throws "Account suspended" for banned users) AND middleware redirects banned users from protected routes
+- [ ] Verify unauthenticated users can't edit/delete listings — `DELETE /api/listings/:id` and `PATCH /api/listings/:id` without auth → HTTP 401
 - [ ] Verify you can only edit your own listings (try accessing `/profile/ads/[another-user-listing-id]/edit`) — requires 2 accounts
-- [x] Try SQL injection in search: `'; DROP TABLE "Listing"; --` — Prisma uses parameterized queries; search returns HTTP 200 with empty results
-- [x] Try XSS in listing description: `<script>alert('XSS')</script>` — `sanitizeText()` applies 3-pass strip (remove tags → decode entities → remove tags again); JSON-LD uses unicode escaping for `<`/`>`/`&`
+- [ ] Try SQL injection in search: `'; DROP TABLE "Listing"; --` — Prisma uses parameterized queries; search returns HTTP 200 with empty results
+- [ ] Try XSS in listing description: `<script>alert('XSS')</script>` — `sanitizeText()` applies 3-pass strip (remove tags → decode entities → remove tags again); JSON-LD uses unicode escaping for `<`/`>`/`&`
 - [ ] Test rate limiting (requires rapid-fire load testing):
   - [ ] Rapid-fire listing creation (should hit rate limit at 10 per 10 min)
   - [ ] Rapid-fire chat messages (should hit rate limit at 30 per 1 min)
   - [ ] Rapid-fire search (should hit rate limit at 60 per 1 min)
 - [ ] Verify blocked users can't message each other — requires 2 accounts
-- [x] Test CRON_SECRET protection on `/api/cron/expire-listings` — no header → 401, wrong secret → 401
-- [x] Test CRON_SECRET protection on `/api/cron/purge-messages` — same pattern; secured by `Authorization: Bearer <CRON_SECRET>`
-- [x] Verify `X-Frame-Options: DENY` header is present — confirmed in `next.config.js` headers
-- [x] Verify CSP header is present — `Content-Security-Policy` header with `object-src 'none'`, `frame-src vercel.live only`, `base-uri 'self'`
+- [ ] Test CRON_SECRET protection on `/api/cron/expire-listings` — no header → 401, wrong secret → 401
+- [ ] Test CRON_SECRET protection on `/api/cron/purge-messages` — same pattern; secured by `Authorization: Bearer <CRON_SECRET>`
+- [ ] Verify `X-Frame-Options: DENY` header is present — confirmed in `next.config.js` headers
+- [ ] Verify CSP header is present — `Content-Security-Policy` header with `object-src 'none'`, `frame-src vercel.live only`, `base-uri 'self'`
 - [ ] Verify `Permissions-Policy` only allows `camera` and `geolocation` (not microphone) — check response headers on any page
 
 **Expected Behavior:**
@@ -307,17 +307,17 @@
 
 ### 11. Data & Storage
 
-- [x] Verify Supabase Storage buckets exist and are public:
-  - [x] `listings` bucket — exists, public ✅
-  - [x] `avatars` bucket — exists, public ✅
-  - [x] `chat-images` bucket — exists, public ✅
+- [ ] Verify Supabase Storage buckets exist and are public:
+  - [ ] `listings` bucket — exists, public ✅
+  - [ ] `avatars` bucket — exists, public ✅
+  - [ ] `chat-images` bucket — exists, public ✅
 - [ ] Verify image compression is working (check file size < original) — requires manual upload test
-- [x] Verify images are in WebP format — all listing image URLs end in `.webp` (confirmed via search API responses)
-- [x] Verify database queries are fast — composite indexes applied and confirmed in `pg_indexes`: `Listing_status_createdAt_idx`, `Conversation_buyerId_updatedAt_idx`, `Conversation_sellerId_updatedAt_idx`, `Message_conversationId_createdAt_idx`, `Message_conversationId_isRead_senderId_idx`
-- [x] Check categories are properly seeded (15 categories with attributes) — verified via DB query: all 15 categories present in correct order
-- [x] Verify dynamic attributes are seeded for each category — verified: 111 total attributes across 15 categories (Phones: 7, Electronics: 20, Cars: 6, Bikes: 10, Residential: 8, Commercial: 8, Furniture: 7, Fashion: 4, Jobs: 2, Services: 1, Construction: 6, Machinery: 7, Kids: 4, Kitchen: 7, Beauty: 14)
-- [x] Confirm RLS policies are enabled on all tables — all 13 tables have `rowsecurity = true`, 23 RLS policies verified (ownership-based SELECT/INSERT/UPDATE/DELETE)
-- [x] Verify cascade delete rules — confirmed: Listing→Images/Favorites/Reports/Conversations CASCADE, User→Listings/Favorites/Blocks CASCADE, Conversation→Messages CASCADE
+- [ ] Verify images are in WebP format — all listing image URLs end in `.webp` (confirmed via search API responses)
+- [ ] Verify database queries are fast — composite indexes applied and confirmed in `pg_indexes`: `Listing_status_createdAt_idx`, `Conversation_buyerId_updatedAt_idx`, `Conversation_sellerId_updatedAt_idx`, `Message_conversationId_createdAt_idx`, `Message_conversationId_isRead_senderId_idx`
+- [ ] Check categories are properly seeded (15 categories with attributes) — verified via DB query: all 15 categories present in correct order
+- [ ] Verify dynamic attributes are seeded for each category — verified: 111 total attributes across 15 categories (Phones: 7, Electronics: 20, Cars: 6, Bikes: 10, Residential: 8, Commercial: 8, Furniture: 7, Fashion: 4, Jobs: 2, Services: 1, Construction: 6, Machinery: 7, Kids: 4, Kitchen: 7, Beauty: 14)
+- [ ] Confirm RLS policies are enabled on all tables — all 13 tables have `rowsecurity = true`, 23 RLS policies verified (ownership-based SELECT/INSERT/UPDATE/DELETE)
+- [ ] Verify cascade delete rules — confirmed: Listing→Images/Favorites/Reports/Conversations CASCADE, User→Listings/Favorites/Blocks CASCADE, Conversation→Messages CASCADE
 - [ ] Verify cron job `/api/cron/expire-listings` runs correctly:
   ```bash
   curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.vercel.app/api/cron/expire-listings
@@ -344,7 +344,7 @@
 
 ### 12. Internationalization
 
-- [x] Switch language via `LocationHeader` locale button (home page header) — cycles EN→RW→FR and sets `ray_locale` cookie
+- [ ] Switch language via `LocationHeader` locale button (home page header) — cycles EN→RW→FR and sets `ray_locale` cookie
 - [ ] Switch language via `LanguageToggle` on `/profile/settings` — pill group (EN / RW / FR) should cycle locale instantly
 - [ ] Verify UI text changes across pages (nav, buttons, forms) — requires manual visual check in each locale
 - [ ] Test specific translations (manual):
@@ -354,9 +354,9 @@
   - [ ] Profile menu
   - [ ] Privacy policy page (`/privacy`) — 9 data rights should appear in selected locale
 - [ ] Switch to Kinyarwanda and back to English — requires manual interaction
-- [x] Verify language preference persists after logout/login (cookie: `ray_locale`) — confirmed: 1-year cookie set on locale change
-- [x] Verify all translation keys exist in all 3 locales — ~350 unique keys, all present in en/rw/fr
-- [x] Global select-none — body has `user-select: none` with re-enable for `input`, `textarea`, `[contenteditable]`
+- [ ] Verify language preference persists after logout/login (cookie: `ray_locale`) — confirmed: 1-year cookie set on locale change
+- [ ] Verify all translation keys exist in all 3 locales — ~350 unique keys, all present in en/rw/fr
+- [ ] Global select-none — body has `user-select: none` with re-enable for `input`, `textarea`, `[contenteditable]`
 - [ ] Verify offline page (`/offline`) uses selected locale — client component using `useI18n`, should adapt text without server round-trip
 
 **Expected Behavior:**
@@ -376,12 +376,12 @@
 - [ ] Create listing with 1 image (should work)
 - [ ] Create listing with maximum images (7)
 - [ ] Try uploading 8th image (should be capped at 7)
-- [x] Test very long listing titles (120 characters max) — Zod `z.string().max(120)` in `listing.schema.ts` enforced server-side
-- [x] Test very long descriptions (5000 characters max) — Zod `z.string().max(5000)` enforced server-side; `sanitizeText` strips HTML tags
-- [x] Test special characters in search: `!@#$%^&*()` — HTTP 200, returns empty results (Prisma parameterized queries, no crash)
-- [x] Test empty search results — HTTP 200, `items: []`, `total: 0`, `hasMore: false`
-- [x] Test search with only filters (no keyword) — HTTP 200, returns filtered results by category
-- [x] Try rapid-fire actions (click favorite button 10x quickly) — handled by idempotent `upsert`/`deleteMany` + optimistic toggle that only flips once per in-flight request
+- [ ] Test very long listing titles (120 characters max) — Zod `z.string().max(120)` in `listing.schema.ts` enforced server-side
+- [ ] Test very long descriptions (5000 characters max) — Zod `z.string().max(5000)` enforced server-side; `sanitizeText` strips HTML tags
+- [ ] Test special characters in search: `!@#$%^&*()` — HTTP 200, returns empty results (Prisma parameterized queries, no crash)
+- [ ] Test empty search results — HTTP 200, `items: []`, `total: 0`, `hasMore: false`
+- [ ] Test search with only filters (no keyword) — HTTP 200, returns filtered results by category
+- [ ] Try rapid-fire actions (click favorite button 10x quickly) — handled by idempotent `upsert`/`deleteMany` + optimistic toggle that only flips once per in-flight request
 - [ ] Test chat with blocked user (should show "You can't message this user")
 - [ ] Test editing a listing that was deleted by another user (should 404)
 - [ ] Test marking a listing sold, then immediately reactivating it
@@ -413,17 +413,17 @@
 
 ### 15. SEO & Metadata
 
-- [x] Check page titles are correct:
-  - [x] Home: "RAY — Buy & Sell Anything Near You" (brand title)
-  - [x] Listing detail: "[Listing Title] · RAY" — verified with curl
-  - [x] Search: "Search · RAY" — verified with curl
-- [x] Verify meta descriptions on listing detail pages — `description: "[title] — [price] in [city]. [description excerpt]"` confirmed
-- [x] Test Open Graph tags (share listing link on social media/Slack)
-  - [x] og:title = listing title, og:description = price + location, og:image = cover image, og:type = website
-  - [x] twitter:card = summary_large_image, twitter:title = listing title, twitter:description = price + location, twitter:image = cover image
-- [x] Check sitemap.xml is accessible at `/sitemap.xml` — HTTP 200, valid XML with home/search/category pages
-- [x] Verify robots.txt at `/robots.txt` — correct Disallow for /admin, /api/, /profile/, /sell, /chat, /favorites + Sitemap pointer
-- [x] Test JSON-LD structured data on listing detail pages — `Product` schema with name, description, images, offers (price, currency RWF, availability). Unicode-escaped (`<`/`>`/`&`) to prevent XSS via `</script>` injection
+- [ ] Check page titles are correct:
+  - [ ] Home: "RAY — Buy & Sell Anything Near You" (brand title)
+  - [ ] Listing detail: "[Listing Title] · RAY" — verified with curl
+  - [ ] Search: "Search · RAY" — verified with curl
+- [ ] Verify meta descriptions on listing detail pages — `description: "[title] — [price] in [city]. [description excerpt]"` confirmed
+- [ ] Test Open Graph tags (share listing link on social media/Slack)
+  - [ ] og:title = listing title, og:description = price + location, og:image = cover image, og:type = website
+  - [ ] twitter:card = summary_large_image, twitter:title = listing title, twitter:description = price + location, twitter:image = cover image
+- [ ] Check sitemap.xml is accessible at `/sitemap.xml` — HTTP 200, valid XML with home/search/category pages
+- [ ] Verify robots.txt at `/robots.txt` — correct Disallow for /admin, /api/, /profile/, /sell, /chat, /favorites + Sitemap pointer
+- [ ] Test JSON-LD structured data on listing detail pages — `Product` schema with name, description, images, offers (price, currency RWF, availability). Unicode-escaped (`<`/`>`/`&`) to prevent XSS via `</script>` injection
 - [ ] Verify `/privacy` page renders the full privacy policy with all 9 data subject rights (DPP Law of Rwanda) in all 3 locales
 
 **Expected Behavior:**
@@ -438,10 +438,10 @@
 
 ### 16. Final Checks
 
-- [x] Review browser console for errors (Chrome/Firefox DevTools) — Playwright check across /home, /listing/:id, /search: zero console errors; one minor image resource warning (next/image sizes hint)
-- [x] All `console.log` statements removed from production code — 59 → 0 across all source files; only `console.error` remains for actual error paths
-- [x] Visual check across all pages at 390px mobile — home, search, listing detail, profile, chat, favorites, 404, offline, privacy all render correctly with zero layout issues
-- [x] Visual check at 1280px desktop — TopNav, 5-col grid, proper layout confirmed
+- [ ] Review browser console for errors (Chrome/Firefox DevTools) — Playwright check across /home, /listing/:id, /search: zero console errors; one minor image resource warning (next/image sizes hint)
+- [ ] All `console.log` statements removed from production code — 59 → 0 across all source files; only `console.error` remains for actual error paths
+- [ ] Visual check across all pages at 390px mobile — home, search, listing detail, profile, chat, favorites, 404, offline, privacy all render correctly with zero layout issues
+- [ ] Visual check at 1280px desktop — TopNav, 5-col grid, proper layout confirmed
 - [ ] Check Vercel deployment logs for errors
 - [ ] Verify all environment variables are set correctly in Vercel:
   - [ ] `NEXT_PUBLIC_SUPABASE_URL`
@@ -457,7 +457,7 @@
 - [ ] Verify Vercel crons are active (check `vercel.json`):
   - `/api/cron/expire-listings` — `0 3 * * *` (03:00 UTC daily)
   - `/api/cron/purge-messages` — `0 4 * * *` (04:00 UTC daily)
-- [ ] Verify Vercel deployment regions: `dub1` (Dublin) + `jnb1` (Johannesburg) — co-located with East Africa latency targets
+- [ ] Verify Vercel deployment region: `dub1` (Dublin) — closest available Vercel region to East Africa (`jnb1` was discontinued)
 - [ ] Test Cron jobs manually after deploy:
   ```bash
   curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.vercel.app/api/cron/expire-listings
@@ -465,11 +465,11 @@
   ```
 - [ ] Review Supabase logs for errors (Dashboard → Logs)
 - [ ] Check Upstash Redis connection for rate limiting (Dashboard → Metrics)
-- [x] Verify Supabase Storage buckets are public — all 3 confirmed public via DB query (see Section 11)
-- [x] Confirm RLS policies are enabled on all tables — 13/13 tables have RLS enabled, 23 policies verified (see Section 11)
-- [x] Run `npm run typecheck` locally (should pass with no errors) — `npx tsc --noEmit`: 0 errors after Next.js 16 async params migration
-- [x] Run `npm run lint` locally (should pass with no errors) — `npx next lint`: "✔ No ESLint warnings or errors"
-- [x] Run `npm run build` locally — builds successfully (Next.js 16.2.10, webpack mode, 27 dynamic routes, PWA service worker generated)
+- [ ] Verify Supabase Storage buckets are public — all 3 confirmed public via DB query (see Section 11)
+- [ ] Confirm RLS policies are enabled on all tables — 13/13 tables have RLS enabled, 23 policies verified (see Section 11)
+- [ ] Run `npm run typecheck` locally (should pass with no errors) — `npx tsc --noEmit`: 0 errors after Next.js 16 async params migration
+- [ ] Run `npm run lint` locally (should pass with no errors) — `npx next lint`: "✔ No ESLint warnings or errors"
+- [ ] Run `npm run build` locally — builds successfully (Next.js 16.2.10, webpack mode, 27 dynamic routes, PWA service worker generated)
 
 **Expected Behavior:**
 - Console should be clean (no errors or warnings)
@@ -513,27 +513,27 @@ The following issues were identified during the audit and fixed:
 
 ## Critical Issues to Fix Before Launch
 
-- [x] Security vulnerabilities — SQL injection safe (parameterized queries), XSS safe (3-pass sanitization + JSON-LD escaping), CRON_SECRET enforced (401 without header), protected routes gated, no secrets in git, RLS on all tables
-- [x] Performance issues — composite indexes applied and verified in DB, N+1 fixed, getListing optimized, Vercel region co-located with DB (dub1 + jnb1)
+- [ ] Security vulnerabilities — SQL injection safe (parameterized queries), XSS safe (3-pass sanitization + JSON-LD escaping), CRON_SECRET enforced (401 without header), protected routes gated, no secrets in git, RLS on all tables
+- [ ] Performance issues — composite indexes applied and verified in DB, N+1 fixed, getListing optimized, Vercel region: dub1 (Dublin)
 - [ ] Any error that prevents core functionality (signup, listing creation, chat) — manual testing required
-- [x] Data loss issues — cascade delete rules verified in live DB: Listing→Images/Favorites/Reports/Conversations, User→Listings/Favorites/Blocks, Conversation→Messages all CASCADE
+- [ ] Data loss issues — cascade delete rules verified in live DB: Listing→Images/Favorites/Reports/Conversations, User→Listings/Favorites/Blocks, Conversation→Messages all CASCADE
 - [ ] `NEXT_PUBLIC_SITE_URL` — currently `http://localhost:3000`, must be updated to production domain before deploy
-- [x] `crypto.timingSafeEqual()` for cron secret comparison — both `/api/cron/expire-listings` and `/api/cron/purge-messages` now use `crypto.timingSafeEqual()` instead of `===`
+- [ ] `crypto.timingSafeEqual()` for cron secret comparison — both `/api/cron/expire-listings` and `/api/cron/purge-messages` now use `crypto.timingSafeEqual()` instead of `===`
 
 ---
 
 ## Nice to Have Before Launch
 
-- [x] OAuth consent screen branding (show "RAY" instead of Supabase domain) — done 2026-07-03, app name/logo/domain submitted for Google verification
-- [x] Custom domain instead of vercel.app (DNS: point `raymarkets.co` to Vercel) — live, see `CUSTOM_DOMAIN_SETUP.md`
+- [ ] OAuth consent screen branding (show "RAY" instead of Supabase domain) — done 2026-07-03, app name/logo/domain submitted for Google verification
+- [ ] Custom domain instead of vercel.app (DNS: point `raymarkets.co` to Vercel) — live, see `CUSTOM_DOMAIN_SETUP.md`
 - [ ] Analytics/monitoring setup (Vercel Analytics already installed; add Google Analytics if needed)
-- [x] Error tracking (Sentry, LogRocket) — `@sentry/nextjs` installed and wired into `instrumentation.ts`/`instrumentation-client.ts`
+- [ ] Error tracking (Sentry, LogRocket) — `@sentry/nextjs` installed and wired into `instrumentation.ts`/`instrumentation-client.ts`
 - [ ] Automated tests (Playwright, Vitest)
 - [ ] Lighthouse score > 90 (Performance, Accessibility, Best Practices, SEO)
 - [ ] Enable Fluid Compute in Vercel dashboard (reduces cold starts)
 - [ ] ESLint 8 → 9 upgrade + `eslint-config-next@16` (deferred — requires peer dep resolution, `eslint-config-next@16` needs `eslint >= 9.0.0`)
-- [x] Replace `console.error` with `logger.error` (Pino) — down to 3 remaining call sites (`src/lib/auth/session.ts` ×2, `src/lib/chat/getUnreadCount.ts` ×1), none in API routes anymore
-- [x] `price` field migration: Float → Int (RWF is always an integer) — done 2026-07-03, `price Int` in `schema.prisma`
+- [ ] Replace `console.error` with `logger.error` (Pino) — down to 3 remaining call sites (`src/lib/auth/session.ts` ×2, `src/lib/chat/getUnreadCount.ts` ×1), none in API routes anymore
+- [ ] `price` field migration: Float → Int (RWF is always an integer) — done 2026-07-03, `price Int` in `schema.prisma`
 
 ---
 
