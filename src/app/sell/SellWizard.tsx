@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, X, Check, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
