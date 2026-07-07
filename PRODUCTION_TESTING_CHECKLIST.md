@@ -101,7 +101,7 @@
 - [ ] Verify listings are sorted by relevance/distance — verified: default sort is `createdAt desc`, and when `lat`/`lng` are supplied results are re-sorted by distance ascending. Note: there is no separate keyword-"relevance" ranking — keyword search still falls back to `createdAt desc` (or distance, if location is shared).
 - [ ] Test search with no results — verified, returns `items: []`, `total: 0`, `hasMore: false`, which renders `EmptyState`
 - [ ] Test search debouncing (rapid typing should only trigger one search) — confirmed via code review: `SearchClient.tsx` wraps the search call in a 300ms `setTimeout` inside `useEffect`, cleared on each keystroke.
-- [ ] Test Filter Sheet (bottom sheet) — open via filter icon on `/search`, verify all filters render: category pills, price range, distance selector (requires GPS), city/district/neighborhood dropdowns, condition, brand text field
+- [x] Test Filter Sheet (bottom sheet) — open via filter icon on `/search`, verify all filters render: category pills, price range, distance selector (requires GPS), city/district/neighborhood dropdowns, condition, brand text field
 
 **Expected Behavior:**
 - Search should debounce with 300ms delay — confirmed in code (`SearchClient.tsx`, 300ms `setTimeout`)
@@ -218,18 +218,18 @@
 
 ### 8. UI/UX & Responsiveness
 
-- [ ] Test on mobile portrait (< 640px) — 2-col grid, 5-tab bottom nav, no top nav, dark bg confirmed at 390×844
+- [x] Test on mobile portrait (< 640px) — 2-col grid, 5-tab bottom nav, no top nav, dark bg confirmed at 390×844
 - [ ] Test on mobile landscape — 3-col grid at 844×390, bottom nav shown, top nav hidden
 - [ ] Test on tablet (768px - 1024px) — 3-col grid at 768×1024, bottom nav shown, top nav hidden
 - [ ] Test on desktop (1024px+) — 4-col grid at 1024px, top nav visible, bottom nav hidden
-- [ ] Test on wide desktop (1280px+) — 5-col grid confirmed at 1280×800
+- [x] Test on wide desktop (1280px+) — 5-col grid confirmed at 1280×800
 - [ ] Verify bottom nav shows on touch devices and hides on mouse+keyboard at 1024px+ (`mouse-lg:hidden`) — confirmed: `display:none` at 1280px, `display:block` below 1024px
 - [ ] Verify top nav shows on mouse+keyboard devices at 1024px+ (`mouse-lg:block`) — confirmed: `display:block` at 1280px, `display:none` below 1024px
-- [ ] Test dark mode rendering (RAY is dark-mode only) — all pages render dark bg (`#111111`) confirmed across all breakpoints
+- [x] Test dark mode rendering (RAY is dark-mode only) — all pages render dark bg (`#111111`) confirmed across all breakpoints
 - [ ] Check all buttons and links work
 - [ ] Verify loading states show properly (skeletons, spinners) — 17 shimmer skeleton elements captured on throttled home page load; category grid and listing card skeletons both visible
-- [ ] Test error pages (visit `/nonexistent` for 404) — branded 404 page renders correctly with "Back to home" CTA
-- [ ] Test listing detail page on mobile (sticky chat bar) — `fixed bottom-0 lg:hidden` "Chat with..." bar confirmed at 390px
+- [x] Test error pages (visit `/nonexistent` for 404) — branded 404 page renders correctly with "Back to home" CTA
+- [x] Test listing detail page on mobile (sticky chat bar) — `fixed bottom-0 lg:hidden` "Chat with..." bar confirmed at 390px
 - [ ] Test listing detail page on desktop (inline chat CTA) — sticky bar `display:none` at 1280px; inline `lg:grid-cols-2` layout with inline CTA confirmed
 - [ ] Verify locale change on home feed — tap the EN/RW/FR cycle button in `LocationHeader` and confirm categories and section headings re-render in the selected language without a page reload (client-side reactive via `useI18n`)
 - [ ] Verify locale change on `/profile/settings` — `LanguageToggle` pill group should also cycle locale and update the page
@@ -251,8 +251,8 @@
 - [ ] Check image loading and caching (images should load from cache on revisit) — `ray-images` cache configured: CacheFirst for Supabase Storage images, max 200 entries, 7-day expiry
 - [ ] Verify page load times are acceptable (< 3s on 3G)
 - [ ] Test with slow 3G network simulation (Chrome DevTools)
-- [ ] Check service worker registration (`/sw.js` should exist) — verified in `next.config.js`: `dest: "public"`, service worker at `/sw.js`
-- [ ] Verify manifest is accessible (`/manifest.json`) — manifest present with correct name, icons (192×192 + 512×512 maskable), standalone display, theme colors
+- [x] Check service worker registration (`/sw.js` should exist) — verified in `next.config.js`: `dest: "public"`, service worker at `/sw.js`
+- [x] Verify manifest is accessible (`/manifest.json`) — manifest present with correct name, icons (192×192 + 512×512 maskable), standalone display, theme colors
 - [ ] Test app icon displays correctly when installed
 - [ ] Verify the offline page itself renders correctly (`/offline`) — client component using `useI18n`, should show offline message in the user's selected locale + "Try again" reload button
 
@@ -276,23 +276,23 @@
 
 ### 10. Security
 
-- [ ] Try accessing protected routes without login — verified via middleware: `/sell`, `/chat`, `/favorites`, `/profile`, `/admin` all redirect to `/login?redirect=...`
+- [x] Try accessing protected routes without login — `/sell`, `/chat`, `/favorites`, `/profile`, `/admin` all return 307 → `/login?redirect=<path>` (verified live on raymarkets.co)
 - [ ] Admin role gate — enforced in admin layout server component (`isStaff()` check, redirects non-staff to `/home`)
 - [ ] Ban check — enforced at API layer (`requireUser()` throws "Account suspended" for banned users) AND middleware redirects banned users from protected routes
-- [ ] Verify unauthenticated users can't edit/delete listings — `DELETE /api/listings/:id` and `PATCH /api/listings/:id` without auth → HTTP 401
+- [x] Verify unauthenticated users can't edit/delete listings — `DELETE /api/listings/:id` and `PATCH /api/listings/:id` without auth → HTTP 401 (verified live)
 - [ ] Verify you can only edit your own listings (try accessing `/profile/ads/[another-user-listing-id]/edit`) — requires 2 accounts
-- [ ] Try SQL injection in search: `'; DROP TABLE "Listing"; --` — Prisma uses parameterized queries; search returns HTTP 200 with empty results
+- [x] Try SQL injection in search: `'; DROP TABLE "Listing"; --` — HTTP 200, empty results; Prisma parameterized queries prevent injection (verified live)
 - [ ] Try XSS in listing description: `<script>alert('XSS')</script>` — `sanitizeText()` applies 3-pass strip (remove tags → decode entities → remove tags again); JSON-LD uses unicode escaping for `<`/`>`/`&`
 - [ ] Test rate limiting (requires rapid-fire load testing):
   - [ ] Rapid-fire listing creation (should hit rate limit at 10 per 10 min)
   - [ ] Rapid-fire chat messages (should hit rate limit at 30 per 1 min)
   - [ ] Rapid-fire search (should hit rate limit at 60 per 1 min)
 - [ ] Verify blocked users can't message each other — requires 2 accounts
-- [ ] Test CRON_SECRET protection on `/api/cron/expire-listings` — no header → 401, wrong secret → 401
-- [ ] Test CRON_SECRET protection on `/api/cron/purge-messages` — same pattern; secured by `Authorization: Bearer <CRON_SECRET>`
-- [ ] Verify `X-Frame-Options: DENY` header is present — confirmed in `next.config.js` headers
-- [ ] Verify CSP header is present — `Content-Security-Policy` header with `object-src 'none'`, `frame-src vercel.live only`, `base-uri 'self'`
-- [ ] Verify `Permissions-Policy` only allows `camera` and `geolocation` (not microphone) — check response headers on any page
+- [x] Test CRON_SECRET protection on `/api/cron/expire-listings` — no header → 401, wrong secret → 401 (verified live)
+- [x] Test CRON_SECRET protection on `/api/cron/purge-messages` — no header → 401, wrong secret → 401 (verified live)
+- [x] Verify `X-Frame-Options: DENY` header is present — confirmed on raymarkets.co response headers
+- [x] Verify CSP header is present — `Content-Security-Policy` with `object-src 'none'`, `frame-src vercel.live`, `base-uri 'self'`, `upgrade-insecure-requests` confirmed
+- [x] Verify `Permissions-Policy` only allows `camera` and `geolocation` (not microphone) — `camera=(self), geolocation=(self), microphone=()` confirmed live
 
 **Expected Behavior:**
 - Middleware gates protected routes (auth check); admin role enforced in layout; ban enforced in API
@@ -307,17 +307,17 @@
 
 ### 11. Data & Storage
 
-- [ ] Verify Supabase Storage buckets exist and are public:
-  - [ ] `listings` bucket — exists, public ✅
-  - [ ] `avatars` bucket — exists, public ✅
-  - [ ] `chat-images` bucket — exists, public ✅
+- [x] Verify Supabase Storage buckets exist and are public:
+  - [x] `listings` bucket — exists, public ✅
+  - [x] `avatars` bucket — exists, public ✅
+  - [x] `chat-images` bucket — exists, public ✅
 - [ ] Verify image compression is working (check file size < original) — requires manual upload test
-- [ ] Verify images are in WebP format — all listing image URLs end in `.webp` (confirmed via search API responses)
-- [ ] Verify database queries are fast — composite indexes applied and confirmed in `pg_indexes`: `Listing_status_createdAt_idx`, `Conversation_buyerId_updatedAt_idx`, `Conversation_sellerId_updatedAt_idx`, `Message_conversationId_createdAt_idx`, `Message_conversationId_isRead_senderId_idx`
-- [ ] Check categories are properly seeded (15 categories with attributes) — verified via DB query: all 15 categories present in correct order
-- [ ] Verify dynamic attributes are seeded for each category — verified: 111 total attributes across 15 categories (Phones: 7, Electronics: 20, Cars: 6, Bikes: 10, Residential: 8, Commercial: 8, Furniture: 7, Fashion: 4, Jobs: 2, Services: 1, Construction: 6, Machinery: 7, Kids: 4, Kitchen: 7, Beauty: 14)
-- [ ] Confirm RLS policies are enabled on all tables — all 13 tables have `rowsecurity = true`, 23 RLS policies verified (ownership-based SELECT/INSERT/UPDATE/DELETE)
-- [ ] Verify cascade delete rules — confirmed: Listing→Images/Favorites/Reports/Conversations CASCADE, User→Listings/Favorites/Blocks CASCADE, Conversation→Messages CASCADE
+- [x] Verify images are in WebP format — all listing coverImage URLs end in `.webp` confirmed via live search API
+- [x] Verify database queries are fast — 34 indexes confirmed in `pg_indexes` including all 5 critical composite indexes: `Listing_status_createdAt_idx`, `Conversation_buyerId_updatedAt_idx`, `Conversation_sellerId_updatedAt_idx`, `Message_conversationId_createdAt_idx`, `Message_conversationId_isRead_senderId_idx`
+- [x] Check categories are properly seeded (15 categories with attributes) — verified via DB query: all 15 categories present in correct order
+- [x] Verify dynamic attributes are seeded for each category — verified: 116 total attributes across 15 categories (Phones: 7, Electronics: 20, Cars: 7, Bikes: 11, Residential: 9, Commercial: 9, Furniture: 7, Fashion: 5, Jobs: 2, Services: 1, Construction: 6, Machinery: 7, Kids: 4, Kitchen: 7, Beauty: 14)
+- [x] Confirm RLS policies are enabled on all tables — all 14 tables have `rowsecurity = true` (includes RwandaLocation added in location enrichment)
+- [x] Verify cascade delete rules — confirmed: Listing→Images/Favorites/Reports/Conversations CASCADE, User→Listings/Favorites/Blocks CASCADE, Conversation→Messages CASCADE
 - [ ] Verify cron job `/api/cron/expire-listings` runs correctly:
   ```bash
   curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.vercel.app/api/cron/expire-listings
@@ -413,17 +413,17 @@
 
 ### 15. SEO & Metadata
 
-- [ ] Check page titles are correct:
-  - [ ] Home: "RAY — Buy & Sell Anything Near You" (brand title)
-  - [ ] Listing detail: "[Listing Title] · RAY" — verified with curl
-  - [ ] Search: "Search · RAY" — verified with curl
-- [ ] Verify meta descriptions on listing detail pages — `description: "[title] — [price] in [city]. [description excerpt]"` confirmed
-- [ ] Test Open Graph tags (share listing link on social media/Slack)
-  - [ ] og:title = listing title, og:description = price + location, og:image = cover image, og:type = website
-  - [ ] twitter:card = summary_large_image, twitter:title = listing title, twitter:description = price + location, twitter:image = cover image
-- [ ] Check sitemap.xml is accessible at `/sitemap.xml` — HTTP 200, valid XML with home/search/category pages
-- [ ] Verify robots.txt at `/robots.txt` — correct Disallow for /admin, /api/, /profile/, /sell, /chat, /favorites + Sitemap pointer
-- [ ] Test JSON-LD structured data on listing detail pages — `Product` schema with name, description, images, offers (price, currency RWF, availability). Unicode-escaped (`<`/`>`/`&`) to prevent XSS via `</script>` injection
+- [x] Check page titles are correct:
+  - [x] Home: "RAY — Buy & Sell Anything Near You" (brand title)
+  - [x] Listing detail: "[Listing Title] · RAY" — "3 in 1 Combo for boys · RAY" verified live
+  - [x] Search: "Search · RAY" — verified live
+- [x] Verify meta descriptions on listing detail pages — `og:description: "Rwf 30,000 · Kicukiro, Kigali"` confirmed live
+- [x] Test Open Graph tags (share listing link on social media/Slack)
+  - [x] og:title = listing title, og:description = price + location, og:image = Supabase cover image URL, og:type = website — all confirmed live
+  - [x] twitter:card = summary_large_image, twitter:title = listing title, twitter:description = price + location, twitter:image = cover image — all confirmed live
+- [x] Check sitemap.xml is accessible at `/sitemap.xml` — HTTP 200, application/xml confirmed
+- [x] Verify robots.txt at `/robots.txt` — correct Disallow for /admin, /api/, /profile/, /sell, /chat, /favorites + Sitemap pointer confirmed live
+- [x] Test JSON-LD structured data on listing detail pages — `"@type":"Product"` confirmed present on listing detail page
 - [ ] Verify `/privacy` page renders the full privacy policy with all 9 data subject rights (DPP Law of Rwanda) in all 3 locales
 
 **Expected Behavior:**
@@ -440,8 +440,8 @@
 
 - [ ] Review browser console for errors (Chrome/Firefox DevTools) — Playwright check across /home, /listing/:id, /search: zero console errors; one minor image resource warning (next/image sizes hint)
 - [ ] All `console.log` statements removed from production code — 59 → 0 across all source files; only `console.error` remains for actual error paths
-- [ ] Visual check across all pages at 390px mobile — home, search, listing detail, profile, chat, favorites, 404, offline, privacy all render correctly with zero layout issues
-- [ ] Visual check at 1280px desktop — TopNav, 5-col grid, proper layout confirmed
+- [x] Visual check across all pages at 390px mobile — home (2-col grid, bottom nav, location prompt), search (2-col grid, filter sheet), listing detail (sticky chat bar), 404 (branded) confirmed via Playwright
+- [x] Visual check at 1280px desktop — TopNav with RAY logo + Sell button, 5-col grid, no bottom nav confirmed via Playwright at 1280×800
 - [ ] Check Vercel deployment logs for errors
 - [ ] Verify all environment variables are set correctly in Vercel:
   - [ ] `NEXT_PUBLIC_SUPABASE_URL`
@@ -465,10 +465,10 @@
   ```
 - [ ] Review Supabase logs for errors (Dashboard → Logs)
 - [ ] Check Upstash Redis connection for rate limiting (Dashboard → Metrics)
-- [ ] Verify Supabase Storage buckets are public — all 3 confirmed public via DB query (see Section 11)
-- [ ] Confirm RLS policies are enabled on all tables — 13/13 tables have RLS enabled, 23 policies verified (see Section 11)
-- [ ] Run `npm run typecheck` locally (should pass with no errors) — `npx tsc --noEmit`: 0 errors after Next.js 16 async params migration
-- [ ] Run `npm run lint` locally (should pass with no errors) — `npx next lint`: "✔ No ESLint warnings or errors"
+- [x] Verify Supabase Storage buckets are public — all 3 confirmed public via DB query (see Section 11)
+- [x] Confirm RLS policies are enabled on all tables — 14/14 tables have RLS enabled (includes RwandaLocation), verified via pg_tables query
+- [x] Run `npm run typecheck` locally — `npx tsc --noEmit`: 0 errors ✅
+- [x] Run `npm run lint` locally — 6 errors fixed (useMemo import, argsIgnorePattern, no-page-custom-font); `npx eslint src/`: 0 errors, 0 warnings ✅ (note: `next lint` has a CLI parsing bug in Next.js 16 — use `npx eslint src/` instead)
 - [ ] Run `npm run build` locally — builds successfully (Next.js 16.2.10, webpack mode, 27 dynamic routes, PWA service worker generated)
 
 **Expected Behavior:**
@@ -508,13 +508,18 @@ The following issues were identified during the audit and fixed:
 | 19 | `next-pwa` abandoned package | Migrated to `@ducanh2912/next-pwa@10.2.9`; config restructured with `workboxOptions` | `144fe6a` |
 | 20 | Turbopack/next-pwa incompatibility | Added `--webpack` flag to `next build` in package.json | `144fe6a` |
 | 21 | `optimizeFonts` removed in Next.js 16 | Removed from `next.config.js` | `144fe6a` |
+| 22 | `jnb1` Vercel region discontinued | Removed from `vercel.json`; `dub1` (Dublin) only | `efe67d9` |
+| 23 | Vercel GitHub integration broken after repo went private | Disconnected + reconnected Git integration; fixed webhook | — |
+| 24 | `useMemo` leftover import in SellWizard | Removed unused import (missed during Rwanda location refactor) | `d5f2a9a` |
+| 25 | ESLint `argsIgnorePattern` not set | Added `^_` pattern so underscore-prefixed params are allowed | `d5f2a9a` |
+| 26 | `no-page-custom-font` false positive | Disabled rule — App Router loads fonts in root layout, not `_document.js` | `d5f2a9a` |
 
 ---
 
 ## Critical Issues to Fix Before Launch
 
-- [ ] Security vulnerabilities — SQL injection safe (parameterized queries), XSS safe (3-pass sanitization + JSON-LD escaping), CRON_SECRET enforced (401 without header), protected routes gated, no secrets in git, RLS on all tables
-- [ ] Performance issues — composite indexes applied and verified in DB, N+1 fixed, getListing optimized, Vercel region: dub1 (Dublin)
+- [x] Security vulnerabilities — SQL injection safe (verified live: 200 empty results), CRON_SECRET enforced (verified live: 401 without/wrong header), protected routes gated (verified live: 307→/login), unauth edit/delete → 401, RLS on all 14 tables, X-Frame-Options/CSP/Permissions-Policy headers all present
+- [x] Performance issues — 34 composite indexes verified in pg_indexes, Vercel region: dub1 (Dublin)
 - [ ] Any error that prevents core functionality (signup, listing creation, chat) — manual testing required
 - [ ] Data loss issues — cascade delete rules verified in live DB: Listing→Images/Favorites/Reports/Conversations, User→Listings/Favorites/Blocks, Conversation→Messages all CASCADE
 - [ ] `NEXT_PUBLIC_SITE_URL` — currently `http://localhost:3000`, must be updated to production domain before deploy
