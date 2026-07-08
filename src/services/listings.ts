@@ -1,4 +1,6 @@
 import { cache } from "react";
+import { createHash } from "node:crypto";
+import { headers } from "next/headers";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
@@ -242,6 +244,38 @@ const listingDetailInclude = {
   attributeValues: { include: { attribute: true } },
 };
 
+/** Stable visitor key for view deduplication.
+ *  Authenticated: the user's UUID (already unique and stable).
+ *  Anonymous: SHA-256(ip:ua) — not reversible, not personally identifying. */
+async function buildVisitorKey(authUser: { id: string } | null): Promise<string> {
+  if (authUser) return authUser.id;
+  const hdrs = await headers();
+  const ip =
+    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    hdrs.get("x-real-ip") ??
+    "unknown";
+  const ua = hdrs.get("user-agent") ?? "";
+  return createHash("sha256").update(`${ip}:${ua}`).digest("hex").slice(0, 32);
+}
+
+/** Insert a dedup row; only increment the counter when the insert succeeds.
+ *  skipDuplicates means a same-visitor same-day revisit is a no-op. */
+async function recordView(listingId: string, visitorKey: string): Promise<null> {
+  const viewedDate = new Date().toISOString().slice(0, 10);
+  const { count } = await prisma.listingView.createMany({
+    data: [{ listingId, visitorKey, viewedDate }],
+    skipDuplicates: true,
+  });
+  if (count > 0) {
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { views: { increment: 1 } },
+      select: { id: true },
+    });
+  }
+  return null;
+}
+
 /** Single listing for the detail page. Increments view count, unless the
  *  viewer is the listing's own owner — sellers checking their own ad
  *  shouldn't inflate the view count they see as a buyer-interest signal.
@@ -261,13 +295,15 @@ export const getListing = cache(async (id: string): Promise<ListingDetailData | 
     }
 
     const isOwner = authUser?.id === l.userId;
+
+    // Build the visitor key before the parallel batch (requires async headers()).
+    const visitorKey = isOwner ? null : await buildVisitorKey(authUser);
+
     const [listingsCount, responseTimeMins] = await Promise.all([
       prisma.listing.count({ where: { userId: l.userId, status: "ACTIVE" } }),
       getSellerResponseTime(l.userId),
-      // View increment runs in the same batch — only for non-owners.
-      isOwner
-        ? Promise.resolve(null)
-        : prisma.listing.update({ where: { id }, data: { views: { increment: 1 } }, select: { id: true } }),
+      // Deduplicated view increment — one count per (visitor, listing, day).
+      visitorKey ? recordView(id, visitorKey) : Promise.resolve(null),
     ]);
 
     logger.debug({ id, isOwner, viewIncremented: !isOwner }, "[getListing] result");

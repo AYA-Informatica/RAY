@@ -197,6 +197,7 @@ model Listing {
   reports         Report[]
   conversations   Conversation[]
   attributeValues ListingAttributeValue[]
+  viewRecords     ListingView[]
 
   @@index([city])
   @@index([district])
@@ -205,6 +206,22 @@ model Listing {
   @@index([featured])
   @@index([createdAt])
   @@index([status, createdAt])
+}
+
+/// Deduplication table for listing view counts.
+/// One row per (listing, visitor, calendar-day) — guarantees a single
+/// increment no matter how many times the same person reloads the page.
+model ListingView {
+  id         String   @id @default(cuid())
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  /// Authenticated users: their UUID. Anonymous: SHA-256(ip:ua) truncated to 32 hex chars.
+  visitorKey String
+  /// YYYY-MM-DD — resets the dedup window at midnight UTC.
+  viewedDate String
+
+  @@unique([listingId, visitorKey, viewedDate])
+  @@index([listingId])
 }
 
 model ListingImage {
