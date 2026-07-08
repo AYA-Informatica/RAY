@@ -10,7 +10,7 @@ const withPWA = require("@ducanh2912/next-pwa").default({
     // Don't precache the API or Next data routes.
     skipWaiting: true,
     clientsClaim: true,
-    exclude: [/middleware-manifest\.json$/, /\.js\.map$/],
+    exclude: [/middleware-manifest\.json$/, /\.map$/],
     runtimeCaching: [
       {
         // Listing/avatar/chat images from Supabase Storage — cache-first, capped.
