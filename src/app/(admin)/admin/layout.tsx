@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isStaff } from "@/lib/permissions/roles";
 import { AdminNav } from "@/components/admin/AdminNav";
-import { prisma } from "@/lib/prisma";
+import { getOpenReportCount } from "@/services/admin";
 import { logger } from "@/lib/logger";
 
 export const metadata = { title: "Admin" };
@@ -22,10 +22,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/home");
   }
 
-  // Pass open-report count to the nav so the Reports tab shows a badge.
+  // Fix 16: use the cached query so the layout and the overview page share one
+  // DB round-trip instead of two — eliminates the race-condition divergence.
   let openReports = 0;
   try {
-    openReports = await prisma.report.count({ where: { resolved: false } });
+    openReports = await getOpenReportCount();
   } catch (err) {
     logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[AdminLayout] failed to load open report count");
   }

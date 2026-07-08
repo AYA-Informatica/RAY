@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Search } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -105,12 +106,19 @@ export default function AdminUsers() {
                   {u.isBanned && <Badge tone="danger">Banned</Badge>}
                 </div>
                 <p className="truncate text-xs text-text-secondary">
-                  {u.email} · {u._count.listings} listing{u._count.listings !== 1 ? "s" : ""} · joined {timeAgo(u.createdAt)}
+                  {u.email} · {u._count.listings} active listing{u._count.listings !== 1 ? "s" : ""} · joined {timeAgo(u.createdAt)}
                 </p>
               </div>
 
-              {/* Action */}
-              <div className="shrink-0">
+              {/* Actions */}
+              <div className="flex shrink-0 items-center gap-2">
+                {/* Fix 14: link to listings page pre-filtered by this user's email. */}
+                <Link
+                  href={`/admin/listings?q=${encodeURIComponent(u.email)}`}
+                  className="rounded-md border border-border px-2 py-1 text-xs text-text-secondary hover:bg-surface-modal"
+                >
+                  View listings
+                </Link>
                 {u.isBanned ? (
                   <AdminActionButton
                     payload={{ action: "unbanUser", userId: u.id }}
@@ -129,6 +137,7 @@ export default function AdminUsers() {
                 )}
               </div>
             </Card>
+
           ))}
         </div>
       )}

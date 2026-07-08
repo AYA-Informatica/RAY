@@ -94,11 +94,18 @@ export function AnnouncementEditor() {
         <p className="text-right text-xs text-text-muted">{config.text.length} / 280</p>
       </div>
 
+      {/* Fix 11: warn when the banner is active but the text field is empty. */}
+      {config.active && !config.text.trim() && (
+        <p className="text-xs text-danger">
+          Cannot activate an empty announcement — add text before saving.
+        </p>
+      )}
+
       {/* Save */}
       <button
         type="button"
         onClick={save}
-        disabled={saving || loading}
+        disabled={saving || loading || (config.active && !config.text.trim())}
         className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 sm:w-auto"
       >
         {saving ? "Saving…" : "Save announcement"}

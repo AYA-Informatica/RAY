@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
@@ -27,6 +28,7 @@ type Listing = {
   status: string;
   featured: boolean;
   city: string;
+  district: string | null; // Fix 15
   createdAt: string | Date;
   user: { email: string; name: string | null };
   category: { name: string };
@@ -57,8 +59,10 @@ async function fetchListings(): Promise<Listing[]> {
 
 // ── Component ───────────────────────────────────────────────────────────────
 export default function AdminListings() {
+  const searchParams = useSearchParams();
   const [listings, setListings] = useState<Listing[]>([]);
-  const [query, setQuery] = useState("");
+  // Fix 14: pre-fill search from ?q= URL param (linked from Users page).
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const { toasts, show } = useToast();
@@ -78,7 +82,8 @@ export default function AdminListings() {
       l.user.email.toLowerCase().includes(q) ||
       l.status.toLowerCase().includes(q) ||
       l.category.name.toLowerCase().includes(q) ||
-      l.city.toLowerCase().includes(q)
+      l.city.toLowerCase().includes(q) ||
+      (l.district?.toLowerCase() ?? "").includes(q) // Fix 15
     );
   });
 
@@ -100,11 +105,18 @@ export default function AdminListings() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search title, seller name, email, status…"
+            placeholder="Search title, seller, email, status, city, district…"
             className="w-full rounded-md border border-border bg-surface-card py-2 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
       </div>
+
+      {/* Fix 12: disclose that non-flagged results are capped at 200. */}
+      {listings.length > 0 && (
+        <p className="text-xs text-text-muted">
+          Showing all flagged listings + up to 200 most recent others.
+        </p>
+      )}
 
       {filtered.length === 0 ? (
         <Card className="p-6 text-sm text-text-secondary">

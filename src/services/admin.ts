@@ -1,62 +1,98 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+
+// Fix 16: single cached DB call shared by layout nav badge + overview card per render.
+export const getOpenReportCount = cache(() =>
+  prisma.report.count({ where: { resolved: false } }),
+);
 
 /** Dashboard counts for the admin overview. */
 export async function getAdminStats() {
   logger.debug({}, "[getAdminStats] called");
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const now = new Date();
+  const oneWeekAgo = new Date(now);
+  oneWeekAgo.setDate(now.getDate() - 7);
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(now.getDate() - 30);
 
-  const [users, listings, featured, flagged, openReports, newUsers] = await Promise.all([
-    prisma.user.count(),
-    prisma.listing.count({ where: { status: "ACTIVE" } }),
-    prisma.listing.count({ where: { featured: true } }),
-    prisma.listing.count({ where: { status: "FLAGGED" } }),
-    prisma.report.count({ where: { resolved: false } }),
-    prisma.user.count({ where: { createdAt: { gte: oneWeekAgo } } }),
-  ]);
-  logger.debug({ users, listings, featured, flagged, openReports, newUsers }, "[getAdminStats] result");
-  return { users, listings, featured, flagged, openReports, newUsers };
+  const [users, listings, featured, flagged, openReports, newUsers, bannedUsers, mau] =
+    await Promise.all([
+      prisma.user.count(),
+      prisma.listing.count({ where: { status: "ACTIVE" } }),
+      // Fix 5: only count active featured listings — removed/expired still carry the flag.
+      prisma.listing.count({ where: { featured: true, status: "ACTIVE" } }),
+      prisma.listing.count({ where: { status: "FLAGGED" } }),
+      getOpenReportCount(), // Fix 16
+      prisma.user.count({ where: { createdAt: { gte: oneWeekAgo } } }),
+      // Fix 10: expose banned-user count directly.
+      prisma.user.count({ where: { isBanned: true } }),
+      // Fix 9: Monthly Active Users via lastSeenAt (non-banned only).
+      prisma.user.count({ where: { lastSeenAt: { gte: thirtyDaysAgo }, isBanned: false } }),
+    ]);
+
+  logger.debug(
+    { users, listings, featured, flagged, openReports, newUsers, bannedUsers, mau },
+    "[getAdminStats] result",
+  );
+  return { users, listings, featured, flagged, openReports, newUsers, bannedUsers, mau };
 }
 
-const MODERATION_PRIORITY: Record<string, number> = { FLAGGED: 0, REMOVED: 1, ACTIVE: 2, EXPIRED: 3, SOLD: 4 };
-
-/** Recent listings for moderation (flagged first), with thumbnail + reports. */
-export async function getModerationListings() {
-  logger.debug({}, "[getModerationListings] called");
-  const rows = await prisma.listing.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 500,
+const listingModerationSelect = {
+  id: true,
+  title: true,
+  price: true,
+  status: true,
+  featured: true,
+  city: true,
+  district: true, // Fix 15: include district so search can filter by it.
+  createdAt: true,
+  user: { select: { id: true, name: true, email: true } },
+  category: { select: { name: true } },
+  images: { orderBy: { order: "asc" as const }, take: 1 },
+  reports: {
+    where: { resolved: false },
+    orderBy: { createdAt: "desc" as const },
     select: {
       id: true,
-      title: true,
-      price: true,
-      status: true,
-      featured: true,
-      city: true,
+      reason: true,
+      details: true,
       createdAt: true,
-      user: { select: { id: true, name: true, email: true } },
-      category: { select: { name: true } },
-      images: { orderBy: { order: "asc" }, take: 1 },
-      reports: {
-        where: { resolved: false },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          reason: true,
-          details: true,
-          createdAt: true,
-          reporter: { select: { name: true, email: true } },
-        },
-      },
-      _count: { select: { reports: true } },
+      reporter: { select: { name: true, email: true } },
     },
-  });
-  const sorted = rows.sort(
-    (a, b) => (MODERATION_PRIORITY[a.status] ?? 5) - (MODERATION_PRIORITY[b.status] ?? 5),
+  },
+  // Fix 1: badge must count only open reports, not all-time reports.
+  _count: { select: { reports: { where: { resolved: false } } } },
+} as const;
+
+/**
+ * Fix 2: fetch ALL flagged listings first (no cap), then 200 most-recent others.
+ * Previously took 500 by createdAt then sorted in memory — flagged listings older
+ * than record 500 were silently absent from the moderation queue.
+ */
+export async function getModerationListings() {
+  logger.debug({}, "[getModerationListings] called");
+
+  const [flaggedListings, recentListings] = await Promise.all([
+    prisma.listing.findMany({
+      where: { status: "FLAGGED" },
+      orderBy: { createdAt: "desc" },
+      select: listingModerationSelect,
+    }),
+    prisma.listing.findMany({
+      where: { status: { not: "FLAGGED" } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: listingModerationSelect,
+    }),
+  ]);
+
+  const result = [...flaggedListings, ...recentListings];
+  logger.debug(
+    { flagged: flaggedListings.length, recent: recentListings.length },
+    "[getModerationListings] result",
   );
-  logger.debug({ count: sorted.length }, "[getModerationListings] result");
-  return sorted;
+  return result;
 }
 
 /** Open reports with their target listing. */
@@ -75,7 +111,7 @@ export async function getOpenReports() {
   return reports;
 }
 
-/** Category health stats — total listings, new this week, flagged count. */
+/** Category health stats — active listings, new this week (non-removed), flagged count. */
 export async function getCategoryHealth() {
   logger.debug({}, "[getCategoryHealth] called");
   const oneWeekAgo = new Date();
@@ -87,7 +123,8 @@ export async function getCategoryHealth() {
       id: true,
       name: true,
       icon: true,
-      _count: { select: { listings: true } },
+      // Fix 6: count only ACTIVE listings — dead inventory inflated the "Total" column.
+      _count: { select: { listings: { where: { status: "ACTIVE" } } } },
     },
   });
 
@@ -96,7 +133,11 @@ export async function getCategoryHealth() {
   >`
     SELECT
       "categoryId",
-      COUNT(*) FILTER (WHERE "createdAt" >= ${oneWeekAgo}) AS week_count,
+      -- Fix 6/7: exclude REMOVED listings so spam/rejected posts don't
+      -- inflate "This week" — only count inventory that reached buyers.
+      COUNT(*) FILTER (
+        WHERE "createdAt" >= ${oneWeekAgo} AND status <> 'REMOVED'
+      ) AS week_count,
       COUNT(*) FILTER (WHERE status = 'FLAGGED') AS flagged_count
     FROM "Listing"
     GROUP BY "categoryId"
@@ -121,7 +162,7 @@ export async function getCategoryHealth() {
   return result;
 }
 
-/** All users for management. */
+/** All users for management (active listing count only). */
 export async function getManagedUsers() {
   logger.debug({}, "[getManagedUsers] called");
   const users = await prisma.user.findMany({
@@ -135,7 +176,9 @@ export async function getManagedUsers() {
       role: true,
       isBanned: true,
       createdAt: true,
-      _count: { select: { listings: true } },
+      // Fix 10 (users page): show active listings only so banned spammers with
+      // 30 removed posts look identical to power sellers.
+      _count: { select: { listings: { where: { status: "ACTIVE" } } } },
     },
   });
   logger.debug({ count: users.length }, "[getManagedUsers] result");
@@ -146,13 +189,16 @@ export async function getManagedUsers() {
 export async function getGeographicStats() {
   logger.debug({}, "[getGeographicStats] called");
   const [usersByDistrict, listingsByDistrict, topNeighborhoods] = await Promise.all([
+    // Fix 8: exclude banned users — they skewed the user-density chart and made
+    // it incomparable to the listing chart (which already excluded flagged listings).
     prisma.$queryRaw<{ district: string; count: bigint }[]>`
       SELECT district, COUNT(*)::bigint AS count
       FROM "User"
       WHERE district IS NOT NULL AND district <> ''
+        AND "isBanned" = false
       GROUP BY district
       ORDER BY count DESC
-      LIMIT 20
+      LIMIT 30
     `,
     prisma.$queryRaw<{ district: string; count: bigint }[]>`
       SELECT district, COUNT(*)::bigint AS count
@@ -160,7 +206,7 @@ export async function getGeographicStats() {
       WHERE status = 'ACTIVE' AND district IS NOT NULL AND district <> ''
       GROUP BY district
       ORDER BY count DESC
-      LIMIT 20
+      LIMIT 30
     `,
     prisma.$queryRaw<{ neighborhood: string; district: string; count: bigint }[]>`
       SELECT neighborhood, district, COUNT(*)::bigint AS count
@@ -193,7 +239,7 @@ export async function getGeographicStats() {
   return result;
 }
 
-/** Week-over-week new users and listings for the last 12 weeks. */
+/** Week-over-week new users and non-removed listings for the last 12 weeks. */
 export async function getGrowthStats() {
   logger.debug({}, "[getGrowthStats] called");
   const twelveWeeksAgo = new Date();
@@ -207,10 +253,13 @@ export async function getGrowthStats() {
       GROUP BY week
       ORDER BY week
     `,
+    // Fix 7: exclude REMOVED listings so a spam wave or moderation purge doesn't
+    // inflate the growth chart and mislead trend analysis.
     prisma.$queryRaw<{ week: Date; count: bigint }[]>`
       SELECT date_trunc('week', "createdAt") AS week, COUNT(*)::bigint AS count
       FROM "Listing"
       WHERE "createdAt" >= ${twelveWeeksAgo}
+        AND status <> 'REMOVED'
       GROUP BY week
       ORDER BY week
     `,
@@ -220,7 +269,10 @@ export async function getGrowthStats() {
     userWeeks: userWeeks.map((r) => ({ week: r.week.toISOString().slice(0, 10), count: Number(r.count) })),
     listingWeeks: listingWeeks.map((r) => ({ week: r.week.toISOString().slice(0, 10), count: Number(r.count) })),
   };
-  logger.debug({ userWeeks: result.userWeeks.length, listingWeeks: result.listingWeeks.length }, "[getGrowthStats] result");
+  logger.debug(
+    { userWeeks: result.userWeeks.length, listingWeeks: result.listingWeeks.length },
+    "[getGrowthStats] result",
+  );
   return result;
 }
 
@@ -228,7 +280,12 @@ export async function getGrowthStats() {
 export async function getEngagementStats() {
   logger.debug({}, "[getEngagementStats] called");
   const [totalConversations, totalMessages, viewStats, listingsWithInquiries] = await Promise.all([
-    prisma.conversation.count(),
+    // Active conversations only (exclude both-sides-hidden / soft-deleted threads).
+    prisma.conversation.count({
+      where: {
+        OR: [{ buyerHiddenAt: null }, { sellerHiddenAt: null }],
+      },
+    }),
     prisma.message.count(),
     prisma.listing.aggregate({
       where: { status: "ACTIVE" },
@@ -246,9 +303,10 @@ export async function getEngagementStats() {
 
   const totalActiveListings = viewStats._count;
   const listingsWithNoInquiries = totalActiveListings - listingsWithInquiries;
-  const deadStockPct = totalActiveListings > 0
-    ? Math.round((listingsWithNoInquiries / totalActiveListings) * 100)
-    : 0;
+  const deadStockPct =
+    totalActiveListings > 0
+      ? Math.round((listingsWithNoInquiries / totalActiveListings) * 100)
+      : 0;
 
   const result = {
     totalConversations,

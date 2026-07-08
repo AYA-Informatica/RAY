@@ -44,7 +44,10 @@ export default async function AnalyticsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Users by district */}
           <Card className="p-4">
-            <h3 className="text-sm font-semibold text-text-secondary mb-3">Users by District</h3>
+            <h3 className="text-sm font-semibold text-text-secondary mb-3">
+              Users by District
+              <span className="ml-1 font-normal text-text-muted">(non-banned, top 30)</span>
+            </h3>
             {geo.usersByDistrict.length === 0 ? (
               <p className="text-sm text-text-muted">No data</p>
             ) : (
@@ -75,7 +78,10 @@ export default async function AnalyticsPage() {
 
           {/* Listings by district */}
           <Card className="p-4">
-            <h3 className="text-sm font-semibold text-text-secondary mb-3">Active Listings by District</h3>
+            <h3 className="text-sm font-semibold text-text-secondary mb-3">
+              Active Listings by District
+              <span className="ml-1 font-normal text-text-muted">(top 30)</span>
+            </h3>
             {geo.listingsByDistrict.length === 0 ? (
               <p className="text-sm text-text-muted">No data</p>
             ) : (
@@ -173,7 +179,7 @@ export default async function AnalyticsPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="w-6 shrink-0 text-right text-text-muted">{w.count}</span>
+                      <span className="w-8 shrink-0 text-right text-text-muted">{w.count}</span>
                     </div>
                   );
                 })}
@@ -203,7 +209,7 @@ export default async function AnalyticsPage() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="w-6 shrink-0 text-right text-text-muted">{w.count}</span>
+                      <span className="w-8 shrink-0 text-right text-text-muted">{w.count}</span>
                     </div>
                   );
                 })}

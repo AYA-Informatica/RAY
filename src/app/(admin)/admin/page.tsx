@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users, ListChecks, Flag, AlertTriangle, Star, TrendingUp } from "lucide-react";
+import { Users, ListChecks, Flag, AlertTriangle, Star, TrendingUp, UserX, Activity } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { getAdminStats } from "@/services/admin";
 import { AnnouncementEditor } from "./AnnouncementEditor";
@@ -14,10 +14,14 @@ export default async function AdminOverview() {
   const cards = [
     { label: "Total Users", value: stats.users, icon: Users, tone: "text-text-primary" },
     { label: "Active Listings", value: stats.listings, icon: ListChecks, tone: "text-success" },
-    { label: "Featured", value: stats.featured, icon: Star, tone: "text-primary" },
+    { label: "Featured (active)", value: stats.featured, icon: Star, tone: "text-primary" },
     { label: "Flagged", value: stats.flagged, icon: AlertTriangle, tone: "text-warning" },
     { label: "Open Reports", value: stats.openReports, icon: Flag, tone: "text-danger" },
     { label: "New Users (7d)", value: stats.newUsers, icon: TrendingUp, tone: "text-success" },
+    // Fix 9: Monthly Active Users via lastSeenAt.
+    { label: "MAU (30d)", value: stats.mau, icon: Activity, tone: "text-primary" },
+    // Fix 10: banned count for at-a-glance moderation health.
+    { label: "Banned Users", value: stats.bannedUsers, icon: UserX, tone: stats.bannedUsers > 0 ? "text-danger" : "text-text-muted" },
   ];
   return (
     <div className="space-y-6">
@@ -25,7 +29,7 @@ export default async function AdminOverview() {
 
       <AnnouncementEditor />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {cards.map(({ label, value, icon: Icon, tone }) => (
           <Card key={label} className="p-4">
             <Icon size={20} className={tone} />
