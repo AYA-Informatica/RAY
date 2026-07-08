@@ -85,6 +85,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
 
     // Update scalars, and replace images / attribute values when provided.
+    let oldImagePaths: string[] = [];
+
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const safeScalars: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(scalars)) {
@@ -100,6 +102,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         select: { id: true },
       });
       if (images) {
+        const oldImages = await tx.listingImage.findMany({
+          where: { listingId: id },
+          select: { url: true },
+        });
+        oldImagePaths = oldImages
+          .map((img) => storagePathFromUrl(img.url))
+          .filter((p): p is string => p !== null);
+
         await tx.listingImage.deleteMany({ where: { listingId: id } });
         if (images.length > 0) {
           await tx.listingImage.createMany({
@@ -120,6 +130,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         }
       }
     });
+
+    if (oldImagePaths.length > 0) {
+      const { error: storageError } = await createAdminClient().storage
+        .from(LISTINGS_BUCKET)
+        .remove(oldImagePaths);
+      if (storageError) {
+        logger.error({ err: storageError, listingId: id }, "[PATCH listing] storage cleanup failed");
+      }
+    }
 
     logger.debug({ userId: user.id, listingId: id }, "[PATCH listing] success");
     return ok({ id });

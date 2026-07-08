@@ -5,6 +5,15 @@ import { updateProfileSchema } from "@/lib/validations/profile.schema";
 import { sanitizeObject } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 import { logger } from "@/lib/logger";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const AVATARS_BUCKET = "avatars";
+
+function avatarPathFromUrl(url: string): string | null {
+  const marker = `/object/public/${AVATARS_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  return idx === -1 ? null : url.slice(idx + marker.length);
+}
 
 export const dynamic = "force-dynamic";
 
@@ -53,11 +62,33 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       ...(avatarUrl !== undefined ? { avatarUrl } : {}),
     };
 
+    // Capture old avatar path before overwriting so we can delete it after.
+    let oldAvatarPath: string | null = null;
+    if (avatarUrl !== undefined) {
+      const current = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { avatarUrl: true },
+      });
+      if (current?.avatarUrl) {
+        oldAvatarPath = avatarPathFromUrl(current.avatarUrl);
+      }
+    }
+
     const updated = await prisma.user.update({
       where: { id: user.id },
       data,
       select: { id: true, name: true, bio: true, avatarUrl: true, city: true, district: true },
     });
+
+    if (oldAvatarPath) {
+      const { error: storageError } = await createAdminClient().storage
+        .from(AVATARS_BUCKET)
+        .remove([oldAvatarPath]);
+      if (storageError) {
+        logger.error({ err: storageError, userId: user.id }, "[PATCH user] avatar storage cleanup failed");
+      }
+    }
+
     logger.debug({ userId: user.id }, "[PATCH user] success");
     return ok(updated);
   } catch (err) {

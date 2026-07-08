@@ -3,6 +3,15 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ok, fail, handleApiError } from "@/lib/utils/api";
 import { logger } from "@/lib/logger";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const CHAT_IMAGES_BUCKET = "chat-images";
+
+function chatImagePathFromUrl(url: string): string | null {
+  const marker = `/object/public/${CHAT_IMAGES_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  return idx === -1 ? null : url.slice(idx + marker.length);
+}
 
 /**
  * GET /api/cron/purge-messages
@@ -54,9 +63,30 @@ export async function GET(req: NextRequest) {
 
     const conversationIds = staleConversations.map((c) => c.id);
 
+    // Collect image URLs before deletion so we can clean up storage after.
+    const messagesWithImages = await prisma.message.findMany({
+      where: { conversationId: { in: conversationIds }, imageUrl: { not: null } },
+      select: { imageUrl: true },
+    });
+
     const result = await prisma.message.deleteMany({
       where: { conversationId: { in: conversationIds } },
     });
+
+    const chatImagePaths = messagesWithImages
+      .map((m) => chatImagePathFromUrl(m.imageUrl!))
+      .filter((p): p is string => p !== null);
+
+    if (chatImagePaths.length > 0) {
+      const { error: storageError } = await createAdminClient().storage
+        .from(CHAT_IMAGES_BUCKET)
+        .remove(chatImagePaths);
+      if (storageError) {
+        logger.error({ err: storageError }, "[CRON purge-messages] storage cleanup failed");
+      } else {
+        logger.info({ files: chatImagePaths.length }, "[CRON purge-messages] chat images removed from storage");
+      }
+    }
 
     logger.info(
       { purged: result.count, conversations: conversationIds.length },
