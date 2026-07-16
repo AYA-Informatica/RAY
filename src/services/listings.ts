@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import type { ListingCardData, ListingDetailData, Paginated } from "@/types";
 import { distanceKm as haversine } from "@/lib/utils/format";
+import { isValidUuid } from "@/lib/utils/uuid";
 import type { SearchQuery } from "@/lib/validations/search.schema";
 import { getSellerResponseTime } from "./chat";
 import { getAuthUser } from "@/lib/auth/session";
@@ -13,17 +14,34 @@ import { expandSearchQuery } from "@/lib/search/aliases";
 
 type RawListing = Awaited<ReturnType<typeof queryListings>>[number];
 
-async function queryListings(where: object, take: number, skip: number) {
+const DEFAULT_LISTING_ORDER: Prisma.ListingOrderByWithRelationInput[] = [
+  { featured: "desc" },
+  { createdAt: "desc" },
+];
+
+async function queryListings(
+  where: object,
+  take: number,
+  skip: number,
+  orderBy: Prisma.ListingOrderByWithRelationInput[] = DEFAULT_LISTING_ORDER,
+) {
   return prisma.listing.findMany({
     where: { status: "ACTIVE", ...where },
     take,
     skip,
-    orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+    orderBy,
     include: {
       category: true,
       images: { orderBy: { order: "asc" }, take: 1 },
     },
   });
+}
+
+/** Maps the public sortBy param to a Prisma orderBy — undefined/"newest" keeps the default. */
+function orderByForSort(sortBy?: "newest" | "price_asc" | "price_desc"): Prisma.ListingOrderByWithRelationInput[] {
+  if (sortBy === "price_asc") return [{ price: "asc" }];
+  if (sortBy === "price_desc") return [{ price: "desc" }];
+  return DEFAULT_LISTING_ORDER;
 }
 
 function toCard(l: RawListing, origin?: { lat: number; lng: number }): ListingCardData {
@@ -35,6 +53,8 @@ function toCard(l: RawListing, origin?: { lat: number; lng: number }): ListingCa
     city: l.city,
     district: l.district,
     neighborhood: l.neighborhood,
+    province: l.province,
+    sector: l.sector,
     createdAt: l.createdAt,
     status: l.status,
     views: l.views,
@@ -179,6 +199,8 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   if (q.city) where.city = q.city;
   if (q.district) where.district = q.district;
   if (q.neighborhood) where.neighborhood = q.neighborhood;
+  if (q.province) where.province = q.province;
+  if (q.sector) where.sector = q.sector;
   if (q.condition) where.condition = q.condition;
   if (q.brand) {
     where.attributeValues = {
@@ -215,12 +237,15 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
         longitude: { gte: origin.lng - lngDelta, lte: origin.lng + lngDelta },
       };
     }
-    const rows = await queryListings(geoWhere, GEO_SEARCH_POOL_SIZE, 0);
+    const rows = await queryListings(geoWhere, GEO_SEARCH_POOL_SIZE, 0, orderByForSort(q.sortBy));
     let items = rows.map((r) => toCard(r, origin));
     if (q.radius && q.radius > 0) {
       items = items.filter((i) => i.distanceKm != null && i.distanceKm <= q.radius!);
     }
-    items.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+    // An explicit price sort overrides distance ranking; otherwise nearest-first.
+    if (q.sortBy === "price_asc") items.sort((a, b) => a.price - b.price);
+    else if (q.sortBy === "price_desc") items.sort((a, b) => b.price - a.price);
+    else items.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
 
     const total = items.length;
     const paged = items.slice(skip, skip + q.pageSize);
@@ -229,7 +254,7 @@ export async function searchListings(q: SearchQuery): Promise<Paginated<ListingC
   }
 
   const [rows, total] = await Promise.all([
-    queryListings(where, q.pageSize, skip),
+    queryListings(where, q.pageSize, skip, orderByForSort(q.sortBy)),
     prisma.listing.count({ where: { status: "ACTIVE", ...where } }),
   ]);
   const items = rows.map((r) => toCard(r));
@@ -338,6 +363,8 @@ export async function getUserListings(userId: string, includeRemoved = false): P
     city: r.city,
     district: r.district,
     neighborhood: r.neighborhood,
+    province: r.province,
+    sector: r.sector,
     createdAt: r.createdAt,
     status: r.status,
     views: r.views,
@@ -345,6 +372,18 @@ export async function getUserListings(userId: string, includeRemoved = false): P
     coverImage: r.images[0]?.url ?? null,
     category: { slug: r.category.slug, name: r.category.name, icon: r.category.icon ?? "📦" },
   }));
+}
+
+/** A seller's active listings, for the public seller-profile page. */
+export async function getSellerActiveListings(userId: string, limit = 50): Promise<ListingCardData[]> {
+  logger.debug({ userId, limit }, "[getSellerActiveListings] called");
+  if (!isValidUuid(userId)) {
+    logger.debug({ userId }, "[getSellerActiveListings] not a valid UUID, skipping query");
+    return [];
+  }
+  const rows = await queryListings({ userId }, limit, 0);
+  logger.debug({ userId, count: rows.length }, "[getSellerActiveListings] result");
+  return rows.map((r) => toCard(r));
 }
 
 /** A single listing owned by the user, for editing (returns null if not owner). */

@@ -26,7 +26,9 @@ export type SellerSummary = Pick<
 /** Listing as rendered in the grid (card). */
 export type ListingCardData = Pick<
   Listing,
-  "id" | "title" | "price" | "negotiable" | "city" | "district" | "neighborhood" | "createdAt" | "status" | "views"
+  | "id" | "title" | "price" | "negotiable"
+  | "city" | "district" | "neighborhood" | "province" | "sector"
+  | "createdAt" | "status" | "views"
 > & {
   coverImage: string | null;
   category: Pick<Category, "slug" | "name" | "icon">;

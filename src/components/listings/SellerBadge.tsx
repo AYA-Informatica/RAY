@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ShieldCheck, Clock, Circle } from "lucide-react";
 import { timeAgo, isOnline, presenceLabel } from "@/lib/utils/format";
 import type { SellerSummary } from "@/types";
@@ -27,7 +28,7 @@ export function SellerBadge({
   const response = formatResponseTime(seller.responseTimeMins);
 
   return (
-    <div className="flex items-center gap-3">
+    <Link href={`/user/${seller.id}`} className="flex items-center gap-3">
       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-pill bg-surface-modal">
         {seller.avatarUrl ? (
           <Image src={seller.avatarUrl} alt={seller.name ?? "Seller"} fill className="object-cover" sizes="48px" />
@@ -72,7 +73,7 @@ export function SellerBadge({
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 

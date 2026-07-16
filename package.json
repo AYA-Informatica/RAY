@@ -33,6 +33,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2.1.1",
+    "expo-server-sdk": "^6.1.0",
     "lucide-react": "^0.460.0",
     "next": "^16.2.10",
     "pg": "^8.21.0",

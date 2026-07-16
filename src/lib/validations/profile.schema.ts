@@ -7,6 +7,7 @@ export const updateProfileSchema = z.object({
   city: z.string().trim().max(80).optional(),
   district: z.string().trim().max(80).optional(),
   neighborhood: z.string().trim().max(120).optional(),
+  province: z.string().trim().max(80).optional(),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

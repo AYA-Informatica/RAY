@@ -409,6 +409,9 @@ export function SellWizard({
           city: draft.city,
           district: draft.district,
           neighborhood: draft.neighborhood || undefined,
+          province: allDistricts.find((d) => d.district === draft.district)?.province,
+          sector: draft.neighborhood || undefined,
+          village: draft.village || undefined,
           latitude: draft.latitude,
           longitude: draft.longitude,
           images: draft.images,
@@ -830,6 +833,15 @@ export function SellWizard({
                       onChange={(e) => set({ neighborhood: e.target.value })}
                     />
                   )
+                )}
+                {draft.neighborhood && (
+                  <Input
+                    label={t("sell.village")}
+                    placeholder={t("sell.villagePlaceholder")}
+                    autoComplete="off"
+                    value={draft.village}
+                    onChange={(e) => set({ village: e.target.value })}
+                  />
                 )}
               </div>
             )}

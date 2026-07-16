@@ -35,6 +35,8 @@ export async function getFavoriteListings(userId: string): Promise<ListingCardDa
       city: f.listing.city,
       district: f.listing.district,
       neighborhood: f.listing.neighborhood,
+      province: f.listing.province,
+      sector: f.listing.sector,
       createdAt: f.listing.createdAt,
       status: f.listing.status,
       views: f.listing.views,

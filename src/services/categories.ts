@@ -21,6 +21,8 @@ export const getCategories = unstable_cache(
     const fallback = LAUNCH_CATEGORIES.map((c, i) => ({
       id: c.slug,
       name: c.name,
+      nameRw: null,
+      nameFr: null,
       slug: c.slug,
       icon: c.icon,
       order: i,

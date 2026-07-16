@@ -21,6 +21,8 @@ type SeedAttribute = {
 
 type SeedCategory = {
   name: string;
+  nameRw: string; // Kinyarwanda display name — cross-checked against src/lib/search/aliases.ts's vetted RW vocabulary
+  nameFr: string; // French display name
   slug: string;
   icon: string; // emoji used in the category grid (matches wireframes)
   order: number;
@@ -30,6 +32,8 @@ type SeedCategory = {
 const CATEGORIES: SeedCategory[] = [
   {
     name: "Phones & Accessories",
+    nameRw: "Telefoni",
+    nameFr: "Téléphones",
     slug: "phones",
     icon: "📱",
     order: 1,
@@ -45,6 +49,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Electronics",
+    nameRw: "Ikoranabuhanga",
+    nameFr: "Électronique",
     slug: "electronics",
     icon: "💻",
     order: 2,
@@ -87,6 +93,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Cars",
+    nameRw: "Imodoka",
+    nameFr: "Voitures",
     slug: "cars",
     icon: "🚗",
     order: 3,
@@ -102,6 +110,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Bikes",
+    nameRw: "Amagare na Moto",
+    nameFr: "Vélos et Motos",
     slug: "bikes",
     icon: "🏍️",
     order: 4,
@@ -121,6 +131,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Residential Rentals",
+    nameRw: "Amazu",
+    nameFr: "Logements",
     slug: "residential-rentals",
     icon: "🏠",
     order: 5,
@@ -138,6 +150,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Commercial Spaces",
+    nameRw: "Ahantu h'Ubucuruzi",
+    nameFr: "Locaux commerciaux",
     slug: "commercial-spaces",
     icon: "🏢",
     order: 6,
@@ -155,6 +169,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Furniture",
+    nameRw: "Imbago",
+    nameFr: "Meubles",
     slug: "furniture",
     icon: "🛋️",
     order: 7,
@@ -170,6 +186,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Fashion",
+    nameRw: "Imyambaro",
+    nameFr: "Vêtements",
     slug: "fashion",
     icon: "👕",
     order: 8,
@@ -183,6 +201,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Jobs",
+    nameRw: "Akazi",
+    nameFr: "Emplois",
     slug: "jobs",
     icon: "💼",
     order: 9,
@@ -193,6 +213,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Services",
+    nameRw: "Serivisi",
+    nameFr: "Services",
     slug: "services",
     icon: "🛠️",
     order: 10,
@@ -202,6 +224,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Construction Materials",
+    nameRw: "Ibikoresho by'Inyubako",
+    nameFr: "Matériaux de construction",
     slug: "construction",
     icon: "🧱",
     order: 11,
@@ -216,6 +240,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Machinery",
+    nameRw: "Imashini",
+    nameFr: "Machines",
     slug: "machinery",
     icon: "⚙️",
     order: 12,
@@ -231,6 +257,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Kids",
+    nameRw: "Abana",
+    nameFr: "Enfants",
     slug: "kids",
     icon: "👶",
     order: 13,
@@ -243,6 +271,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Kitchen",
+    nameRw: "Ibikoresho bya Gikoni",
+    nameFr: "Cuisine",
     slug: "kitchen",
     icon: "🍳",
     order: 14,
@@ -258,6 +288,8 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     name: "Beauty & Personal Care",
+    nameRw: "Ibyubwiza",
+    nameFr: "Beauté",
     slug: "beauty",
     icon: "💄",
     order: 15,
@@ -309,8 +341,8 @@ async function main() {
   for (const c of CATEGORIES) {
     const category = await prisma.category.upsert({
       where: { slug: c.slug },
-      update: { name: c.name, icon: c.icon, order: c.order },
-      create: { name: c.name, slug: c.slug, icon: c.icon, order: c.order },
+      update: { name: c.name, nameRw: c.nameRw, nameFr: c.nameFr, icon: c.icon, order: c.order },
+      create: { name: c.name, nameRw: c.nameRw, nameFr: c.nameFr, slug: c.slug, icon: c.icon, order: c.order },
     });
 
     for (let i = 0; i < c.attributes.length; i++) {

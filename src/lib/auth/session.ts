@@ -1,21 +1,37 @@
 import "server-only";
 import { cache } from "react";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { isAuthSessionMissingError } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 import { logger } from "@/lib/logger";
 
 /** Returns the Supabase auth user or null. Never throws.
  *  Memoized per-request so multiple server components on the same page
- *  share one Supabase round-trip. */
+ *  share one Supabase round-trip.
+ *
+ *  Supports two auth transports:
+ *   - Cookie session (web) — the default `supabase.auth.getUser()` call.
+ *   - `Authorization: Bearer <access_token>` (mobile app — no cookie jar in
+ *     a bare React Native fetch()) — verified via `getUser(token)`.
+ *  Cookie path is tried first when no bearer header is present, so this is
+ *  purely additive for existing web/cookie traffic. */
 export const getAuthUser = cache(async () => {
   const supabase = await createClient();
+  const bearer = (await headers()).get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
-  if (error) console.error("[session] getAuthUser error:", error.message);
-  logger.debug({ hasUser: Boolean(user) }, "[session] getAuthUser resolved");
+  } = bearer ? await supabase.auth.getUser(bearer) : await supabase.auth.getUser();
+  // "Session missing" is the expected, routine shape of every anonymous
+  // visit on a mostly-public marketplace -- not an error worth logging as
+  // one. console.error-ing it here spammed Sentry and Next's dev overlay
+  // on every single logged-out page view.
+  if (error && !isAuthSessionMissingError(error)) {
+    console.error("[session] getAuthUser error:", error.message);
+  }
+  logger.debug({ hasUser: Boolean(user), viaBearer: Boolean(bearer) }, "[session] getAuthUser resolved");
   return user;
 });
 
@@ -60,6 +76,10 @@ export async function requireUser(): Promise<User> {
   if (user.isBanned) {
     logger.warn({ userId: user.id }, "[session] requireUser rejected — account suspended");
     throw new AuthError("Account suspended");
+  }
+  if (user.deletedAt) {
+    logger.warn({ userId: user.id }, "[session] requireUser rejected — account deleted");
+    throw new AuthError("Unauthorized");
   }
   return user;
 }

@@ -153,6 +153,7 @@ export function EditProfileForm({ userId, initial }: Props) {
           city: city || undefined,
           district: district || undefined,
           neighborhood: neighborhood || undefined,
+          province: allDistricts.find((d) => d.district === district)?.province,
         }),
       });
       if (!res.ok) {

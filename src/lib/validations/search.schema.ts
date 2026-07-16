@@ -13,6 +13,8 @@ export const searchQuerySchema = z.object({
   city: z.string().optional(),
   district: z.string().optional(),
   neighborhood: z.string().optional(),
+  province: z.string().optional(),
+  sector: z.string().optional(),
   brand: z.string().optional(),
   condition: ConditionEnum.optional(),
   minPrice: numericString,
@@ -20,6 +22,7 @@ export const searchQuerySchema = z.object({
   radius: numericString, // km; 0 = anywhere
   lat: z.coerce.number().optional(),
   lng: z.coerce.number().optional(),
+  sortBy: z.enum(["newest", "price_asc", "price_desc"]).optional(),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(50).default(20),
 });

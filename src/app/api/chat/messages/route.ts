@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { sendMessageSchema, respondOfferSchema } from "@/lib/validations/message.schema";
 import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
+import { sendChatPush } from "@/lib/push/sendChatPush";
 import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
 import { logger } from "@/lib/logger";
@@ -130,6 +131,17 @@ export async function POST(req: NextRequest) {
       { userId: user.id, conversationId: data.conversationId, messageId: message.id },
       "[POST chat/messages] success",
     );
+
+    // Fire-and-forget — never awaited, never blocks or fails this response.
+    void sendChatPush({
+      recipientId: convo.otherId,
+      senderName: user.name,
+      content: data.content,
+      hasImage: Boolean(data.imageUrl),
+      offerAmount: data.offerAmount,
+      conversationId: data.conversationId,
+    });
+
     return ok(message, { status: 201 });
   } catch (err) {
     logger.error({ err }, "[POST chat/messages] ERROR");

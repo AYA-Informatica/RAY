@@ -77,14 +77,18 @@ model User {
   city         String?
   district     String?
   neighborhood String?
+  province     String?
 
-  role         UserRole @default(USER)
-  isBanned     Boolean  @default(false)
+  pushToken    String? // Expo push token, registered by the mobile app after sign-in
 
-  lastSeenAt   DateTime @default(now())
+  role         UserRole  @default(USER)
+  isBanned     Boolean   @default(false)
+  deletedAt    DateTime? // set on account deletion (anonymize-in-place) -- NULL means active
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  lastSeenAt   DateTime  @default(now())
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   listings              Listing[]
   favorites             Favorite[]
@@ -98,6 +102,8 @@ model User {
 
   @@index([city])
   @@index([district])
+  @@index([province])
+  @@index([deletedAt])
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +132,8 @@ model Block {
 model Category {
   id        String   @id @default(cuid())
   name      String
+  nameRw    String? // Kinyarwanda display name
+  nameFr    String? // French display name
   slug      String   @unique
   icon      String?
   order     Int      @default(0)
@@ -175,6 +183,9 @@ model Listing {
   city         String
   district     String
   neighborhood String?
+  province     String?
+  sector       String? // replaces neighborhood for Rwanda-accurate labelling
+  village      String? // free-text cell/village
   latitude     Float?
   longitude    Float?
 
@@ -201,6 +212,8 @@ model Listing {
 
   @@index([city])
   @@index([district])
+  @@index([province])
+  @@index([sector])
   @@index([categoryId])
   @@index([status])
   @@index([featured])

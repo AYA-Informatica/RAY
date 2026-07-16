@@ -18,6 +18,8 @@ export interface SellDraft {
   city: string;
   district: string;
   neighborhood: string;
+  /** Free-text cell/village — finer-grained than sector (neighborhood). Listing-only; User has no equivalent column. */
+  village: string;
   latitude?: number;
   longitude?: number;
   attributes: Record<string, string>;
@@ -36,6 +38,7 @@ const empty: SellDraft = {
   city: "Kigali",
   district: "",
   neighborhood: "",
+  village: "",
   attributes: {},
 };
 

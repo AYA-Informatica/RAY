@@ -6,8 +6,11 @@ import { PriceTag } from "@/components/listings/PriceTag";
 import { FavoriteButton } from "@/components/listings/FavoriteButton";
 import { SellerBadge } from "@/components/listings/SellerBadge";
 import { ReportButton } from "@/components/listings/ReportButton";
+import { ListingOwnerToolbar } from "@/components/listings/ListingOwnerToolbar";
 import { RecordView } from "@/components/listings/RecordView";
 import { Badge } from "@/components/ui/Badge";
+import { STATUS_KEY, STATUS_BANNER_CLASS } from "@/lib/listings/status";
+import { cn } from "@/lib/utils/cn";
 import { ChatCtaBar } from "@/components/chat/ChatCtaBar";
 import { getListing } from "@/services/listings";
 import { formatPrice, timeAgo } from "@/lib/utils/format";
@@ -99,6 +102,21 @@ export default async function ListingDetailPage({ params }: Params) {
 
           {/* Details */}
           <div className="space-y-5 p-4 lg:p-0">
+            {listing.status !== "ACTIVE" && (
+              <div
+                className={cn(
+                  "rounded-md border p-3 text-center text-sm font-medium",
+                  STATUS_BANNER_CLASS[listing.status],
+                )}
+              >
+                <span className="font-display font-bold uppercase tracking-wide">
+                  {await serverT(STATUS_KEY[listing.status] ?? listing.status)}
+                </span>
+                {" — "}
+                {await serverT("listing.noLongerAvailable")}
+              </div>
+            )}
+
             <div>
               <h1 className="font-display text-2xl font-bold leading-tight lg:text-3xl">{listing.title}</h1>
               <PriceTag amount={listing.price} size="lg" suffix={isRental ? "/mo" : undefined} className="mt-1" />
@@ -152,6 +170,10 @@ export default async function ListingDetailPage({ params }: Params) {
             <section className="rounded-md border border-border bg-surface-card p-4">
               <SellerBadge seller={listing.user} />
             </section>
+
+            {isOwner && (
+              <ListingOwnerToolbar listingId={listing.id} initialStatus={listing.status} />
+            )}
 
             {/* Safety note + report */}
             <div className="flex items-center justify-between rounded-md bg-surface-card/50 px-3 py-2">

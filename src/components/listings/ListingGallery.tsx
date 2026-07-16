@@ -4,16 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
 import { logger } from "@/lib/logger";
+import { ImageLightbox } from "./ImageLightbox";
 
 /** Swipeable image gallery for the item detail page.
  *  Uses CSS scroll-snap so touch swipe, mouse drag, and keyboard all work natively.
  *  All images are rendered at once so swiping is instant — no loading between frames. */
 export function ListingGallery({ images, title }: { images: string[]; title: string }) {
   const [active, setActive] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const railRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
   const scrollStartX = useRef(0);
+  const dragMoved = useRef(false);
 
   const scrollTo = useCallback((i: number) => {
     const rail = railRef.current;
@@ -48,6 +51,7 @@ export function ListingGallery({ images, title }: { images: string[]; title: str
         className="no-scrollbar flex aspect-square w-full snap-x snap-mandatory overflow-x-scroll cursor-grab active:cursor-grabbing"
         onPointerDown={(e) => {
           isDragging.current = true;
+          dragMoved.current = false;
           dragStartX.current = e.clientX;
           scrollStartX.current = railRef.current?.scrollLeft ?? 0;
           // Suspend scroll-snap while dragging — otherwise the browser snaps
@@ -58,6 +62,7 @@ export function ListingGallery({ images, title }: { images: string[]; title: str
         }}
         onPointerMove={(e) => {
           if (!isDragging.current || !railRef.current) return;
+          if (Math.abs(e.clientX - dragStartX.current) > 4) dragMoved.current = true;
           railRef.current.scrollLeft = scrollStartX.current + (dragStartX.current - e.clientX);
         }}
         onPointerUp={() => {
@@ -76,7 +81,11 @@ export function ListingGallery({ images, title }: { images: string[]; title: str
         {images.map((src, i) => (
           <div
             key={src}
-            className="relative aspect-square w-full shrink-0 snap-start bg-surface-modal"
+            className="relative aspect-square w-full shrink-0 snap-start bg-surface-modal cursor-zoom-in"
+            onClick={() => {
+              if (dragMoved.current) return; // was a swipe, not a tap
+              setLightboxOpen(true);
+            }}
           >
             <Image
               src={src}
@@ -110,6 +119,14 @@ export function ListingGallery({ images, title }: { images: string[]; title: str
           ))}
         </div>
       )}
+
+      <ImageLightbox
+        images={images}
+        title={title}
+        initialIndex={active}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 }

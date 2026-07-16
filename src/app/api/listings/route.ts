@@ -5,16 +5,42 @@ import { createListingSchema } from "@/lib/validations/listing.schema";
 import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
-import { getRecentListings } from "@/services/listings";
+import { getRecentListings, searchListings, getUserListings } from "@/services/listings";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/listings — recent active listings (public). */
-export async function GET() {
+/**
+ * GET /api/listings — public feed by default, or a caller-scoped view via
+ * query params (used by the mobile app):
+ *   ?mine=true       — the signed-in caller's own listings (requires auth)
+ *   ?category=slug   — recent listings in one category (used for "similar listings")
+ *   ?limit=n         — cap result count (default 20, capped at 50)
+ */
+export async function GET(req: NextRequest) {
   try {
-    logger.debug({}, "[GET listings] request received");
-    const items = await getRecentListings(20);
+    const { searchParams } = req.nextUrl;
+    const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
+    const category = searchParams.get("category");
+    const mine = searchParams.get("mine") === "true";
+
+    if (mine) {
+      const user = await requireUser();
+      logger.debug({ userId: user.id }, "[GET listings] mine=true request received");
+      const items = await getUserListings(user.id);
+      logger.debug({ userId: user.id, count: items.length }, "[GET listings] mine=true success");
+      return ok(items);
+    }
+
+    if (category) {
+      logger.debug({ category, limit }, "[GET listings] category request received");
+      const result = await searchListings({ category, page: 1, pageSize: limit });
+      logger.debug({ category, count: result.items.length }, "[GET listings] category success");
+      return ok(result.items);
+    }
+
+    logger.debug({ limit }, "[GET listings] request received");
+    const items = await getRecentListings(limit);
     logger.debug({ count: items.length }, "[GET listings] success");
     return ok(items);
   } catch (err) {
@@ -60,6 +86,9 @@ export async function POST(req: NextRequest) {
             city: source.city,
             district: source.district,
             neighborhood: source.neighborhood,
+            province: source.province,
+            sector: source.sector,
+            village: source.village,
             latitude: source.latitude,
             longitude: source.longitude,
             userId: user.id,
@@ -110,6 +139,9 @@ export async function POST(req: NextRequest) {
         city: sanitizeText(data.city),
         district: sanitizeText(data.district),
         neighborhood: data.neighborhood ? sanitizeText(data.neighborhood) : null,
+        province: data.province ? sanitizeText(data.province) : null,
+        sector: data.sector ? sanitizeText(data.sector) : null,
+        village: data.village ? sanitizeText(data.village) : null,
         latitude: data.latitude,
         longitude: data.longitude,
         userId: user.id,
