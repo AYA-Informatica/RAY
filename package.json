@@ -22,6 +22,17 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
+  "overrides": {
+    "@next/eslint-plugin-next": {
+      "glob": "^10.5.0"
+    },
+    "next": {
+      "postcss": "^8.5.19"
+    },
+    "@rollup/plugin-terser": {
+      "serialize-javascript": "^7.0.7"
+    }
+  },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^3.9.1",
