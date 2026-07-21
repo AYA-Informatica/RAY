@@ -16,6 +16,7 @@ export interface SellDraft {
   condition: Condition | "";
   description: string;
   city: string;
+  province: string;
   district: string;
   neighborhood: string;
   /** Free-text cell/village — finer-grained than sector (neighborhood). Listing-only; User has no equivalent column. */
@@ -36,6 +37,7 @@ const empty: SellDraft = {
   condition: "",
   description: "",
   city: "Kigali",
+  province: "",
   district: "",
   neighborhood: "",
   village: "",

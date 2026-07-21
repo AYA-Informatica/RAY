@@ -87,7 +87,7 @@ export function AnnouncementEditor() {
           onChange={(e) => setConfig((c) => ({ ...c, text: e.target.value }))}
           maxLength={280}
           rows={3}
-          placeholder="e.g. RAY is now live in Kigali 🎉 — report issues to support@ray.rw"
+          placeholder="e.g. RAY is now live in Kigali 🎉 — report issues to support@raymarkets.co"
           disabled={loading}
           className="w-full rounded-md border border-border bg-surface-card px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 resize-none"
         />

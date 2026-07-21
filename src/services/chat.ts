@@ -4,8 +4,8 @@ import type { ConversationPreview } from "@/components/chat/ConversationList";
 
 const inboxInclude = {
   listing: { include: { images: { take: 1 as const, orderBy: { order: "asc" as const } } } },
-  buyer: { select: { id: true, name: true, avatarUrl: true } },
-  seller: { select: { id: true, name: true, avatarUrl: true } },
+  buyer: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
+  seller: { select: { id: true, name: true, avatarUrl: true, lastSeenAt: true } },
   messages: { orderBy: { createdAt: "desc" as const }, take: 1 },
 };
 
@@ -35,8 +35,10 @@ function toPreview(c: InboxConversation, userId: string, unread: number): Conver
     listingTitle: c.listing.title,
     listingImage: c.listing.images[0]?.url ?? null,
     listingStatus: c.listing.status,
+    otherId: other.id,
     otherName: other.name ?? "RAY user",
     otherAvatar: other.avatarUrl,
+    otherLastSeenAt: other.lastSeenAt,
     lastMessage,
     lastMessageType,
     lastAt: last?.createdAt ?? c.updatedAt,
@@ -109,11 +111,29 @@ export async function getConversationPreview(
     logger.debug({ conversationId, userId }, "[getConversationPreview] hidden for user");
     return null;
   }
-  const unread = await prisma.message.count({
-    where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
-  });
+  const other = c.buyerId === userId ? c.seller : c.buyer;
+  const [unread, blocks] = await Promise.all([
+    prisma.message.count({
+      where: { conversationId: c.id, isRead: false, NOT: { senderId: userId } },
+    }),
+    prisma.block.findMany({
+      where: {
+        OR: [
+          { blockerId: userId, blockedId: other.id },
+          { blockerId: other.id, blockedId: userId },
+        ],
+      },
+      select: { blockerId: true },
+    }),
+  ]);
   logger.debug({ conversationId, userId, unread }, "[getConversationPreview] result");
-  return toPreview(c, userId, unread);
+  return {
+    ...toPreview(c, userId, unread),
+    sellerId: c.sellerId,
+    listingPrice: c.listing.price,
+    blockedByMe: blocks.some((b) => b.blockerId === userId),
+    blockedByOther: blocks.some((b) => b.blockerId === other.id),
+  };
 }
 
 export interface ThreadHeader {

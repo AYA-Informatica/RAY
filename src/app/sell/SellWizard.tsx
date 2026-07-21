@@ -193,6 +193,7 @@ export function SellWizard({
     draft.district,
     onSectorsLoaded,
   );
+  const provinces = Array.from(new Set(allDistricts.map((d) => d.province))).sort();
 
   // Skip Specs only when the category truly has no attributes at all.
   // Previously this skipped whenever no attribute was *required*, which silently
@@ -342,6 +343,7 @@ export function SellWizard({
             // Store candidates so the sector-loading effect can auto-match a sector.
             sectorCandidatesRef.current = candidates;
             set({
+              province: districtMatch.province,
               district: districtMatch.district,
               city: cityFromDistrict(districtMatch.district),
               neighborhood: "",
@@ -409,7 +411,7 @@ export function SellWizard({
           city: draft.city,
           district: draft.district,
           neighborhood: draft.neighborhood || undefined,
-          province: allDistricts.find((d) => d.district === draft.district)?.province,
+          province: draft.province || allDistricts.find((d) => d.district === draft.district)?.province,
           sector: draft.neighborhood || undefined,
           village: draft.village || undefined,
           latitude: draft.latitude,
@@ -770,6 +772,7 @@ export function SellWizard({
                   setLocationMode("profile");
                   if (profileLocation) {
                     set({
+                      province: allDistricts.find((d) => d.district === profileLocation.district)?.province ?? "",
                       city: profileLocation.city,
                       district: profileLocation.district,
                       neighborhood: profileLocation.neighborhood,
@@ -802,12 +805,26 @@ export function SellWizard({
             {locationMode === "manual" && (
               <div className="space-y-4 pl-1">
                 <Select
-                  label={t("sell.district")}
+                  label={t("location.province")}
                   required
                   autoComplete="off"
                   disabled={loadingDistricts}
+                  placeholder={loadingDistricts ? t("common.loading") : t("sell.provincePlaceholder")}
+                  options={provinces.map((p) => ({ value: p, label: p }))}
+                  value={draft.province}
+                  onChange={(e) => {
+                    set({ province: e.target.value, district: "", city: "", neighborhood: "" });
+                  }}
+                />
+                <Select
+                  label={t("sell.district")}
+                  required
+                  autoComplete="off"
+                  disabled={loadingDistricts || !draft.province}
                   placeholder={loadingDistricts ? t("common.loading") : t("sell.districtPlaceholder")}
-                  options={allDistricts.map((d) => ({ value: d.district, label: d.district }))}
+                  options={allDistricts
+                    .filter((d) => d.province === draft.province)
+                    .map((d) => ({ value: d.district, label: d.district }))}
                   value={draft.district}
                   onChange={(e) => {
                     set({

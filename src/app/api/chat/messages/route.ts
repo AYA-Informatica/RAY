@@ -37,7 +37,13 @@ async function isBlockedBetween(a: string, b: string): Promise<boolean> {
   return Boolean(block);
 }
 
-/** GET /api/chat/messages?conversationId=… — messages, marks incoming as read. */
+/**
+ * GET /api/chat/messages?conversationId=…&page=&limit= — messages, marks
+ * incoming as read. page=1 is the most recent `limit` messages; page=2 is
+ * the batch before that, etc. — mobile's "Load earlier" already sends these
+ * params (previously ignored here, so it was pulling the same fixed batch
+ * every time). Omitting page/limit keeps the old behavior: newest 200.
+ */
 export async function GET(req: NextRequest) {
   const conversationId = req.nextUrl.searchParams.get("conversationId");
   try {
@@ -46,7 +52,9 @@ export async function GET(req: NextRequest) {
       logger.warn({ userId: user.id }, "[GET chat/messages] rejected: conversationId required");
       return fail("conversationId required", 400);
     }
-    logger.debug({ userId: user.id, conversationId }, "[GET chat/messages] request received");
+    const page = Math.max(Number(req.nextUrl.searchParams.get("page")) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.nextUrl.searchParams.get("limit")) || 200, 1), 200);
+    logger.debug({ userId: user.id, conversationId, page, limit }, "[GET chat/messages] request received");
 
     const participant = await assertParticipant(conversationId, user.id);
     if (!participant) {
@@ -54,11 +62,15 @@ export async function GET(req: NextRequest) {
       return fail("Forbidden", 403);
     }
 
+    // Fetch newest-first so `page` means "how many batches back", then
+    // reverse each page to chronological order for display.
     const messages = await prisma.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: "asc" },
-      take: 200,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    messages.reverse();
 
     await prisma.message.updateMany({
       where: { conversationId, isRead: false, NOT: { senderId: user.id } },

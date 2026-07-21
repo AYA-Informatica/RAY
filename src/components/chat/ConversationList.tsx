@@ -17,12 +17,20 @@ export interface ConversationPreview {
   listingTitle: string;
   listingImage: string | null;
   listingStatus: string;
+  otherId: string;
   otherName: string;
   otherAvatar: string | null;
+  otherLastSeenAt: string | Date;
   lastMessage: string | null;
   lastMessageType: "text" | "image" | "location" | "offer" | null;
   lastAt: string | Date;
   unread: number;
+  // Only populated by getConversationPreview() (single-conversation fetch) —
+  // left undefined on the getInbox() list path to avoid N+1 queries there.
+  sellerId?: string;
+  listingPrice?: number;
+  blockedByMe?: boolean;
+  blockedByOther?: boolean;
 }
 
 /** Inbox conversation list with client-side search and live updates. */

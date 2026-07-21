@@ -14,13 +14,13 @@ export function HelpContent() {
   return (
     <div className="space-y-4 p-4">
       <Link
-        href="mailto:support@ray.rw"
+        href="mailto:support@raymarkets.co"
         className="flex items-center gap-3 rounded-md border border-border bg-surface-card p-4"
       >
         <Mail size={20} className="text-primary" />
         <div>
           <p className="font-medium text-text-primary">{t("help.emailSupport")}</p>
-          <p className="text-sm text-text-secondary">support@ray.rw</p>
+          <p className="text-sm text-text-secondary">support@raymarkets.co</p>
         </div>
       </Link>
 

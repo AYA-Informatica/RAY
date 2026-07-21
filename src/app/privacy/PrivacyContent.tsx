@@ -134,8 +134,8 @@ export function PrivacyContent() {
 
       <div className="mt-8 border-t border-border pt-4 text-center text-xs text-text-muted">
         Questions?{" "}
-        <Link href="mailto:support@ray.rw" className="text-primary underline">
-          support@ray.rw
+        <Link href="mailto:support@raymarkets.co" className="text-primary underline">
+          support@raymarkets.co
         </Link>
       </div>
     </div>

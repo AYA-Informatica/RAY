@@ -5,7 +5,7 @@ import { createListingSchema } from "@/lib/validations/listing.schema";
 import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
-import { getRecentListings, searchListings, getUserListings } from "@/services/listings";
+import { getRankedRecentListings, searchListings, getUserListings } from "@/services/listings";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,12 @@ export const dynamic = "force-dynamic";
  *   ?mine=true       — the signed-in caller's own listings (requires auth)
  *   ?category=slug   — recent listings in one category (used for "similar listings")
  *   ?limit=n         — cap result count (default 20, capped at 50)
+ *   ?lat=&lng=       — GPS origin for proximity ranking (optional)
+ *   ?city=&district=&neighborhood= — profile-location text match, used when
+ *                      no GPS is available (optional; matches web's home feed)
+ * With none of the location params, ranking collapses to pure recency —
+ * proximity contributes the same neutral constant to every listing, so
+ * relative order is unchanged from a plain recency sort.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -39,8 +45,20 @@ export async function GET(req: NextRequest) {
       return ok(result.items);
     }
 
-    logger.debug({ limit }, "[GET listings] request received");
-    const items = await getRecentListings(limit);
+    const lat = Number(searchParams.get("lat"));
+    const lng = Number(searchParams.get("lng"));
+    const origin = Number.isFinite(lat) && Number.isFinite(lng) && searchParams.get("lat") && searchParams.get("lng")
+      ? { lat, lng }
+      : undefined;
+    const city = searchParams.get("city");
+    const district = searchParams.get("district");
+    const neighborhood = searchParams.get("neighborhood");
+    const profileLocation = city || district || neighborhood
+      ? { city, district, neighborhood }
+      : undefined;
+
+    logger.debug({ limit, hasOrigin: !!origin, hasProfileLocation: !!profileLocation }, "[GET listings] request received");
+    const items = await getRankedRecentListings({ origin, profileLocation }, limit);
     logger.debug({ count: items.length }, "[GET listings] success");
     return ok(items);
   } catch (err) {

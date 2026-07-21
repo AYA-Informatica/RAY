@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { LanguageToggle } from "@/components/shared/LanguageToggle";
+import { AccountDeletion } from "@/components/profile/AccountDeletion";
 import { SubPageHeader } from "../SubPageHeader";
 import { getCurrentUser } from "@/lib/auth/session";
 import { logger } from "@/lib/logger";
@@ -25,6 +26,9 @@ export default async function SettingsPage() {
       <p className="px-4 py-4 text-sm text-text-secondary">
         More settings (notifications, privacy) arrive in a future update.
       </p>
+      <div className="border-t border-border">
+        <AccountDeletion userId={user.id} />
+      </div>
     </AppShell>
   );
 }

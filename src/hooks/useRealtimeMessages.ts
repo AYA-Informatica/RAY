@@ -6,25 +6,45 @@ import { useUnreadMessages } from "@/store/useUnreadMessages";
 import { useInboxRealtime } from "@/store/useInboxRealtime";
 import { logger } from "@/lib/logger";
 
+const PAGE_SIZE = 50;
+
 /**
- * Loads the initial page of messages over the API, then listens for live
+ * Loads the newest page of messages over the API, then listens for live
  * updates via the shared per-user Broadcast channel (InboxRealtimeSync /
  * useInboxRealtime) — postgres_changes on the RLS-protected Message table
  * doesn't reliably deliver to clients (same issue the inbox sidebar had).
+ *
+ * Paginated 50/page (mirrors the mobile app's "Load earlier"). `load()` only
+ * ever fetches the newest page and merges it into existing state rather than
+ * replacing it, so a tab-focus/reconnect refresh never discards older pages
+ * the user has already paged back through.
  */
 export function useRealtimeMessages(conversationId: string, currentUserId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const lastEvent = useInboxRealtime((s) => s.lastEvent);
   const seq = useInboxRealtime((s) => s.seq);
 
   const load = useCallback(async () => {
     logger.debug({ conversationId }, "[useRealtimeMessages] loading messages");
     try {
-      const res = await fetch(`/api/chat/messages?conversationId=${conversationId}`);
+      const res = await fetch(`/api/chat/messages?conversationId=${conversationId}&page=1&limit=${PAGE_SIZE}`);
       const json = (await res.json()) as { data?: ChatMessage[] };
-      setMessages(json.data ?? []);
-      logger.debug({ conversationId, count: json.data?.length ?? 0 }, "[useRealtimeMessages] messages loaded");
+      const fresh = json.data ?? [];
+      setMessages((prev) => {
+        if (prev.length === 0) return fresh;
+        // Refresh (tab-focus/reconnect), not first load — merge in anything
+        // new rather than discarding earlier pages already loaded.
+        const existingIds = new Set(prev.map((x) => x.id));
+        const newOnes = fresh.filter((x) => !existingIds.has(x.id));
+        return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
+      });
+      setPage(1);
+      setHasMore(fresh.length === PAGE_SIZE);
+      logger.debug({ conversationId, count: fresh.length }, "[useRealtimeMessages] messages loaded");
       const unreadHeader = res.headers.get("X-Unread-Count");
       if (unreadHeader !== null) {
         useUnreadMessages.getState().setCount(Number(unreadHeader));
@@ -37,6 +57,31 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** Fetch the next-older page and prepend it. */
+  const loadEarlier = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await fetch(`/api/chat/messages?conversationId=${conversationId}&page=${nextPage}&limit=${PAGE_SIZE}`);
+      const json = (await res.json()) as { data?: ChatMessage[] };
+      const older = json.data ?? [];
+      if (older.length > 0) {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((x) => x.id));
+          const newOnes = older.filter((x) => !existingIds.has(x.id));
+          return [...newOnes, ...prev];
+        });
+        setPage(nextPage);
+        setHasMore(older.length === PAGE_SIZE);
+      } else {
+        setHasMore(false);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [conversationId, page, hasMore, loadingMore]);
 
   // Reload messages when the tab becomes visible again — covers both
   // network reconnect (fix 5) and tab-focus scenarios (fix 21).
@@ -139,5 +184,8 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }, []);
 
-  return { messages, loading, appendOptimistic, replaceMessage, removeMessage, updateMessage, reload: load };
+  return {
+    messages, loading, appendOptimistic, replaceMessage, removeMessage, updateMessage, reload: load,
+    hasMore, loadingMore, loadEarlier,
+  };
 }

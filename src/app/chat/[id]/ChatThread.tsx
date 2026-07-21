@@ -31,7 +31,10 @@ export function ChatThread({
 }) {
   usePresenceHeartbeat();
   const { t } = useI18n();
-  const { messages, loading, appendOptimistic, replaceMessage, removeMessage, updateMessage } = useRealtimeMessages(
+  const {
+    messages, loading, appendOptimistic, replaceMessage, removeMessage, updateMessage,
+    hasMore, loadingMore, loadEarlier,
+  } = useRealtimeMessages(
     thread.conversationId,
     currentUserId,
   );
@@ -51,10 +54,18 @@ export function ChatThread({
   const isSeller = thread.sellerId === currentUserId;
   const [otherLastSeenAt, setOtherLastSeenAt] = useState(thread.otherLastSeenAt);
   const endRef = useRef<HTMLDivElement>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
 
+  // Scroll to bottom only when a new message lands at the end — not when
+  // loadEarlier() prepends older messages (that would yank the view back
+  // down right after the user asked to see further up).
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    const lastId = messages[messages.length - 1]?.id ?? null;
+    if (lastId && lastId !== lastMessageIdRef.current) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    lastMessageIdRef.current = lastId;
+  }, [messages]);
 
   // Live presence: reflect the other user's online/last-seen status as it changes.
   useEffect(() => {
@@ -276,7 +287,20 @@ export function ChatThread({
             </div>
           </div>
         ) : (
-          messages.map((m: ChatMessage) => (
+          <>
+            {hasMore && (
+              <div className="grid place-items-center py-2">
+                <button
+                  type="button"
+                  onClick={() => void loadEarlier()}
+                  disabled={loadingMore}
+                  className="text-sm font-medium text-primary disabled:opacity-50"
+                >
+                  {loadingMore ? <Loader2 size={16} className="animate-spin" /> : t("chat.loadEarlier")}
+                </button>
+              </div>
+            )}
+            {messages.map((m: ChatMessage) => (
             <MessageBubble
               key={m.id}
               message={m}
@@ -286,7 +310,8 @@ export function ChatThread({
                 updateMessage(msgId, { offerStatus: status });
               }}
             />
-          ))
+            ))}
+          </>
         )}
         <div ref={endRef} />
       </main>
