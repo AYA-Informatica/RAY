@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, Search as SearchIcon, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Loader2, Search as SearchIcon, SlidersHorizontal } from "lucide-react";
 import { Tabs } from "@/components/ui/Tabs";
 import { ListingGrid, ListingGridSkeleton } from "@/components/listings/ListingGrid";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -45,10 +45,18 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
   const [category, setCategory] = useState(params.get("category") ?? "all");
   const [filters, setFilters] = useState<SearchFilters>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<"newest" | "price_asc" | "price_desc">("newest");
 
-  const [result, setResult] = useState<Paginated<ListingCardData> | null>(null);
+  const [allItems, setAllItems] = useState<ListingCardData[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout>>();
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // Track the "filter identity" — when it changes, reset to page 1 and replace items.
+  const filterKey = useRef(0);
 
   // Geolocation — only requested when the user opts into a distance radius,
   // so we never prompt on first paint. Coords are cached for the session.
@@ -85,8 +93,7 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
     );
   }
 
-  const run = useCallback(async () => {
-    setLoading(true);
+  const buildSearchParams = useCallback((pageNum: number) => {
     const sp = new URLSearchParams();
     if (query) sp.set("q", query);
     if (category && category !== "all") sp.set("category", category);
@@ -98,22 +105,65 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
     if (filters.district) sp.set("district", filters.district);
     if (filters.neighborhood) sp.set("neighborhood", filters.neighborhood);
     if (filters.brand) sp.set("brand", filters.brand);
+    if (sortBy !== "newest") sp.set("sortBy", sortBy);
     if (coords) {
       sp.set("lat", String(coords.lat));
       sp.set("lng", String(coords.lng));
     }
+    sp.set("page", String(pageNum));
+    sp.set("pageSize", "20");
+    return sp;
+  }, [query, category, filters, coords, sortBy]);
+
+  // Reset + fresh search whenever filters/query/sort change.
+  const run = useCallback(async () => {
+    setLoading(true);
+    setPage(1);
+    filterKey.current += 1;
+    const myKey = filterKey.current;
+    const sp = buildSearchParams(1);
     try {
       const res = await fetch(`/api/search?${sp.toString()}`);
       const json = (await res.json()) as { data?: Paginated<ListingCardData> };
-      logger.debug({ query, category, total: json.data?.total ?? 0 }, "[SearchClient] search completed");
-      setResult(json.data ?? null);
+      if (filterKey.current !== myKey) return; // stale
+      const data = json.data;
+      logger.debug({ query, category, total: data?.total ?? 0 }, "[SearchClient] search completed");
+      setAllItems(data?.items ?? []);
+      setTotal(data?.total ?? null);
+      setHasMore(data?.hasMore ?? false);
     } catch (err) {
+      if (filterKey.current !== myKey) return;
       logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[SearchClient] search request failed");
-      setResult(null);
+      setAllItems([]);
+      setTotal(null);
+      setHasMore(false);
     } finally {
-      setLoading(false);
+      if (filterKey.current === myKey) setLoading(false);
     }
-  }, [query, category, filters, coords]);
+  }, [buildSearchParams, query, category]);
+
+  // Load next page (called by IntersectionObserver sentinel).
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    setPage(nextPage);
+    const myKey = filterKey.current;
+    const sp = buildSearchParams(nextPage);
+    try {
+      const res = await fetch(`/api/search?${sp.toString()}`);
+      const json = (await res.json()) as { data?: Paginated<ListingCardData> };
+      if (filterKey.current !== myKey) return;
+      const data = json.data;
+      setAllItems((prev) => [...prev, ...(data?.items ?? [])]);
+      setHasMore(data?.hasMore ?? false);
+      setTotal(data?.total ?? null);
+    } catch (err) {
+      logger.warn({ message: err instanceof Error ? err.message : String(err) }, "[SearchClient] loadMore failed");
+    } finally {
+      if (filterKey.current === myKey) setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, page, buildSearchParams]);
 
   // Debounced re-search whenever inputs change.
   useEffect(() => {
@@ -121,6 +171,18 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
     debounce.current = setTimeout(() => void run(), 300);
     return () => clearTimeout(debounce.current);
   }, [run]);
+
+  // IntersectionObserver sentinel: triggers loadMore when sentinel enters viewport.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0]?.isIntersecting) void loadMore(); },
+      { rootMargin: "200px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const activeFilterCount =
     (filters.condition ? 1 : 0) +
@@ -243,9 +305,27 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
             </button>
           </div>
         )}
+        {/* Sort selector — shown once results are loaded */}
+        {!loading && allItems.length > 0 && (
+          <div className="flex items-center justify-between py-3">
+            <p className="text-sm font-medium text-text-primary">
+              {total !== null && <>{formatResultCount(total)} {t("search.results")}</>}
+              {query && <span className="font-normal text-text-secondary"> {t("search.for")} &ldquo;{query}&rdquo;</span>}
+            </p>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-md border border-border bg-surface-card px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="newest">{t("search.sort.newest")}</option>
+              <option value="price_asc">{t("search.sort.priceAsc")}</option>
+              <option value="price_desc">{t("search.sort.priceDesc")}</option>
+            </select>
+          </div>
+        )}
         {loading ? (
           <ListingGridSkeleton />
-        ) : !result || result.items.length === 0 ? (
+        ) : allItems.length === 0 ? (
           <EmptyState
             icon={<SearchIcon size={36} />}
             title={t("search.noResults")}
@@ -265,11 +345,14 @@ export function SearchClient({ categories }: { categories: SearchCategory[] }) {
           />
         ) : (
           <>
-            <p className="py-3 text-sm font-medium text-text-primary">
-              {formatResultCount(result.total)} {t("search.results")}
-              {query && <span className="font-normal text-text-secondary"> {t("search.for")} &ldquo;{query}&rdquo;</span>}
-            </p>
-            <ListingGrid listings={result.items} />
+            <ListingGrid listings={allItems} />
+            {/* Sentinel triggers loadMore when it scrolls into view */}
+            <div ref={sentinelRef} className="h-4" aria-hidden />
+            {loadingMore && (
+              <div className="flex justify-center py-4">
+                <Loader2 size={24} className="animate-spin text-text-muted" />
+              </div>
+            )}
           </>
         )}
       </div>

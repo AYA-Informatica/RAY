@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, CheckCircle2, RotateCcw, Loader2, Eye, RefreshCw } from "lucide-react";
+import { Pencil, Trash2, CheckCircle2, RotateCcw, Loader2, Eye, RefreshCw, Mail } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "./PriceTag";
@@ -152,6 +152,13 @@ export function MyAdCard({ listing }: { listing: ListingCardData }) {
             {isLoading || isReposting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             {isReposting ? "Reposting..." : "Repost"}
           </button>
+        ) : status === "FLAGGED" ? (
+          <a
+            href={`mailto:support@raymarkets.co?subject=Flagged listing — ${encodeURIComponent(listing.title)}&body=Listing ID: ${listing.id}`}
+            className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-warning hover:bg-warning/10"
+          >
+            <Mail size={14} /> {t("myAds.contactSupport")}
+          </a>
         ) : (
           <>
             <Link

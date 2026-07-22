@@ -109,6 +109,7 @@ export function SellWizard({
 
   const [schema, setSchema] = useState<CategoryWithAttributes | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [permissionPrompt, setPermissionPrompt] = useState<"camera" | "location" | null>(null);
   const [draftNotice, setDraftNotice] = useState(
@@ -288,10 +289,15 @@ export function SellWizard({
       return;
     }
     setUploading(true);
+    setUploadProgress(null);
     setError(null);
     try {
       const remaining = 7 - draft.images.length;
-      const urls = await uploadImages(allFiles.slice(0, remaining), "listings", userId);
+      const toUpload = allFiles.slice(0, remaining);
+      setUploadProgress({ done: 0, total: toUpload.length });
+      const urls = await uploadImages(toUpload, "listings", userId, (done, total) =>
+        setUploadProgress({ done, total }),
+      );
       logger.debug({ uploaded: urls.length }, "[SellWizard] images uploaded");
       set({ images: [...draft.images, ...urls].slice(0, 7) });
     } catch (err) {
@@ -299,6 +305,7 @@ export function SellWizard({
       setError(t("sell.uploadFailed"));
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -525,13 +532,25 @@ export function SellWizard({
             <ArrowLeft size={22} />
           </button>
           <h1 className="font-display text-lg font-bold">{STEP_LABELS[step]}</h1>
-          <span
-            className="ml-auto text-sm text-text-muted"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {step + 1}/{STEP_COUNT}
-          </span>
+          <div className="ml-auto flex items-center gap-3">
+            {step > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`${t("sell.discardTitle")}\n${t("sell.discardBody")}`)) {
+                    reset();
+                    router.replace("/home");
+                  }
+                }}
+                className="text-xs text-text-muted hover:text-danger"
+              >
+                {t("sell.discard")}
+              </button>
+            )}
+            <span className="text-sm text-text-muted" aria-live="polite" aria-atomic="true">
+              {step + 1}/{STEP_COUNT}
+            </span>
+          </div>
         </div>
         <div className="mt-3 flex gap-1">
           {STEP_LABELS.map((_, i) => (
@@ -603,6 +622,17 @@ export function SellWizard({
                 </label>
               )}
             </div>
+            {uploadProgress && (
+              <div className="relative h-2 overflow-hidden rounded-pill bg-border">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-pill bg-primary transition-all duration-300"
+                  style={{ width: `${(uploadProgress.done / uploadProgress.total) * 100}%` }}
+                />
+                <span className="sr-only">
+                  Uploading {uploadProgress.done} of {uploadProgress.total}
+                </span>
+              </div>
+            )}
             {!userId && (
               <p className="text-xs text-warning">{t("sell.signInToPost")}</p>
             )}

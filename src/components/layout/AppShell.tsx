@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils/cn";
 import { getAuthUser } from "@/lib/auth/session";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { getFavoriteIds } from "@/services/favorites";
+import { getUnreadNotificationCount } from "@/services/notifications";
 
 /**
  * Responsive marketplace shell.
@@ -25,9 +26,10 @@ export async function AppShell({
   width?: "wide" | "reading";
 }) {
   const authUser = await getAuthUser();
-  const [unread, favoriteIds] = await Promise.all([
+  const [unread, favoriteIds, unreadNotifications] = await Promise.all([
     authUser ? getUnreadCount(authUser.id) : Promise.resolve(0),
     authUser ? getFavoriteIds(authUser.id) : Promise.resolve([]),
+    authUser ? getUnreadNotificationCount(authUser.id) : Promise.resolve(0),
   ]);
 
   return (
@@ -42,7 +44,7 @@ export async function AppShell({
       <PresenceHeartbeat />
       {authUser && <UnreadMessagesProvider initialCount={unread} userId={authUser.id} />}
       {authUser && <FavoritesProvider initialIds={favoriteIds} />}
-      <TopNav unreadMessages={unread} />
+      <TopNav unreadMessages={unread} unreadNotifications={unreadNotifications} />
       <main id="main-content" className={cn("mx-auto w-full", width === "wide" ? "max-w-6xl" : "max-w-2xl")}>
         {children}
       </main>

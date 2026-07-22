@@ -5,6 +5,7 @@ import { sendMessageSchema, respondOfferSchema } from "@/lib/validations/message
 import { sanitizeText } from "@/lib/sanitization/sanitize";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { sendChatPush } from "@/lib/push/sendChatPush";
+import { createNotification } from "@/services/notifications";
 import { ok, fail, handleApiError, RATE_LIMITED } from "@/lib/utils/api";
 import { limiters, checkLimit } from "@/lib/ratelimit";
 import { logger } from "@/lib/logger";
@@ -152,6 +153,15 @@ export async function POST(req: NextRequest) {
       hasImage: Boolean(data.imageUrl),
       offerAmount: data.offerAmount,
       conversationId: data.conversationId,
+    });
+    void createNotification({
+      userId: convo.otherId,
+      type: data.offerAmount != null ? "offer" : "message",
+      title: user.name ?? "Someone",
+      body: data.offerAmount != null
+        ? `Made an offer of Rwf ${data.offerAmount.toLocaleString()}`
+        : (data.content ?? (data.imageUrl ? "Sent a photo" : "Sent a message")),
+      link: `/chat/${data.conversationId}`,
     });
 
     return ok(message, { status: 201 });

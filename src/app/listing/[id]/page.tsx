@@ -13,6 +13,7 @@ import { STATUS_KEY, STATUS_BANNER_CLASS } from "@/lib/listings/status";
 import { cn } from "@/lib/utils/cn";
 import { ChatCtaBar } from "@/components/chat/ChatCtaBar";
 import { getListing } from "@/services/listings";
+import { SimilarListings } from "@/components/listings/SimilarListings";
 import { formatPrice, timeAgo } from "@/lib/utils/format";
 import { serverT } from "@/i18n/server";
 import { MapPin, Eye } from "lucide-react";
@@ -190,6 +191,9 @@ export default async function ListingDetailPage({ params }: Params) {
           </div>
         </div>
       </div>
+
+      {/* Similar listings carousel */}
+      <SimilarListings categoryId={listing.categoryId} excludeId={listing.id} />
 
       {/* Mobile/tablet sticky chat CTA */}
       {!isOwner && (

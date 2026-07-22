@@ -1,6 +1,7 @@
 "use client";
 
-import { Mail, HelpCircle } from "lucide-react";
+import { useState } from "react";
+import { Mail, HelpCircle, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/I18nProvider";
 
@@ -10,6 +11,7 @@ export function HelpContent() {
     q: t(`help.faq${n}Q`),
     a: t(`help.faq${n}A`),
   }));
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   return (
     <div className="space-y-4 p-4">
@@ -28,11 +30,23 @@ export function HelpContent() {
         <p className="mb-2 flex items-center gap-2 font-display font-bold">
           <HelpCircle size={18} className="text-primary" /> {t("help.faqTitle")}
         </p>
-        <div className="space-y-3">
-          {faqs.map(({ q, a }) => (
-            <div key={q} className="rounded-md border border-border bg-surface-card p-3">
-              <p className="font-medium text-text-primary">{q}</p>
-              <p className="mt-1 text-sm text-text-secondary">{a}</p>
+        <div className="divide-y divide-border overflow-hidden rounded-md border border-border bg-surface-card">
+          {faqs.map(({ q, a }, i) => (
+            <div key={q}>
+              <button
+                onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                className="flex w-full items-center justify-between gap-3 p-3 text-left"
+                aria-expanded={openIdx === i}
+              >
+                <span className="font-medium text-text-primary">{q}</span>
+                <ChevronDown
+                  size={16}
+                  className={`shrink-0 text-text-secondary transition-transform ${openIdx === i ? "rotate-180" : ""}`}
+                />
+              </button>
+              {openIdx === i && (
+                <p className="px-3 pb-3 text-sm text-text-secondary">{a}</p>
+              )}
             </div>
           ))}
         </div>

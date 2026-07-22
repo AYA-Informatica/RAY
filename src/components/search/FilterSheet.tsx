@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { PriceSlider } from "./PriceSlider";
 import { DistanceSelector } from "./DistanceSelector";
 import { useLocationCascade } from "@/hooks/useLocationCascade";
+import { PROVINCE_TO_CITY } from "@/constants/locations";
 import { useI18n } from "@/i18n/I18nProvider";
 import { logger } from "@/lib/logger";
 
@@ -72,6 +73,16 @@ export function FilterSheet({
 
   const { allDistricts, loadingDistricts, sectors, loadingSectors } = useLocationCascade(filters.district);
 
+  // Derive unique city (province-level) options from the district list.
+  const cityOptions = Array.from(
+    new Set(allDistricts.map((d) => PROVINCE_TO_CITY[d.province] ?? d.province)),
+  ).sort();
+
+  // When a city is selected, narrow the district dropdown to that province.
+  const districtOptions = filters.city
+    ? allDistricts.filter((d) => (PROVINCE_TO_CITY[d.province] ?? d.province) === filters.city)
+    : allDistricts;
+
   const showBrand = category && category !== "all" && BRAND_CATEGORIES.has(category);
 
   let locationHint: string;
@@ -114,8 +125,18 @@ export function FilterSheet({
           <p className="mt-2 text-xs text-text-muted">{locationHint}</p>
         </div>
 
-        {/* Location (hyperlocal hierarchy) */}
+        {/* Location (4-level cascade: City → District → Neighborhood) */}
         <div className="space-y-3">
+          <Select
+            label={t("filter.city")}
+            disabled={loadingDistricts}
+            placeholder={loadingDistricts ? t("common.loading") : t("filter.anyCity")}
+            value={filters.city}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, city: e.target.value, district: "", neighborhood: "" }))
+            }
+            options={cityOptions.map((c) => ({ value: c, label: c }))}
+          />
           <Select
             label={t("filter.district")}
             disabled={loadingDistricts}
@@ -124,7 +145,7 @@ export function FilterSheet({
             onChange={(e) =>
               setFilters((f) => ({ ...f, district: e.target.value, neighborhood: "" }))
             }
-            options={allDistricts.map((d) => ({ value: d.district, label: d.district }))}
+            options={districtOptions.map((d) => ({ value: d.district, label: d.district }))}
           />
           {sectorSelect}
         </div>

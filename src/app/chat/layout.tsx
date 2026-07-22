@@ -7,6 +7,7 @@ import { ConversationList } from "@/components/chat/ConversationList";
 import { getAuthUser, getCurrentUser } from "@/lib/auth/session";
 import { getUnreadCount } from "@/lib/chat/getUnreadCount";
 import { getInbox } from "@/services/chat";
+import { getUnreadNotificationCount } from "@/services/notifications";
 import { serverT } from "@/i18n/server";
 import { logger } from "@/lib/logger";
 
@@ -23,7 +24,9 @@ import { logger } from "@/lib/logger";
 export default async function ChatLayout({ children }: { children: React.ReactNode }) {
   logger.debug("[ChatLayout] rendering");
   const authUser = await getAuthUser();
-  const unread = authUser ? await getUnreadCount(authUser.id) : 0;
+  const [unread, unreadNotifications] = authUser
+    ? await Promise.all([getUnreadCount(authUser.id), getUnreadNotificationCount(authUser.id)])
+    : [0, 0];
 
   const user = await getCurrentUser();
   const conversations = user ? await getInbox(user.id) : [];
@@ -40,7 +43,7 @@ export default async function ChatLayout({ children }: { children: React.ReactNo
       <PresenceHeartbeat />
       {authUser && <UnreadMessagesProvider initialCount={unread} userId={authUser.id} />}
       {authUser && <InboxRealtimeSync userId={authUser.id} />}
-      <TopNav unreadMessages={unread} />
+      <TopNav unreadMessages={unread} unreadNotifications={unreadNotifications} />
 
       {/* Below the sticky TopNav (h-16 = 64px) on desktop */}
       <div

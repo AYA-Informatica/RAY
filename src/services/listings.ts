@@ -386,6 +386,19 @@ export async function getSellerActiveListings(userId: string, limit = 50): Promi
   return rows.map((r) => toCard(r));
 }
 
+/** Same-category active listings, excluding the current one. Used for the
+ *  "Similar listings" carousel on the detail page. */
+export async function getSimilarListings(
+  categoryId: string,
+  excludeId: string,
+  limit = 8,
+): Promise<ListingCardData[]> {
+  logger.debug({ categoryId, excludeId, limit }, "[getSimilarListings] called");
+  const rows = await queryListings({ categoryId, id: { not: excludeId } }, limit, 0);
+  logger.debug({ categoryId, count: rows.length }, "[getSimilarListings] result");
+  return rows.map((r) => toCard(r));
+}
+
 /** A single listing owned by the user, for editing (returns null if not owner). */
 export async function getOwnedListing(id: string, userId: string) {
   logger.debug({ id, userId }, "[getOwnedListing] called");

@@ -6,6 +6,7 @@ import { Home, Search, MessageCircle, User, Plus, Heart } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useI18n } from "@/i18n/I18nProvider";
 import { useUnreadMessages } from "@/store/useUnreadMessages";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 
 /**
  * Desktop / laptop top navigation. Hidden below `lg`, where the mobile
@@ -18,7 +19,7 @@ const LINKS = [
   { href: "/chat", labelKey: "nav.messages", icon: MessageCircle },
 ] as const;
 
-export function TopNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
+export function TopNav({ unreadMessages = 0, unreadNotifications = 0 }: { unreadMessages?: number; unreadNotifications?: number }) {
   const pathname = usePathname();
   const { t } = useI18n();
   const liveUnread = useUnreadMessages((s) => s.count);
@@ -71,6 +72,7 @@ export function TopNav({ unreadMessages = 0 }: { unreadMessages?: number }) {
           >
             <Heart size={20} />
           </Link>
+          <NotificationBell initialUnread={unreadNotifications} />
           <Link
             href="/profile"
             aria-label={t("nav.profile")}

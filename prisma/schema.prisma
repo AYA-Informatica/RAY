@@ -99,6 +99,7 @@ model User {
   blocksMade            Block[]        @relation("Blocker")
   blocksReceived        Block[]        @relation("Blocked")
   adminActions          AdminAction[]  @relation("AdminActions")
+  notifications         Notification[]
 
   @@index([city])
   @@index([district])
@@ -396,6 +397,25 @@ model RwandaLocation {
   @@index([district])
   @@index([district, sector])
   @@index([district, sector, cell])
+}
+
+// ---------------------------------------------------------------------------
+// Notification — in-app notification center
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ---------------------------------------------------------------------------

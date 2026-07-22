@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
 import { AppShell } from "@/components/layout/AppShell";
 import { LocationHeader } from "@/components/layout/LocationHeader";
+import { AnnouncementBanner } from "@/components/shared/AnnouncementBanner";
+import { LocationOnboardingBanner } from "@/components/shared/LocationOnboardingBanner";
 import { CategoryBrowser } from "@/components/home/CategoryBrowser";
 import { RecentListingsSectionHeader } from "@/components/home/RecentListingsSectionHeader";
 import { RecentListings } from "@/components/listings/RecentListings";
@@ -85,10 +87,11 @@ export async function HomeContent() {
       </div>
 
       {announcement?.active && announcement.text && (
-        <div className="mx-4 mt-4 rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-text-primary sm:mx-6">
-          {announcement.text}
-        </div>
+        <AnnouncementBanner text={announcement.text} />
       )}
+
+      {/* Prompt for signed-in users who haven't set a location yet */}
+      {user && !user.city && <LocationOnboardingBanner />}
 
       <CategoryBrowser categories={categories} />
 

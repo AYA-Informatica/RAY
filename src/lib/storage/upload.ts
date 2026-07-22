@@ -87,11 +87,13 @@ export async function uploadImage(file: File, bucket: Bucket, userId: string): P
   return data.publicUrl;
 }
 
-/** Upload many images sequentially, enforcing the 7-photo cap for listings. */
+/** Upload many images sequentially, enforcing the 7-photo cap for listings.
+ *  `onProgress(done, total)` is called after each file completes. */
 export async function uploadImages(
   files: File[],
   bucket: Bucket,
   userId: string,
+  onProgress?: (done: number, total: number) => void,
 ): Promise<string[]> {
   const capped = bucket === "listings" ? files.slice(0, 7) : files;
   logger.debug(
@@ -99,7 +101,10 @@ export async function uploadImages(
     "[storage/upload] uploadImages start",
   );
   const urls: string[] = [];
-  for (const f of capped) urls.push(await uploadImage(f, bucket, userId));
+  for (const f of capped) {
+    urls.push(await uploadImage(f, bucket, userId));
+    onProgress?.(urls.length, capped.length);
+  }
   logger.debug({ bucket, userId, uploaded: urls.length }, "[storage/upload] uploadImages complete");
   return urls;
 }
