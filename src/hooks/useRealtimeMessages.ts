@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { ChatMessage } from "@/components/chat/MessageBubble";
 import { useUnreadMessages } from "@/store/useUnreadMessages";
 import { useInboxRealtime } from "@/store/useInboxRealtime";
@@ -27,6 +27,10 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
   const [loadingMore, setLoadingMore] = useState(false);
   const lastEvent = useInboxRealtime((s) => s.lastEvent);
   const seq = useInboxRealtime((s) => s.seq);
+  // Tracks whether load() has ever completed, independent of React state
+  // timing — see the note below on why this can't be a `messages.length === 0`
+  // check inside the updater.
+  const hasLoadedOnceRef = useRef(false);
 
   const load = useCallback(async () => {
     logger.debug({ conversationId }, "[useRealtimeMessages] loading messages");
@@ -34,6 +38,8 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
       const res = await fetch(`/api/chat/messages?conversationId=${conversationId}&page=1&limit=${PAGE_SIZE}`);
       const json = (await res.json()) as { data?: ChatMessage[] };
       const fresh = json.data ?? [];
+      const isFirstLoad = !hasLoadedOnceRef.current;
+      hasLoadedOnceRef.current = true;
       setMessages((prev) => {
         if (prev.length === 0) return fresh;
         // Refresh (tab-focus/reconnect), not first load — merge in anything
@@ -42,8 +48,16 @@ export function useRealtimeMessages(conversationId: string, currentUserId: strin
         const newOnes = fresh.filter((x) => !existingIds.has(x.id));
         return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
       });
-      setPage(1);
-      setHasMore(fresh.length === PAGE_SIZE);
+      // Only establish the pagination cursor on the very first load. A later
+      // refresh (tab-focus/reconnect) must not reset page/hasMore back to 1 —
+      // load() always requests page 1 regardless of how many older pages the
+      // user has already fetched via loadEarlier(), so resetting here would
+      // make the next "Load earlier" click re-fetch pages already merged in
+      // (silently deduped as "nothing new") instead of reaching real new content.
+      if (isFirstLoad) {
+        setPage(1);
+        setHasMore(fresh.length === PAGE_SIZE);
+      }
       logger.debug({ conversationId, count: fresh.length }, "[useRealtimeMessages] messages loaded");
       const unreadHeader = res.headers.get("X-Unread-Count");
       if (unreadHeader !== null) {
