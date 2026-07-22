@@ -29,7 +29,9 @@ export async function AppShell({
   const [unread, favoriteIds, unreadNotifications] = await Promise.all([
     authUser ? getUnreadCount(authUser.id) : Promise.resolve(0),
     authUser ? getFavoriteIds(authUser.id) : Promise.resolve([]),
-    authUser ? getUnreadNotificationCount(authUser.id) : Promise.resolve(0),
+    // Never let a notifications-subsystem failure break the shared shell every
+    // authenticated page renders through.
+    authUser ? getUnreadNotificationCount(authUser.id).catch(() => 0) : Promise.resolve(0),
   ]);
 
   return (
